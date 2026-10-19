@@ -1,0 +1,51 @@
+{
+  "$schema": "agentmaurice.module/v2",
+  "schema_version": 2,
+  "key": "cib-daily-routine",
+  "name": "Routine quotidienne — dossiers, mémoire et temps",
+  "version": "0.1.0",
+  "provides": {
+    "actions": [
+      {
+        "key": "daily-time-save",
+        "workflow_id": "daily-time-save",
+        "workflow_version": "1"
+      }
+    ],
+    "queries": [
+      {
+        "key": "daily-time-read",
+        "workflow_id": "daily-time-read",
+        "workflow_version": "1"
+      },
+      {
+        "key": "daily-report",
+        "workflow_id": "daily-report",
+        "workflow_version": "1"
+      },
+      {
+        "key": "daily-context",
+        "workflow_id": "daily-context",
+        "workflow_version": "1"
+      }
+    ],
+    "apps": [
+      {
+        "key": "daily-time-console",
+        "miniapp_id": "daily-time-console",
+        "miniapp_version": "1"
+      },
+      {
+        "key": "daily-report-console",
+        "miniapp_id": "daily-report-console",
+        "miniapp_version": "1"
+      },
+      {
+        "key": "daily-context-console",
+        "miniapp_id": "daily-context-console",
+        "miniapp_version": "1"
+      }
+    ]
+  },
+  "requires": {}
+}

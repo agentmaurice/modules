@@ -1,0 +1,209 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "cib-admin-console",
+  "version": "2",
+  "title": "Administration Company-in-a-Box",
+  "description": "Lecture et opérations administratives manuelles, sans création de compte ni invitation email.",
+  "ui": {
+    "renderer": "component",
+    "component": "company-in-a-box",
+    "configuration": {
+      "layout": [
+        {
+          "type": "text",
+          "value": "Gérez les personnes, leurs accès aux services et les mandats. Une fiche dans l’annuaire ne crée pas de compte utilisateur."
+        },
+        {
+          "type": "button",
+          "label": "Actualiser l’état",
+          "on_click": "refresh"
+        },
+        {
+          "type": "section",
+          "title": "Personnes",
+          "children": [
+            {
+              "type": "table",
+              "columns": [
+                "person_id",
+                "display_name",
+                "platform_user_id"
+              ],
+              "column_labels": {
+                "person_id": "Référence",
+                "display_name": "Nom",
+                "platform_user_id": "Identité liée"
+              },
+              "rows": {
+                "state": "overview.people"
+              }
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "title": "Rôles métier",
+          "children": [
+            {
+              "type": "table",
+              "columns": [
+                "person_id",
+                "role_key"
+              ],
+              "column_labels": {
+                "person_id": "Personne",
+                "role_key": "Rôle"
+              },
+              "rows": {
+                "state": "overview.grants"
+              }
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "title": "Membres Application",
+          "children": [
+            {
+              "type": "table",
+              "columns": [
+                "user_id"
+              ],
+              "column_labels": {
+                "user_id": "Identité"
+              },
+              "rows": {
+                "state": "overview.application_people"
+              }
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "title": "Mandats",
+          "children": [
+            {
+              "type": "metric",
+              "label": "Mandats actuels",
+              "value": {
+                "state": "overview.mandate_count"
+              }
+            },
+            {
+              "type": "table",
+              "columns": [
+                "mandate_id",
+                "status"
+              ],
+              "column_labels": {
+                "mandate_id": "Mandat",
+                "status": "État"
+              },
+              "rows": {
+                "state": "overview.approval_mandates"
+              }
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "overview.message"
+          }
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.message"
+          }
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "overview": {
+        "type": "object"
+      },
+      "result": {
+        "type": "object"
+      },
+      "operation": {
+        "type": "string"
+      },
+      "person_id": {
+        "type": "string"
+      },
+      "display_name": {
+        "type": "string"
+      },
+      "target_platform_user_id": {
+        "type": "string"
+      },
+      "role_key": {
+        "type": "string"
+      },
+      "mandate_id": {
+        "type": "string"
+      },
+      "reason": {
+        "type": "string"
+      },
+      "confirmation_manuelle": {
+        "type": "string"
+      }
+    }
+  },
+  "initial_state": {
+    "overview": {
+      "people": [],
+      "grants": [],
+      "application_people": [],
+      "approval_mandates": [],
+      "mandate_count": 0
+    },
+    "result": {
+      "message": "Aucun état consulté."
+    },
+    "operation": "",
+    "person_id": "",
+    "display_name": "",
+    "target_platform_user_id": "",
+    "role_key": "",
+    "mandate_id": "",
+    "reason": "",
+    "confirmation_manuelle": "false"
+  },
+  "events": [
+    {
+      "event_id": "refresh",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "cib-admin-overview",
+        "input": {}
+      },
+      "result_to_state": "overview"
+    },
+    {
+      "event_id": "submit",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "cib-admin-manage",
+        "input": {
+          "operation": "{{ state.operation }}",
+          "person_id": "{{ state.person_id }}",
+          "display_name": "{{ state.display_name }}",
+          "target_platform_user_id": "{{ state.target_platform_user_id }}",
+          "role_key": "{{ state.role_key }}",
+          "mandate_id": "{{ state.mandate_id }}",
+          "reason": "{{ state.reason }}",
+          "confirmation_manuelle": "{{ state.confirmation_manuelle }}"
+        }
+      },
+      "result_to_state": "result"
+    }
+  ]
+}

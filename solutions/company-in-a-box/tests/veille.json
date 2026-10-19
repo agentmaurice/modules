@@ -1,0 +1,213 @@
+{
+  "$schema": "agentmaurice.test_plan/v2",
+  "schema_version": 2,
+  "test_plan_id": "cib-veille-p1",
+  "cases": [
+    {
+      "id": "create",
+      "workflow": {
+        "workflow_id": "veille-save",
+        "input": {
+          "dossier_id": "test-veille-p1",
+          "entreprise": "Entreprise synthétique",
+          "source_ref": "https://example.test/produit",
+          "source_date": "2026-10-09",
+          "date_revue": "2026-10-10",
+          "faits": "Une démonstration synthétique est disponible.",
+          "preuve_ref": "fixture:p1/veille",
+          "role_demande": "contenu",
+          "contradiction": false,
+          "confirmation_manuelle": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "failed"
+        }
+      ],
+      "description": "Exécution technique sans preuve humaine : le broker ACL doit refuser cet accès. Les cas positifs sont vérifiés avec les comptes existants depuis la surface CIB."
+    },
+    {
+      "id": "read",
+      "workflow": {
+        "workflow_id": "veille-read",
+        "input": {
+          "dossier_id": "test-veille-p1"
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "failed"
+        }
+      ],
+      "description": "Exécution technique sans preuve humaine : le broker ACL doit refuser cet accès. Les cas positifs sont vérifiés avec les comptes existants depuis la surface CIB."
+    },
+    {
+      "id": "route-unknown",
+      "workflow": {
+        "workflow_id": "route_worker",
+        "input": {
+          "role_demande": "finance",
+          "confirmation_manuelle": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "completed"
+        },
+        {
+          "type": "result_jsonpath",
+          "path": "$.worker",
+          "operator": "equals",
+          "expected": "human_review"
+        },
+        {
+          "type": "result_jsonpath",
+          "path": "$.dispatch",
+          "operator": "equals",
+          "expected": false
+        }
+      ]
+    },
+    {
+      "id": "research-missing",
+      "workflow": {
+        "workflow_id": "check_research",
+        "input": {
+          "source_ref": "",
+          "faits": "",
+          "preuve_ref": "",
+          "source_date": "2026-10-09",
+          "date_revue": "2026-10-10",
+          "confirmation_manuelle": true,
+          "contradiction": false
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "completed"
+        },
+        {
+          "type": "result_jsonpath",
+          "path": "$.verdict",
+          "operator": "equals",
+          "expected": "collect_more"
+        }
+      ]
+    },
+    {
+      "id": "research-contradiction",
+      "workflow": {
+        "workflow_id": "check_research",
+        "input": {
+          "dossier_id": "test-veille-p1",
+          "entreprise": "Entreprise synthétique",
+          "source_ref": "https://example.test/produit",
+          "source_date": "2026-10-09",
+          "date_revue": "2026-10-10",
+          "faits": "Une démonstration synthétique est disponible.",
+          "preuve_ref": "fixture:p1/veille",
+          "role_demande": "contenu",
+          "contradiction": true,
+          "confirmation_manuelle": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "completed"
+        },
+        {
+          "type": "result_jsonpath",
+          "path": "$.verdict",
+          "operator": "equals",
+          "expected": "human_review"
+        }
+      ]
+    },
+    {
+      "id": "research-stale",
+      "workflow": {
+        "workflow_id": "check_research",
+        "input": {
+          "dossier_id": "test-veille-p1",
+          "entreprise": "Entreprise synthétique",
+          "source_ref": "https://example.test/produit",
+          "source_date": "2026-01-01",
+          "date_revue": "2026-10-10",
+          "faits": "Une démonstration synthétique est disponible.",
+          "preuve_ref": "fixture:p1/veille",
+          "role_demande": "contenu",
+          "contradiction": false,
+          "confirmation_manuelle": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "completed"
+        },
+        {
+          "type": "result_jsonpath",
+          "path": "$.verdict",
+          "operator": "equals",
+          "expected": "collect_more"
+        }
+      ]
+    },
+    {
+      "id": "path-traversal",
+      "workflow": {
+        "workflow_id": "veille-save",
+        "input": {
+          "dossier_id": "../secret",
+          "entreprise": "Entreprise synthétique",
+          "source_ref": "https://example.test/produit",
+          "source_date": "2026-10-09",
+          "date_revue": "2026-10-10",
+          "faits": "Une démonstration synthétique est disponible.",
+          "preuve_ref": "fixture:p1/veille",
+          "role_demande": "contenu",
+          "contradiction": false,
+          "confirmation_manuelle": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "failed"
+        }
+      ],
+      "description": "Exécution technique sans preuve humaine : le broker ACL doit refuser cet accès. Les cas positifs sont vérifiés avec les comptes existants depuis la surface CIB."
+    },
+    {
+      "id": "no-confirmation",
+      "workflow": {
+        "workflow_id": "veille-save",
+        "input": {
+          "dossier_id": "test-veille-p1",
+          "entreprise": "Entreprise synthétique",
+          "source_ref": "https://example.test/produit",
+          "source_date": "2026-10-09",
+          "date_revue": "2026-10-10",
+          "faits": "Une démonstration synthétique est disponible.",
+          "preuve_ref": "fixture:p1/veille",
+          "role_demande": "contenu",
+          "contradiction": false,
+          "confirmation_manuelle": false
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "failed"
+        }
+      ],
+      "description": "Exécution technique sans preuve humaine : le broker ACL doit refuser cet accès. Les cas positifs sont vérifiés avec les comptes existants depuis la surface CIB."
+    }
+  ]
+}

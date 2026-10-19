@@ -1,0 +1,197 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "cib-launch-direction-console",
+  "version": "1",
+  "title": "Direction — lancement et premiers résultats",
+  "description": "5. Cette synthèse compte uniquement vos fiches accessibles. Demandes et premiers résultats sont distincts. Attribution, conversion et gain de temps restent non mesurés.",
+  "ui": {
+    "renderer": "component",
+    "component": "company-in-a-box",
+    "configuration": {
+      "layout": [
+        {
+          "type": "text",
+          "value": "5. Cette synthèse compte uniquement vos fiches accessibles. Demandes et premiers résultats sont distincts. Attribution, conversion et gain de temps restent non mesurés."
+        },
+        {
+          "type": "text",
+          "value": "Ouvrez le formulaire par son titre dans les interactions disponibles. Les champs longs sont des mémos. Le responsable indiqué ne crée aucun droit AM."
+        },
+        {
+          "type": "button",
+          "label": "Actualiser le travail réel",
+          "on_click": "refresh-usage"
+        },
+        {
+          "type": "button",
+          "label": "Actualiser les essais",
+          "on_click": "refresh-qualification"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "listing.message"
+          }
+        },
+        {
+          "type": "table",
+          "columns": [
+            "kind",
+            "id",
+            "phase",
+            "revision",
+            "objectif"
+          ],
+          "rows": {
+            "state": "listing.items"
+          }
+        },
+        {
+          "type": "section",
+          "title": "Campagnes accessibles",
+          "children": [
+            {
+              "type": "text",
+              "value": {
+                "state": "listing.summary.campagnes_accessibles"
+              }
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "title": "Demandes d’essai accessibles",
+          "children": [
+            {
+              "type": "text",
+              "value": {
+                "state": "listing.summary.demandes_accessibles"
+              }
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "title": "Premiers résultats attestés",
+          "children": [
+            {
+              "type": "text",
+              "value": {
+                "state": "listing.summary.premiers_resultats_confirmes"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "campaign_revision": {
+        "type": "string"
+      },
+      "confirmation_manuelle": {
+        "type": "string"
+      },
+      "confirmation_resultat": {
+        "type": "string"
+      },
+      "expected_revision": {
+        "type": "string"
+      },
+      "jeu": {
+        "type": "string"
+      },
+      "kind": {
+        "type": "string"
+      },
+      "permission": {
+        "type": "string"
+      },
+      "phase": {
+        "type": "string"
+      },
+      "listing": {
+        "type": "object"
+      },
+      "selected": {
+        "type": "object"
+      },
+      "people": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "jeu": "usage",
+    "expected_revision": "0",
+    "campaign_revision": "0",
+    "confirmation_manuelle": "non",
+    "confirmation_resultat": "non",
+    "permission": "read",
+    "kind": "campaign",
+    "phase": "en_cours",
+    "listing": {
+      "items": [],
+      "message": "Aucune liste chargée.",
+      "summary": {}
+    },
+    "selected": {
+      "record": {},
+      "prefill": {
+        "jeu": "usage",
+        "expected_revision": "0",
+        "campaign_revision": "0",
+        "confirmation_manuelle": "non",
+        "confirmation_resultat": "non",
+        "permission": "read",
+        "kind": "campaign",
+        "phase": "en_cours"
+      },
+      "message": "Aucune fiche sélectionnée."
+    },
+    "people": {
+      "people": []
+    }
+  },
+  "events": [
+    {
+      "event_id": "refresh-usage",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "cib-launch-summary",
+        "input": {
+          "jeu": "usage",
+          "kind": "all"
+        }
+      },
+      "result_to_state": "listing"
+    },
+    {
+      "event_id": "refresh-qualification",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "cib-launch-summary",
+        "input": {
+          "jeu": "qualification",
+          "kind": "all"
+        }
+      },
+      "result_to_state": "listing"
+    },
+    {
+      "event_id": "save",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "cib-launch-summary",
+        "input": {
+          "jeu": "{{ state.jeu }}"
+        }
+      },
+      "result_to_state": "listing"
+    }
+  ]
+}

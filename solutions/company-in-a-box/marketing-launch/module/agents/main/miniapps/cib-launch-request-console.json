@@ -1,0 +1,238 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "cib-launch-request-console",
+  "version": "1",
+  "title": "Marketing — demande d’essai",
+  "description": "3. Sélectionnez une campagne prête, puis enregistrez une demande avec un identifiant d’essai stable. Le rejeu identique ne crée pas de doublon. Partagez la fiche d’essai en modification avec la personne chargée de l’accompagnement.",
+  "ui": {
+    "renderer": "component",
+    "component": "company-in-a-box",
+    "configuration": {
+      "layout": [
+        {
+          "type": "text",
+          "value": "3. Sélectionnez une campagne prête, puis enregistrez une demande avec un identifiant d’essai stable. Le rejeu identique ne crée pas de doublon. Partagez la fiche d’essai en modification avec la personne chargée de l’accompagnement."
+        },
+        {
+          "type": "text",
+          "value": "Ouvrez le formulaire par son titre dans les interactions disponibles. Les champs longs sont des mémos. Le responsable indiqué ne crée aucun droit AM."
+        },
+        {
+          "type": "button",
+          "label": "Actualiser le travail réel",
+          "on_click": "refresh-usage"
+        },
+        {
+          "type": "button",
+          "label": "Actualiser les essais",
+          "on_click": "refresh-qualification"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "listing.message"
+          }
+        },
+        {
+          "type": "table",
+          "columns": [
+            "kind",
+            "id",
+            "phase",
+            "revision",
+            "objectif"
+          ],
+          "rows": {
+            "state": "listing.items"
+          },
+          "on_row_click": "select"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.message"
+          }
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.permissions_summary"
+          }
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.record.objectif"
+          }
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.record.resultat_observe"
+          }
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.record.preuve_ref"
+          }
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "besoin": {
+        "type": "string"
+      },
+      "campaign_id": {
+        "type": "string"
+      },
+      "campaign_revision": {
+        "type": "string"
+      },
+      "confirmation_manuelle": {
+        "type": "string"
+      },
+      "confirmation_resultat": {
+        "type": "string"
+      },
+      "expected_revision": {
+        "type": "string"
+      },
+      "jeu": {
+        "type": "string"
+      },
+      "kind": {
+        "type": "string"
+      },
+      "objectif": {
+        "type": "string"
+      },
+      "permission": {
+        "type": "string"
+      },
+      "personne_ref": {
+        "type": "string"
+      },
+      "phase": {
+        "type": "string"
+      },
+      "trial_id": {
+        "type": "string"
+      },
+      "listing": {
+        "type": "object"
+      },
+      "selected": {
+        "type": "object"
+      },
+      "people": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "jeu": "usage",
+    "campaign_id": "",
+    "campaign_revision": "0",
+    "trial_id": "",
+    "personne_ref": "",
+    "besoin": "",
+    "objectif": "",
+    "confirmation_manuelle": "non",
+    "expected_revision": "0",
+    "confirmation_resultat": "non",
+    "permission": "read",
+    "kind": "campaign",
+    "phase": "en_cours",
+    "listing": {
+      "items": [],
+      "message": "Aucune liste chargée.",
+      "summary": {}
+    },
+    "selected": {
+      "record": {},
+      "prefill": {
+        "jeu": "usage",
+        "campaign_id": "",
+        "campaign_revision": "0",
+        "trial_id": "",
+        "personne_ref": "",
+        "besoin": "",
+        "objectif": "",
+        "confirmation_manuelle": "non",
+        "expected_revision": "0",
+        "confirmation_resultat": "non",
+        "permission": "read",
+        "kind": "campaign",
+        "phase": "en_cours"
+      },
+      "message": "Aucune fiche sélectionnée."
+    },
+    "people": {
+      "people": []
+    }
+  },
+  "events": [
+    {
+      "event_id": "refresh-usage",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "cib-launch-list",
+        "input": {
+          "jeu": "usage",
+          "kind": "all"
+        }
+      },
+      "result_to_state": "listing"
+    },
+    {
+      "event_id": "refresh-qualification",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "cib-launch-list",
+        "input": {
+          "jeu": "qualification",
+          "kind": "all"
+        }
+      },
+      "result_to_state": "listing"
+    },
+    {
+      "event_id": "select",
+      "trigger": "table.row_click",
+      "workflow": {
+        "workflow_id": "cib-launch-read",
+        "input": {
+          "jeu": "{{ event.payload.item.jeu }}",
+          "kind": "{{ event.payload.item.kind }}",
+          "id": "{{ event.payload.item.id }}",
+          "form_id": "request"
+        }
+      },
+      "result_to_state": "selected"
+    },
+    {
+      "event_id": "save",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "cib-launch-request",
+        "input": {
+          "jeu": "{{ state.jeu }}",
+          "campaign_id": "{{ state.campaign_id }}",
+          "campaign_revision": "{{ state.campaign_revision }}",
+          "trial_id": "{{ state.trial_id }}",
+          "personne_ref": "{{ state.personne_ref }}",
+          "besoin": "{{ state.besoin }}",
+          "objectif": "{{ state.objectif }}",
+          "confirmation_manuelle": "{{ state.confirmation_manuelle }}"
+        }
+      },
+      "result_to_state": "selected"
+    }
+  ]
+}

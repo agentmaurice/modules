@@ -1,0 +1,143 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "veille-memory-contribute",
+  "version": "2",
+  "title": "Veille — Proposer un extrait à la mémoire",
+  "forms": [
+    {
+      "id": "submit",
+      "title": "Veille — Proposer un extrait à la mémoire",
+      "fields": [
+        {
+          "name": "dossier_id",
+          "type": "string",
+          "required": true,
+          "title": "Dossier local"
+        },
+        {
+          "name": "proposal_id",
+          "type": "string",
+          "required": true,
+          "title": "Nouvelle révision (identifiant unique)"
+        },
+        {
+          "name": "selected_excerpt",
+          "type": "text",
+          "required": true,
+          "title": "Extrait du dossier à partager"
+        },
+        {
+          "name": "review_due",
+          "type": "string",
+          "required": true,
+          "title": "Date limite de revue (AAAA-MM-JJ)"
+        },
+        {
+          "name": "partage_entreprise",
+          "type": "select",
+          "title": "Autoriser cet extrait dans la mémoire commune de l’entreprise",
+          "required": true,
+          "options": [
+            {
+              "value": "non",
+              "label": "Non"
+            },
+            {
+              "value": "oui",
+              "label": "Oui, cet extrait peut être consulté par les membres autorisés à la mémoire commune"
+            }
+          ]
+        },
+        {
+          "name": "confirmation_manuelle",
+          "type": "select",
+          "required": true,
+          "title": "Confirmer cet apport manuel",
+          "options": [
+            {
+              "value": "non",
+              "label": "Non"
+            },
+            {
+              "value": "oui",
+              "label": "Oui"
+            }
+          ]
+        }
+      ],
+      "actions_on_submit": [
+        "validate",
+        "read-local",
+        "select-excerpt",
+        "capture",
+        "propose"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "validate",
+      "type": "code_execution",
+      "code": "const x={{ json . }}; if(x.partage_entreprise!==\"oui\") throw new Error(\"company_memory_publication_confirmation_required\"); if(x.confirmation_manuelle!==\"oui\") throw new Error(\"manual_confirmation_required\"); for(const f of [\"dossier_id\",\"proposal_id\"]) if(typeof x[f]!==\"string\"||!/^[a-z0-9][a-z0-9-]{0,48}$/.test(x[f])) throw new Error(\"invalid_id\"); if(typeof x.selected_excerpt!==\"string\"||!x.selected_excerpt.trim()||x.selected_excerpt.length>6000) throw new Error(\"invalid_excerpt\"); if(typeof x.review_due!==\"string\"||!/^\\d{4}-\\d{2}-\\d{2}$/.test(x.review_due)||Number.isNaN(Date.parse(x.review_due))||Date.parse(x.review_due)<=Date.now()) throw new Error(\"invalid_review_due\"); return {dossier_id:x.dossier_id,proposal_id:x.proposal_id,source_id:\"vei-\"+x.proposal_id,excerpt:x.selected_excerpt,review_due:x.review_due};",
+      "output_key": "request"
+    },
+    {
+      "id": "read-local",
+      "type": "code_execution",
+      "code": "import { callTool } from './tools/nats_bridge.ts';\nconst x={{ json .request }}; const r=await callTool(\"recipe--application_data_v1\",{operation:\"read\",namespace:\"cib-veille\",record_key:x.dossier_id}); if(!r.record?.permissions?.can_manage) throw new Error(\"only_owner_may_publish_to_company_memory\"); return {data:{record:r.record.data}};",
+      "output_key": "local",
+      "context": {
+        "allowed_tools": [
+          "recipe--application_data_v1"
+        ]
+      }
+    },
+    {
+      "id": "select-excerpt",
+      "type": "code_execution",
+      "code": "const r={{ json .local.data.record }}; const x={{ json .request }}; if(!r||r.role!==\"veille\"||typeof r.faits!==\"string\"||!r.faits.includes(x.excerpt)) throw new Error(\"excerpt_not_in_local_record\"); return {source_ref:\"company-in-a-box://veille/\"+x.dossier_id,content:x.excerpt,source_date:new Date().toISOString().slice(0,10)};",
+      "output_key": "selected"
+    },
+    {
+      "id": "capture",
+      "type": "workflow_call",
+      "workflow_id": "company-memory-capture",
+      "workflow_version": "1",
+      "execution": "sync",
+      "input": {
+        "source_id": "{{ request.source_id }}",
+        "source_ref": "{{ selected.source_ref }}",
+        "content": "{{ selected.content }}",
+        "source_date": "{{ selected.source_date }}",
+        "confirmation_manuelle": "oui"
+      },
+      "output_key": "captured"
+    },
+    {
+      "id": "propose",
+      "type": "workflow_call",
+      "workflow_id": "company-memory-propose",
+      "workflow_version": "1",
+      "execution": "sync",
+      "input": {
+        "proposal_id": "{{ request.proposal_id }}",
+        "source_id": "{{ request.source_id }}",
+        "title": "Apport manuel — veille",
+        "content": "{{ selected.content }}",
+        "evidence_quote": "{{ selected.content }}",
+        "review_due": "{{ request.review_due }}",
+        "previous_revision": "",
+        "confirmation_manuelle": "oui"
+      },
+      "output_key": "proposed"
+    }
+  ],
+  "output": {
+    "status": "{{ proposed.data.status }}",
+    "proposal_id": "{{ request.proposal_id }}",
+    "shared_excerpt": "{{ selected.content }}",
+    "external_effect": false
+  }
+}

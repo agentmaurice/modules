@@ -1,0 +1,108 @@
+{
+  "$schema": "agentmaurice.test_plan/v2",
+  "schema_version": 2,
+  "test_plan_id": "accompagnement",
+  "cases": [
+    {
+      "id": "save-happy",
+      "description": "Exécution technique sans preuve humaine : le broker ACL doit refuser cet accès. Les cas positifs sont vérifiés avec les comptes existants depuis la surface CIB.",
+      "workflow": {
+        "workflow_id": "accompagnement-save",
+        "input": {
+          "dossier_id": "dossier-acme-001",
+          "entreprise": "Acme",
+          "objectif": "Préparer le suivi",
+          "resultat_observe": "",
+          "preuve_ref": "note-interne-001",
+          "blocage": "",
+          "prochaine_etape": "Revoir le dossier",
+          "confirmation_manuelle": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "failed"
+        }
+      ]
+    },
+    {
+      "id": "read-happy",
+      "description": "Exécution technique sans preuve humaine : le broker ACL doit refuser cet accès. Les cas positifs sont vérifiés avec les comptes existants depuis la surface CIB.",
+      "workflow": {
+        "workflow_id": "accompagnement-read",
+        "input": {
+          "dossier_id": "dossier-acme-001"
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "failed"
+        }
+      ]
+    },
+    {
+      "id": "guard-external-confirmed",
+      "description": "Une action externe reste refusée même avec confirmation.",
+      "workflow": {
+        "workflow_id": "accompagnement-guard-action",
+        "input": {
+          "action": "external_send",
+          "confirmation_manuelle": true
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "completed"
+        },
+        {
+          "type": "result_jsonpath",
+          "path": "$.decision",
+          "operator": "equals",
+          "expected": "deny"
+        }
+      ]
+    },
+    {
+      "id": "guard-missing-confirmation",
+      "description": "Sans confirmation, l'enregistrement attend une approbation humaine.",
+      "workflow": {
+        "workflow_id": "accompagnement-guard-action",
+        "input": {
+          "action": "save_internal_draft",
+          "confirmation_manuelle": false
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "completed"
+        },
+        {
+          "type": "result_jsonpath",
+          "path": "$.decision",
+          "operator": "equals",
+          "expected": "waiting_for_approval"
+        }
+      ]
+    },
+    {
+      "id": "read-id-traversal",
+      "description": "Exécution technique sans preuve humaine : le broker ACL doit refuser cet accès. Les cas positifs sont vérifiés avec les comptes existants depuis la surface CIB.",
+      "workflow": {
+        "workflow_id": "accompagnement-read",
+        "input": {
+          "dossier_id": "../secret"
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "failed"
+        }
+      ]
+    }
+  ]
+}

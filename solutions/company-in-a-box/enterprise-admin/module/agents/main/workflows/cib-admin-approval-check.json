@@ -1,0 +1,57 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "cib-admin-approval-check",
+  "version": "1",
+  "title": "Accord CIB — lecture locale de qualification",
+  "actions": [
+    {
+      "id": "read_only",
+      "type": "tool_call",
+      "tool": "list_files",
+      "require_approval": true,
+      "params": {
+        "path": "/company-in-a-box/veille"
+      },
+      "output_key": "files"
+    }
+  ],
+  "output": {
+    "files": "{{ files }}"
+  },
+  "description": "Qualification manuelle : lister des fichiers locaux uniquement après la décision humaine sur le plan immuable. Aucun envoi ni écriture métier.",
+  "output_schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "files"
+    ],
+    "properties": {
+      "files": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "size",
+            "last_modified"
+          ],
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "last_modified": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

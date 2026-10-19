@@ -1,0 +1,91 @@
+{
+  "$schema": "agentmaurice.module/v2",
+  "schema_version": 2,
+  "key": "cib-marketing-launch",
+  "name": "Company in a Box — Marketing de lancement",
+  "version": "0.1.0",
+  "provides": {
+    "actions": [
+      {
+        "key": "campaign-save",
+        "workflow_id": "cib-launch-campaign-save",
+        "workflow_version": "1"
+      },
+      {
+        "key": "content-link",
+        "workflow_id": "cib-launch-content-link",
+        "workflow_version": "1"
+      },
+      {
+        "key": "request",
+        "workflow_id": "cib-launch-request",
+        "workflow_version": "1"
+      },
+      {
+        "key": "progress",
+        "workflow_id": "cib-launch-progress",
+        "workflow_version": "1"
+      },
+      {
+        "key": "share",
+        "workflow_id": "cib-launch-share",
+        "workflow_version": "1"
+      }
+    ],
+    "queries": [
+      {
+        "key": "read",
+        "workflow_id": "cib-launch-read",
+        "workflow_version": "1"
+      },
+      {
+        "key": "list",
+        "workflow_id": "cib-launch-list",
+        "workflow_version": "1"
+      },
+      {
+        "key": "people",
+        "workflow_id": "cib-launch-people",
+        "workflow_version": "1"
+      },
+      {
+        "key": "summary",
+        "workflow_id": "cib-launch-summary",
+        "workflow_version": "1"
+      }
+    ],
+    "apps": [
+      {
+        "key": "campaign",
+        "miniapp_id": "cib-launch-campaign-console",
+        "miniapp_version": "1"
+      },
+      {
+        "key": "content",
+        "miniapp_id": "cib-launch-content-console",
+        "miniapp_version": "1"
+      },
+      {
+        "key": "request",
+        "miniapp_id": "cib-launch-request-console",
+        "miniapp_version": "1"
+      },
+      {
+        "key": "support",
+        "miniapp_id": "cib-launch-support-console",
+        "miniapp_version": "1"
+      },
+      {
+        "key": "sharing",
+        "miniapp_id": "cib-launch-sharing-console",
+        "miniapp_version": "1"
+      },
+      {
+        "key": "direction",
+        "miniapp_id": "cib-launch-direction-console",
+        "miniapp_version": "1"
+      }
+    ]
+  },
+  "requires": {}
+}

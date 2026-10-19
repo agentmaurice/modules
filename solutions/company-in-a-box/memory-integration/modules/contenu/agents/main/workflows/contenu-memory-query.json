@@ -1,0 +1,47 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "contenu-memory-query",
+  "version": "1",
+  "title": "Contenu — Consulter une révision",
+  "forms": [
+    {
+      "id": "submit",
+      "title": "Contenu — Consulter une révision",
+      "fields": [
+        {
+          "name": "proposal_id",
+          "type": "string",
+          "required": true,
+          "title": "Révision mémoire"
+        }
+      ],
+      "actions_on_submit": [
+        "consult"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "consult",
+      "type": "workflow_call",
+      "workflow_id": "company-memory-query",
+      "workflow_version": "1",
+      "execution": "sync",
+      "input": {
+        "proposal_id": "{{ proposal_id }}"
+      },
+      "output_key": "memory"
+    }
+  ],
+  "output": {
+    "answer": "{{ memory.data.answer }}",
+    "citations": "{{ memory.data.citations }}",
+    "status": "{{ memory.data.status }}",
+    "proposal_id": "{{ memory.data.proposal_id }}",
+    "warning": "{{ memory.data.warning }}",
+    "checked_at": "{{ memory.data.checked_at }}",
+    "expires_at": "{{ memory.data.expires_at }}"
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "$schema": "agentmaurice.test_plan/v2",
+  "schema_version": 2,
+  "test_plan_id": "company-memory",
+  "cases": [
+    {
+      "id": "capture-missing-confirmation",
+      "description": "Une capture sans confirmation est rejetée.",
+      "workflow": {
+        "workflow_id": "memory-capture-source",
+        "input": {
+          "source_id": "src-negative",
+          "source_ref": "fixture",
+          "content": "fact",
+          "source_date": "2026-10-10T00:00:00Z",
+          "confirmation_manuelle": "non"
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "failed"
+        }
+      ]
+    },
+    {
+      "id": "proposal-missing-source",
+      "description": "Une proposition sans source lisible est fermée.",
+      "workflow": {
+        "workflow_id": "memory-propose-update",
+        "input": {
+          "proposal_id": "prop-negative",
+          "source_id": "missing-source",
+          "title": "T",
+          "content": "C",
+          "evidence_quote": "absent",
+          "review_due": "2099-01-01",
+          "confirmation_manuelle": "oui"
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "failed"
+        }
+      ]
+    },
+    {
+      "id": "review-invalid-decision",
+      "description": "La décision est une enum bornée.",
+      "workflow": {
+        "workflow_id": "memory-review-update",
+        "input": {
+          "proposal_id": "prop-negative",
+          "decision": "approved",
+          "confirmation_manuelle": "oui"
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "failed"
+        }
+      ]
+    },
+    {
+      "id": "query-traversal",
+      "description": "Un identifiant traversal est rejeté avant lecture.",
+      "workflow": {
+        "workflow_id": "memory-query",
+        "input": {
+          "proposal_id": "../secret"
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "failed"
+        }
+      ]
+    }
+  ]
+}

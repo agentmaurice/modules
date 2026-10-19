@@ -1,0 +1,61 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "memory-search-console",
+  "title": "Mémoire — recherche par mots-clés",
+  "description": "Action manuelle dans la mémoire dédiée ; aucune publication externe.",
+  "version": "2",
+  "ui": {
+    "renderer": "component",
+    "component": "company-memory",
+    "configuration": {
+      "layout": [
+        {
+          "type": "text",
+          "value": "Révisions exactes et sourcées ; la recherche ne garantit pas la dernière version d’une page."
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.status"
+          }
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.summary"
+          }
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string"
+      },
+      "result": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "query": "",
+    "result": {}
+  },
+  "events": [
+    {
+      "event_id": "submit",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "memory-search",
+        "input": {
+          "query": "{{ state.query }}"
+        }
+      },
+      "result_to_state": "result"
+    }
+  ]
+}

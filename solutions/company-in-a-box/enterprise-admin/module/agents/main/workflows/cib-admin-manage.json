@@ -1,0 +1,159 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "cib-admin-manage",
+  "version": "2",
+  "title": "Administration — opération manuelle",
+  "actions": [
+    {
+      "id": "invoke",
+      "type": "code_execution",
+      "context": {
+        "allowed_tools": [
+          "recipe--company_admin_v1"
+        ]
+      },
+      "code": "import { callTool } from './tools/nats_bridge.ts';\nconst input = {{ json . }};\nconst read = [\"directory_snapshot\", \"application_people_list\", \"approval_mandates_list\"];\nconst write = [\"directory_upsert_person\", \"directory_link_user\", \"directory_grant_role\", \"directory_revoke_role\", \"application_people_add\", \"application_people_remove\", \"approval_mandate_revoke\"];\nconst op = typeof input.operation === \"string\" ? input.operation.trim() : \"\";\nif (!read.includes(op) && !write.includes(op)) throw new Error(\"admin_operation_invalid\");\nconst confirmed = input.confirmation_manuelle === true || input.confirmation_manuelle === \"true\";\nif (write.includes(op) && !confirmed) throw new Error(\"manual_confirmation_required\");\nconst args = {};\nconst fields = {person_id:\"person_id\", display_name:\"display_name\", target_platform_user_id:\"target_platform_user_id\", role_key:\"role_key\", mandate_id:\"mandate_id\", reason:\"reason\"};\nconst permitted = {\n  directory_upsert_person:[\"person_id\",\"display_name\"], directory_link_user:[\"person_id\",\"target_platform_user_id\"],\n  directory_grant_role:[\"person_id\",\"role_key\"], directory_revoke_role:[\"person_id\",\"role_key\"],\n  application_people_add:[\"target_platform_user_id\"], application_people_remove:[\"target_platform_user_id\"],\n  approval_mandate_revoke:[\"mandate_id\",\"reason\"], directory_snapshot:[], application_people_list:[], approval_mandates_list:[]\n}[op];\nfor (const source of permitted) if (typeof input[source] === \"string\" && input[source].trim() !== \"\") args[fields[source]] = input[source].trim();\nif ([\"directory_upsert_person\", \"directory_link_user\", \"directory_grant_role\", \"directory_revoke_role\"].includes(op) && !args.person_id) throw new Error(\"person_id_required\");\nif (op === \"directory_upsert_person\" && !args.display_name) throw new Error(\"display_name_required\");\nif ([\"directory_link_user\", \"application_people_add\", \"application_people_remove\"].includes(op) && !args.target_platform_user_id) throw new Error(\"target_platform_user_id_required\");\nif ([\"directory_grant_role\", \"directory_revoke_role\"].includes(op) && !args.role_key) throw new Error(\"role_key_required\");\nif (op === \"approval_mandate_revoke\" && (!args.mandate_id || !args.reason)) throw new Error(\"mandate_revoke_fields_required\");\nif (write.includes(op)) args.confirmation_manuelle = true;\nconst native_result = await callTool(\"recipe--company_admin_v1\", {operation: op, ...args});\nreturn {operation:op, native_result, message:\"Opération enregistrée. Actualisez l’état pour consulter le résultat.\", external_effect:false};",
+      "output_key": "result"
+    }
+  ],
+  "output": {
+    "result": "{{ result }}",
+    "message": "Opération enregistrée. Actualisez l’état pour consulter le résultat.",
+    "external_effect": false
+  },
+  "forms": [
+    {
+      "id": "submit",
+      "title": "Administration — opération manuelle",
+      "fields": [
+        {
+          "name": "operation",
+          "title": "Opération",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "directory_snapshot",
+              "label": "Annuaire — personnes et rôles"
+            },
+            {
+              "value": "application_people_list",
+              "label": "Application — personnes autorisées"
+            },
+            {
+              "value": "approval_mandates_list",
+              "label": "Mandats — liste"
+            },
+            {
+              "value": "directory_upsert_person",
+              "label": "Annuaire — créer ou actualiser une personne"
+            },
+            {
+              "value": "directory_link_user",
+              "label": "Annuaire — lier une identité existante"
+            },
+            {
+              "value": "directory_grant_role",
+              "label": "Annuaire — accorder un rôle métier"
+            },
+            {
+              "value": "directory_revoke_role",
+              "label": "Annuaire — retirer un rôle métier"
+            },
+            {
+              "value": "application_people_add",
+              "label": "Application — ajouter une personne"
+            },
+            {
+              "value": "application_people_remove",
+              "label": "Application — retirer une personne"
+            },
+            {
+              "value": "approval_mandate_revoke",
+              "label": "Mandat — révoquer"
+            }
+          ]
+        },
+        {
+          "name": "person_id",
+          "title": "Identifiant de personne",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "display_name",
+          "title": "Nom affiché",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "target_platform_user_id",
+          "title": "Identité utilisateur existante",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "role_key",
+          "title": "Rôle métier",
+          "type": "select",
+          "required": false,
+          "options": [
+            {
+              "value": "cib_admin",
+              "label": "Administration"
+            },
+            {
+              "value": "cib_marketing",
+              "label": "Marketing"
+            },
+            {
+              "value": "cib_service_client",
+              "label": "Service client"
+            },
+            {
+              "value": "cib_direction",
+              "label": "Direction"
+            },
+            {
+              "value": "cib_dossiers",
+              "label": "Dossiers communs"
+            }
+          ]
+        },
+        {
+          "name": "mandate_id",
+          "title": "Identifiant du mandat",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "reason",
+          "title": "Motif",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "confirmation_manuelle",
+          "title": "Confirmation manuelle",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "false",
+              "label": "Non"
+            },
+            {
+              "value": "true",
+              "label": "Oui"
+            }
+          ]
+        }
+      ],
+      "actions_on_submit": [
+        "invoke"
+      ]
+    }
+  ]
+}

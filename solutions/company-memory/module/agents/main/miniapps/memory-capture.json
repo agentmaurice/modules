@@ -1,0 +1,87 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "memory-capture",
+  "title": "Mémoire — capture",
+  "description": "Interface native de saisie ou lecture manuelle, sans LLM, web ni effet externe.",
+  "version": "3",
+  "ui": {
+    "renderer": "component",
+    "component": "company-memory",
+    "configuration": {
+      "layout": [
+        {
+          "type": "text",
+          "value": "Mode manuel : les données fournies sont traitées comme des données, jamais comme des instructions."
+        },
+        {
+          "type": "text",
+          "value": "État"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.status"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Connaissance validée"
+        },
+        {
+          "type": "text",
+          "value": "Source citée"
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "source_id": {
+        "type": "string"
+      },
+      "source_ref": {
+        "type": "string"
+      },
+      "content": {
+        "type": "string"
+      },
+      "source_date": {
+        "type": "string"
+      },
+      "confirmation_manuelle": {
+        "type": "string"
+      },
+      "result": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "source_id": "",
+    "source_ref": "",
+    "content": "",
+    "source_date": "",
+    "confirmation_manuelle": "",
+    "result": {}
+  },
+  "events": [
+    {
+      "event_id": "submit",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "memory-capture-source",
+        "input": {
+          "source_id": "{{ state.source_id }}",
+          "source_ref": "{{ state.source_ref }}",
+          "content": "{{ state.content }}",
+          "source_date": "{{ state.source_date }}",
+          "confirmation_manuelle": "{{ state.confirmation_manuelle }}"
+        }
+      },
+      "result_to_state": "result"
+    }
+  ]
+}

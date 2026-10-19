@@ -1,0 +1,56 @@
+{
+  "$schema": "agentmaurice.module/v2",
+  "schema_version": 2,
+  "key": "cib-contenu-memory",
+  "name": "Company-in-a-Box — Contenu — raccordement mémoire",
+  "version": "0.2.0",
+  "provides": {
+    "actions": [
+      {
+        "key": "contenu-memory-contribute",
+        "workflow_id": "contenu-memory-contribute",
+        "workflow_version": "2"
+      },
+      {
+        "key": "contenu-memory-draft",
+        "workflow_id": "contenu-memory-draft",
+        "workflow_version": "2"
+      }
+    ],
+    "queries": [
+      {
+        "key": "contenu-memory-query",
+        "workflow_id": "contenu-memory-query",
+        "workflow_version": "1"
+      },
+      {
+        "key": "contenu-memory-search",
+        "workflow_id": "contenu-memory-search",
+        "workflow_version": "1"
+      }
+    ],
+    "apps": [
+      {
+        "key": "contenu-memory-query-console",
+        "miniapp_id": "contenu-memory-query-console",
+        "miniapp_version": "1"
+      },
+      {
+        "key": "contenu-memory-search-console",
+        "miniapp_id": "contenu-memory-search-console",
+        "miniapp_version": "1"
+      },
+      {
+        "key": "contenu-memory-contribute-console",
+        "miniapp_id": "contenu-memory-contribute-console",
+        "miniapp_version": "2"
+      },
+      {
+        "key": "contenu-memory-draft-console",
+        "miniapp_id": "contenu-memory-draft-console",
+        "miniapp_version": "1"
+      }
+    ]
+  },
+  "requires": {}
+}

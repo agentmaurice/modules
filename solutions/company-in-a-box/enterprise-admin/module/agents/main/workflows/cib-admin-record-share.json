@@ -1,0 +1,124 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "cib-admin-record-share",
+  "version": "1",
+  "title": "Administration — partager une fiche historique",
+  "actions": [
+    {
+      "id": "share",
+      "type": "code_execution",
+      "context": {
+        "allowed_tools": [
+          "recipe--application_data_v1"
+        ]
+      },
+      "code": "import { callTool } from './tools/nats_bridge.ts';\nconst input = {{ json . }};\nconst namespaces = new Set([\"cib-cases\", \"cib-veille\", \"cib-contenu\", \"cib-accompagnement\"]);\nif (!input || !namespaces.has(input.namespace)) throw new Error(\"historical_namespace_invalid\");\nif (typeof input.record_key !== \"string\" || !/^[a-z0-9][a-z0-9:_./-]{0,127}$/.test(input.record_key) || input.record_key.includes(\"..\")) throw new Error(\"historical_record_key_invalid\");\nif (typeof input.subject_user_id !== \"string\" || !input.subject_user_id.trim() || input.subject_user_id.length > 256 || /[\\/\\s]/.test(input.subject_user_id)) throw new Error(\"subject_user_id_invalid\");\nif (![\"read\", \"write\", \"none\"].includes(input.permission)) throw new Error(\"permission_invalid\");\nlet expected_revision = input.expected_revision;\nif (typeof expected_revision === \"string\" && /^[0-9]+$/.test(expected_revision)) expected_revision = Number(expected_revision);\nif (!Number.isSafeInteger(expected_revision) || expected_revision < 0) throw new Error(\"expected_revision_invalid\");\nif (input.confirmation_manuelle !== true && input.confirmation_manuelle !== \"oui\") throw new Error(\"manual_confirmation_required\");\nconst response = await callTool(\"recipe--application_data_v1\", {operation:\"share\", namespace:input.namespace, record_key:input.record_key, expected_revision, subject_user_id:input.subject_user_id.trim(), permission:input.permission, admin_recovery:true});\nconst payload = response && response.data ? response.data : response;\nconst item = payload && payload.record;\nif (!item || item.namespace !== input.namespace || item.key !== input.record_key) throw new Error(\"broker_record_identity_invalid\");\nif (!Number.isSafeInteger(item.revision) || item.revision < 0) throw new Error(\"broker_revision_invalid\");\nconst permissions = item.permissions;\nif (!permissions || typeof permissions.can_read !== \"boolean\" || typeof permissions.can_write !== \"boolean\" || typeof permissions.can_manage !== \"boolean\") throw new Error(\"broker_permissions_invalid\");\nconst shares = Array.isArray(item.shares) ? item.shares.map((share) => ({user_id: share.user_id || share.subject_user_id || \"\", permission: share.permission || \"\"})) : [];\n    return {namespace:item.namespace, record_key:item.key, revision:item.revision, owner_user_id:typeof item.owner_user_id === \"string\" ? item.owner_user_id : \"\", permissions, shares, share_count:shares.length, body_included:false, message:\"Partage ACL mis à jour par le broker natif ; le corps métier n’est pas renvoyé.\", effects:[{type:\"open_form\", payload:{form_id:\"share\", submit_event:\"share\", prefill:{namespace:item.namespace, record_key:item.key, expected_revision:String(item.revision), subject_user_id:input.subject_user_id.trim(), permission:input.permission, confirmation_manuelle:\"non\"}}}], confirmation_manuelle:false, external_effect:false};",
+      "output_key": "result"
+    }
+  ],
+  "output": {
+    "namespace": "{{ result.namespace }}",
+    "record_key": "{{ result.record_key }}",
+    "revision": "{{ result.revision }}",
+    "owner_user_id": "{{ result.owner_user_id }}",
+    "permissions": "{{ result.permissions }}",
+    "shares": "{{ result.shares }}",
+    "share_count": "{{ result.share_count }}",
+    "body_included": false,
+    "effects": "{{ result.effects }}",
+    "confirmation_manuelle": false,
+    "message": "{{ result.message }}",
+    "external_effect": false
+  },
+  "forms": [
+    {
+      "id": "share",
+      "title": "Administration — partager une fiche historique",
+      "fields": [
+        {
+          "name": "namespace",
+          "title": "Type de fiche",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "cib-cases",
+              "label": "Dossiers"
+            },
+            {
+              "value": "cib-veille",
+              "label": "Veille"
+            },
+            {
+              "value": "cib-contenu",
+              "label": "Contenu"
+            },
+            {
+              "value": "cib-accompagnement",
+              "label": "Accompagnement"
+            }
+          ]
+        },
+        {
+          "name": "record_key",
+          "title": "Clé de fiche",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "expected_revision",
+          "title": "Révision attendue",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "subject_user_id",
+          "title": "Membre existant",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "permission",
+          "title": "Permission",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "read",
+              "label": "Lecture"
+            },
+            {
+              "value": "write",
+              "label": "Écriture"
+            },
+            {
+              "value": "none",
+              "label": "Retirer"
+            }
+          ]
+        },
+        {
+          "name": "confirmation_manuelle",
+          "title": "Confirmation manuelle",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "oui",
+              "label": "Oui"
+            },
+            {
+              "value": "non",
+              "label": "Non"
+            }
+          ]
+        }
+      ],
+      "actions_on_submit": [
+        "share"
+      ]
+    }
+  ]
+}

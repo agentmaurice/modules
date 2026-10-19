@@ -1,0 +1,13 @@
+{
+  "workflows": {
+    "cib-launch-campaign-save": "cib_marketing",
+    "cib-launch-content-link": "cib_marketing",
+    "cib-launch-request": "cib_marketing",
+    "cib-launch-progress": "cib_service_client",
+    "cib-launch-read": "cib_dossiers",
+    "cib-launch-list": "cib_dossiers",
+    "cib-launch-people": "cib_dossiers",
+    "cib-launch-share": "cib_dossiers",
+    "cib-launch-summary": "cib_direction"
+  }
+}

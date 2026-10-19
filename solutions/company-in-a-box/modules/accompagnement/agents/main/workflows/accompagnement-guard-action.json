@@ -1,0 +1,66 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "workflow_id": "accompagnement-guard-action",
+  "kind": "workflow",
+  "title": "Garde d'action accompagnement",
+  "version": "1",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "action",
+      "confirmation_manuelle"
+    ],
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": [
+          "save_internal_draft",
+          "external_send",
+          "delete",
+          "payment",
+          "secret_access"
+        ]
+      },
+      "confirmation_manuelle": {
+        "type": "boolean"
+      }
+    },
+    "additionalProperties": false
+  },
+  "output_schema": {
+    "type": "object",
+    "required": [
+      "decision",
+      "action"
+    ],
+    "properties": {
+      "decision": {
+        "enum": [
+          "eligible",
+          "deny",
+          "waiting_for_approval"
+        ]
+      },
+      "action": {
+        "type": "string"
+      }
+    },
+    "additionalProperties": false
+  },
+  "actions": [
+    {
+      "id": "evaluate",
+      "type": "code_execution",
+      "code": "const action = {{ json .action }};\nconst confirmation = {{ json .confirmation_manuelle }};\nconst decision = action === 'save_internal_draft' && confirmation ? 'eligible' : action === 'save_internal_draft' ? 'waiting_for_approval' : 'deny';\nreturn { decision, action };",
+      "output_key": "guard_result",
+      "output_mapping": {
+        "assign_to": "$"
+      }
+    }
+  ],
+  "output": {
+    "decision": "{{ guard_result.decision }}",
+    "action": "{{ guard_result.action }}"
+  }
+}

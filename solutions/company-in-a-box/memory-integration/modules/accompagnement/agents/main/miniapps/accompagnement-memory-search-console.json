@@ -1,0 +1,68 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "accompagnement-memory-search-console",
+  "version": "1",
+  "title": "Accompagnement — Rechercher dans la mémoire",
+  "ui": {
+    "renderer": "component",
+    "component": "company-in-a-box",
+    "configuration": {
+      "layout": [
+        {
+          "type": "text",
+          "value": "Mode manuel. Les apports restent proposés jusqu’à la revue dans le Module mémoire."
+        },
+        {
+          "type": "text",
+          "value": "Résultat"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.summary"
+          }
+        },
+        {
+          "type": "text",
+          "value": "État"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.status"
+          }
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string"
+      },
+      "result": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "query": "",
+    "result": {}
+  },
+  "events": [
+    {
+      "event_id": "submit",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "accompagnement-memory-search",
+        "input": {
+          "query": "{{ state.query }}"
+        }
+      },
+      "result_to_state": "result"
+    }
+  ]
+}

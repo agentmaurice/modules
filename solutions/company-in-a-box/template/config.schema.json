@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:company-in-a-box:template:config:v0.1.0",
+  "title": "Company-in-a-Box configuration documentaire",
+  "description": "Contrat de saisie proposé pour le pilote manuel. Ce fichier ne constitue pas une injection runtime.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mode", "effets_externes", "entreprise"],
+  "properties": {
+    "mode": { "const": "manual" },
+    "effets_externes": { "const": false },
+    "entreprise": { "type": "string", "minLength": 1, "maxLength": 160 }
+  }
+}

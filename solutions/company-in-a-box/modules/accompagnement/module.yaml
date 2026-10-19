@@ -1,0 +1,56 @@
+{
+  "$schema": "agentmaurice.module/v2",
+  "schema_version": 2,
+  "key": "cib-accompagnement",
+  "name": "Company-in-a-Box — Accompagnement",
+  "version": "0.2.4",
+  "provides": {
+    "actions": [
+      {
+        "key": "save",
+        "workflow_id": "accompagnement-save",
+        "workflow_version": "3"
+      },
+      {
+        "key": "share",
+        "workflow_id": "accompagnement-share",
+        "workflow_version": "1"
+      },
+      {
+        "key": "guard_action",
+        "workflow_id": "accompagnement-guard-action",
+        "workflow_version": "1"
+      }
+    ],
+    "queries": [
+      {
+        "key": "list",
+        "workflow_id": "accompagnement-list",
+        "workflow_version": "2"
+      },
+      {
+        "key": "read",
+        "workflow_id": "accompagnement-read",
+        "workflow_version": "2"
+      },
+      {
+        "key": "people",
+        "workflow_id": "accompagnement-people",
+        "workflow_version": "1"
+      }
+    ],
+    "apps": [
+      {
+        "key": "console",
+        "miniapp_id": "accompagnement-console",
+        "miniapp_version": "7"
+      },
+      {
+        "key": "sharing-console",
+        "miniapp_id": "accompagnement-sharing-console",
+        "miniapp_version": "1"
+      }
+    ]
+  },
+  "requires": {}
+}

@@ -1,0 +1,144 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "contenu-memory-draft",
+  "version": "2",
+  "title": "Contenu — Brouillon depuis une révision validée",
+  "forms": [
+    {
+      "id": "submit",
+      "title": "Contenu — Brouillon depuis une révision validée",
+      "fields": [
+        {
+          "name": "dossier_id",
+          "type": "string",
+          "required": true,
+          "title": "Dossier du brouillon"
+        },
+        {
+          "name": "entreprise",
+          "type": "string",
+          "required": true,
+          "title": "Entreprise"
+        },
+        {
+          "name": "sujet",
+          "type": "string",
+          "required": true,
+          "title": "Sujet"
+        },
+        {
+          "name": "proposal_id",
+          "type": "string",
+          "required": true,
+          "title": "Révision mémoire validée"
+        },
+        {
+          "name": "confirmation_manuelle",
+          "type": "select",
+          "required": true,
+          "title": "Confirmer cet apport manuel",
+          "options": [
+            {
+              "value": "non",
+              "label": "Non"
+            },
+            {
+              "value": "oui",
+              "label": "Oui"
+            }
+          ]
+        }
+      ],
+      "actions_on_submit": [
+        "validate",
+        "consult",
+        "require-validated",
+        "draft-input",
+        "prepare",
+        "review",
+        "attach-review",
+        "save"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "validate",
+      "type": "code_execution",
+      "code": "const x={{ json . }}; if(x.confirmation_manuelle!==\"oui\") throw new Error(\"manual_confirmation_required\"); return {dossier_id:x.dossier_id,entreprise:x.entreprise,sujet:x.sujet,proposal_id:x.proposal_id};",
+      "output_key": "request"
+    },
+    {
+      "id": "consult",
+      "type": "workflow_call",
+      "workflow_id": "company-memory-query",
+      "workflow_version": "1",
+      "execution": "sync",
+      "input": {
+        "proposal_id": "{{ request.proposal_id }}"
+      },
+      "output_key": "memory"
+    },
+    {
+      "id": "require-validated",
+      "type": "code_execution",
+      "code": "const m={{ json .memory.data }}; const x={{ json .request }}; if(m.status!==\"validated\"||m.proposal_id!==x.proposal_id||!m.answer||!Array.isArray(m.citations)||!m.citations.length||Date.parse(m.expires_at)<=Date.now()) throw new Error(\"validated_memory_required\"); return {facts:m.answer,source:m.citations.join(\"; \")+\" [révision \"+m.proposal_id+\"]\"};",
+      "output_key": "validated"
+    },
+    {
+      "id": "draft-input",
+      "type": "code_execution",
+      "output_key": "draft_input",
+      "code": "const x={{ json .request }}; const v={{ json .validated }}; return {dossier_id:x.dossier_id,entreprise:x.entreprise,sujet:x.sujet,faits:v.facts,source_ref:v.source,confirmation_manuelle:true};"
+    },
+    {
+      "id": "prepare",
+      "type": "code_execution",
+      "code": "const x = {{ json .draft_input }};\nif(x.confirmation_manuelle === \"oui\") x.confirmation_manuelle=true; else if(x.confirmation_manuelle === \"non\") x.confirmation_manuelle=false;\nif(x.contradiction === \"oui\") x.contradiction=true; else if(x.contradiction === \"non\" || x.contradiction == null) x.contradiction=false;\nif(typeof x.dossier_id!==\"string\" || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(x.dossier_id)) throw new Error(\"invalid_dossier_id\");\nif(x.confirmation_manuelle!==true) throw new Error(\"manual_confirmation_required\");\nfor(const f of [\"entreprise\",\"sujet\",\"faits\",\"source_ref\"]) if(typeof x[f]!==\"string\" || !x[f].trim() || x[f].length>8000) throw new Error(\"invalid_input_\"+f);\nif(x.brouillon!=null && (typeof x.brouillon!==\"string\" || x.brouillon.length>16000)) throw new Error(\"invalid_draft\");\nconst draft = x.brouillon && x.brouillon.trim() ? x.brouillon.trim() : [\"BROUILLON À RELIRE\",x.sujet,\"Faits fournis :\",x.faits,\"Source : \"+x.source_ref,\"Aucune publication effectuée.\"].join(\"\\n\\n\");\nreturn {id:x.dossier_id,entreprise:x.entreprise,role:\"contenu\",etat:\"brouillon\",sujet:x.sujet,faits:x.faits,source_ref:x.source_ref,brouillon:draft,external_effect:false};",
+      "output_key": "record"
+    },
+    {
+      "id": "review",
+      "type": "workflow_call",
+      "workflow_id": "review_completion",
+      "workflow_version": "1",
+      "execution": "sync",
+      "input": {
+        "dossier_id": "{{ record.id }}",
+        "preuve": "{{ record.source_ref }}",
+        "confirmation_manuelle": true
+      },
+      "output_key": "review"
+    },
+    {
+      "id": "attach-review",
+      "type": "code_execution",
+      "code": "const record = {{ json .record }}; const review = {{ json .review.data }}; return {...record,decision:review,review_scope:\"internal_draft_only\"};",
+      "output_key": "record"
+    },
+    {
+      "id": "save",
+      "type": "code_execution",
+      "context": {
+        "allowed_tools": [
+          "recipe--application_data_v1"
+        ]
+      },
+      "code": "import { callTool } from './tools/nats_bridge.ts';\nconst input={{ json . }};\nconst data={{ json .record }};\nif(!data||typeof data!==\"object\") throw new Error(\"broker_save_data_invalid\");\nconst expected_revision=input.expected_revision==null||input.expected_revision===\"\"?0:Number(input.expected_revision);\nif(!Number.isSafeInteger(expected_revision)||expected_revision<0) throw new Error(\"expected_revision_invalid\");\nconst response=await callTool(\"recipe--application_data_v1\",{operation:\"save\",namespace:\"cib-contenu\",record_key:data.id,data,expected_revision});\nconst payload=response&&response.data?response.data:response;\nif(!payload||!payload.record||typeof payload.record!==\"object\") throw new Error(\"broker_record_invalid\");\nconst item=payload.record;\nif(item.namespace!==\"cib-contenu\"||item.key!==data.id) throw new Error(\"broker_record_identity_invalid\");\nif(!Number.isSafeInteger(item.revision)||item.revision<0) throw new Error(\"broker_revision_invalid\");\nif(!item.data||typeof item.data!==\"object\") throw new Error(\"broker_record_data_invalid\");\nconst permissions=item.permissions;\nif(!permissions||typeof permissions.can_read!==\"boolean\"||typeof permissions.can_write!==\"boolean\"||typeof permissions.can_manage!==\"boolean\") throw new Error(\"broker_permissions_invalid\");\nconst shares=Array.isArray(item.shares)?item.shares:[];\nreturn {record:item.data,content:JSON.stringify(item.data,null,2),revision:item.revision,owner_user_id:typeof item.owner_user_id===\"string\"?item.owner_user_id:\"\",permissions,shares,path:\"/company-in-a-box/contenu/\"+item.key};",
+      "output_key": "broker_result"
+    }
+  ],
+  "output": {
+    "record": "{{ broker_result.record }}",
+    "content": "{{ broker_result.content }}",
+    "revision": "{{ broker_result.revision }}",
+    "owner_user_id": "{{ broker_result.owner_user_id }}",
+    "permissions": "{{ broker_result.permissions }}",
+    "shares": "{{ broker_result.shares }}",
+    "path": "{{ broker_result.path }}",
+    "proposal_id": "{{ request.proposal_id }}",
+    "external_effect": false
+  }
+}

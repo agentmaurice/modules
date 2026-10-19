@@ -1,0 +1,9 @@
+{
+  "modules/veille/agents/main/workflows/veille-memory-contribute.json": "10aa15db39977e9f56eda8658c7fc665f3bf646c922b01e6345a53487c3337ff",
+  "modules/veille/agents/main/miniapps/veille-memory-contribute-console.json": "3c1c2018a34539048c09b89f08a3a4d91f1ffc43a4647e302ca659b8ec3c131b",
+  "modules/contenu/agents/main/workflows/contenu-memory-contribute.json": "eb2ceda132ae1785f088cb0dbc5c9615926db1b4426338ade1109ffd217e28ff",
+  "modules/contenu/agents/main/miniapps/contenu-memory-contribute-console.json": "99785620062715f8f91c940ebf7f36782957ea1559839f03f98f2e5e5ffceba7",
+  "modules/accompagnement/agents/main/workflows/accompagnement-memory-contribute.json": "94c624ad6b04d66f61c19d223c839c6bcf811adf8e3f5b4eff8348d7146e0417",
+  "modules/accompagnement/agents/main/miniapps/accompagnement-memory-contribute-console.json": "6e4038e29b77f2bbcea071a7045ef0cb4f1740d667ae4c66e4f366984abbd30e",
+  "modules/contenu/agents/main/workflows/contenu-memory-draft.json": "b8ba4afb44015a940b4266f21d8af03f2b66059a2fb297e0955727bb19b7d551"
+}

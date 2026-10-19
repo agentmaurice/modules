@@ -1,0 +1,45 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "workflow_id": "review_completion",
+  "kind": "workflow",
+  "title": "Revoir la complétude d'un brouillon",
+  "version": "1",
+  "description": "Revue interne déterministe, sans LLM ni effet externe.",
+  "actions": [
+    {
+      "id": "review-dossier",
+      "type": "code_execution",
+      "code": "const dossierId = {{ json .dossier_id }};\nconst preuve = {{ json .preuve }};\nconst confirmation = {{ json .confirmation_manuelle }};\nif (typeof dossierId !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(dossierId)) {\n  throw new Error('dossier_id invalide');\n}\nif (typeof preuve !== 'string' || preuve.trim() === '') {\n  return { decision: 'rework', dossier_id: dossierId, reason: 'preuve_obligatoire_manquante' };\n}\nif (confirmation !== true) {\n  return { decision: 'human_review', dossier_id: dossierId, reason: 'validation_humaine_requise' };\n}\nreturn { decision: 'accepted', dossier_id: dossierId, reason: 'preuve_et_validation_humaine_presentes' };",
+      "output_key": "review",
+      "output_schema": {
+        "type": "object",
+        "required": [
+          "decision",
+          "dossier_id",
+          "reason"
+        ],
+        "properties": {
+          "decision": {
+            "enum": [
+              "accepted",
+              "rework",
+              "human_review"
+            ]
+          },
+          "dossier_id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ],
+  "output": {
+    "decision": "{{ review.decision }}",
+    "reason": "{{ review.reason }}",
+    "scope": "internal_draft_only"
+  }
+}

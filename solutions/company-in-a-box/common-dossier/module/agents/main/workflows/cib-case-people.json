@@ -1,0 +1,33 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "cib-case-people",
+  "version": "2",
+  "title": "Dossier commun — membres partageables",
+  "actions": [
+    {
+      "id": "target",
+      "type": "code_execution",
+      "code": "const input={{ json . }};const target=input.entry||input.context||input;if(!target||typeof target!==\"object\"||![\"usage\",\"qualification\"].includes(target.jeu)||typeof target.case_id!==\"string\"||!/^[a-z0-9][a-z0-9-]{0,63}$/.test(target.case_id))throw Error(\"case_identity_invalid\");return {jeu:target.jeu,case_id:target.case_id,record_key:target.jeu+\"/\"+target.case_id};",
+      "output_key": "target"
+    },
+    {
+      "id": "people",
+      "type": "code_execution",
+      "context": {
+        "allowed_tools": [
+          "recipe--application_data_v1"
+        ]
+      },
+      "code": "import { callTool } from './tools/nats_bridge.ts';\nconst input={{ json . }};const target={{ json .target }};const response=await callTool(\"recipe--application_data_v1\",{operation:\"people\",namespace:\"cib-cases\",record_key:target.record_key});const payload=response&&response.data?response.data:response;if(!payload||!Array.isArray(payload.people))throw Error(\"broker_people_invalid\");const people=payload.people.map(p=>{if(!p||typeof p.user_id!==\"string\"||typeof p.display_name!==\"string\")throw Error(\"broker_person_invalid\");return {user_id:p.user_id,display_name:p.display_name};});const selected=typeof input.subject_user_id===\"string\"?people.find(p=>p.user_id===input.subject_user_id)||null:null;return {people,selected_target:selected};",
+      "output_key": "result"
+    }
+  ],
+  "output": {
+    "people": "{{ result.people }}",
+    "selected_target": "{{ result.selected_target }}",
+    "scope": "internal_only",
+    "external_effect": false
+  }
+}

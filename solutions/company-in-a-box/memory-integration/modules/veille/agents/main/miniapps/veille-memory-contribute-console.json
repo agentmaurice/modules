@@ -1,0 +1,103 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "veille-memory-contribute-console",
+  "version": "2",
+  "title": "Veille — Proposer un extrait à la mémoire",
+  "ui": {
+    "renderer": "component",
+    "component": "company-in-a-box",
+    "configuration": {
+      "layout": [
+        {
+          "type": "text",
+          "value": "Mode manuel. Seul le propriétaire peut proposer un extrait explicitement autorisé à la mémoire commune. Le dossier privé complet n’est pas partagé."
+        },
+        {
+          "type": "text",
+          "value": "État"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.status"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Révision proposée"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.proposal_id"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Seul cet extrait est partagé"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.shared_excerpt"
+          }
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "dossier_id": {
+        "type": "string"
+      },
+      "proposal_id": {
+        "type": "string"
+      },
+      "selected_excerpt": {
+        "type": "string"
+      },
+      "review_due": {
+        "type": "string"
+      },
+      "confirmation_manuelle": {
+        "type": "string"
+      },
+      "result": {
+        "type": "object"
+      },
+      "partage_entreprise": {
+        "type": "string"
+      }
+    }
+  },
+  "initial_state": {
+    "dossier_id": "",
+    "proposal_id": "",
+    "selected_excerpt": "",
+    "review_due": "",
+    "confirmation_manuelle": "non",
+    "result": {},
+    "partage_entreprise": "non"
+  },
+  "events": [
+    {
+      "event_id": "submit",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "veille-memory-contribute",
+        "input": {
+          "dossier_id": "{{ state.dossier_id }}",
+          "proposal_id": "{{ state.proposal_id }}",
+          "selected_excerpt": "{{ state.selected_excerpt }}",
+          "review_due": "{{ state.review_due }}",
+          "confirmation_manuelle": "{{ state.confirmation_manuelle }}",
+          "partage_entreprise": "{{ state.partage_entreprise }}"
+        }
+      },
+      "result_to_state": "result"
+    }
+  ]
+}

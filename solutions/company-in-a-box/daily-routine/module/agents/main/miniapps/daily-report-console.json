@@ -1,0 +1,163 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "daily-report-console",
+  "version": "1",
+  "title": "Briefing et bilan du temps",
+  "description": "Routine manuelle interne ; aucun envoi ni publication.",
+  "ui": {
+    "renderer": "component",
+    "component": "daily-routine",
+    "configuration": {
+      "layout": [
+        {
+          "type": "text",
+          "value": "Bilan descriptif : les données de test ne prouvent aucun gain réel. Les deux périodes doivent être incluses."
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.message"
+          }
+        },
+        {
+          "type": "metric",
+          "label": "Gain récurrent (minutes)",
+          "value": {
+            "state": "result.summary.gain_minutes"
+          }
+        },
+        {
+          "type": "metric",
+          "label": "Mise en place (minutes)",
+          "value": {
+            "state": "result.summary.installation_minutes"
+          }
+        },
+        {
+          "type": "metric",
+          "label": "Temps humain total (minutes)",
+          "value": {
+            "state": "result.summary.total_temps_humain_minutes"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Mesures exclues de la comparaison"
+        },
+        {
+          "type": "table",
+          "columns": [
+            "comparaison_id",
+            "reason"
+          ],
+          "rows": {
+            "state": "result.exclusions"
+          }
+        },
+        {
+          "type": "table",
+          "columns": [
+            "session_id",
+            "date",
+            "phase",
+            "dossier_id",
+            "qualite",
+            "temps_humain_minutes",
+            "prochaine_etape"
+          ],
+          "column_labels": {
+            "session_id": "Mesure",
+            "date": "Date",
+            "phase": "Méthode",
+            "dossier_id": "Dossier",
+            "qualite": "Qualité",
+            "temps_humain_minutes": "Minutes humaines",
+            "prochaine_etape": "Prochaine étape"
+          },
+          "rows": {
+            "state": "result.items"
+          },
+          "on_row_click": "select"
+        },
+        {
+          "type": "text",
+          "value": "Mesure sélectionnée"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.content"
+          }
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "jeu": {
+        "type": "string"
+      },
+      "date_debut": {
+        "type": "string"
+      },
+      "date_fin": {
+        "type": "string"
+      },
+      "result": {
+        "type": "object"
+      },
+      "listing": {
+        "type": "object"
+      },
+      "selected": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "jeu": "usage",
+    "date_debut": "",
+    "date_fin": "",
+    "result": {
+      "items": [],
+      "exclusions": [],
+      "message": "Aucune période consultée."
+    },
+    "listing": {
+      "items": []
+    },
+    "selected": {
+      "content": ""
+    }
+  },
+  "events": [
+    {
+      "event_id": "submit",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "daily-report",
+        "input": {
+          "jeu": "{{ state.jeu }}",
+          "date_debut": "{{ state.date_debut }}",
+          "date_fin": "{{ state.date_fin }}"
+        }
+      },
+      "result_to_state": "result"
+    },
+    {
+      "event_id": "select",
+      "trigger": "table.row_click",
+      "workflow": {
+        "workflow_id": "daily-time-read",
+        "input": {
+          "session_id": "{{ event.payload.item.session_id }}",
+          "jeu": "{{ state.jeu }}"
+        }
+      },
+      "result_to_state": "selected"
+    }
+  ]
+}

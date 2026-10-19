@@ -1,0 +1,78 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "memory-inspect",
+  "version": "2",
+  "title": "Inspecter une proposition et sa preuve",
+  "forms": [
+    {
+      "id": "submit",
+      "title": "Charger une proposition",
+      "fields": [
+        {
+          "name": "proposal_id",
+          "type": "string",
+          "required": true,
+          "title": "Proposition"
+        }
+      ],
+      "actions_on_submit": [
+        "validate",
+        "read-proposal",
+        "parse-proposal",
+        "read-source",
+        "inspect"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "validate",
+      "type": "code_execution",
+      "code": "const x={{ json . }}; if(typeof x.proposal_id!==\"string\"||!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(x.proposal_id)) throw new Error(\"invalid_slug\"); return x;",
+      "output_key": "query"
+    },
+    {
+      "id": "read-proposal",
+      "type": "tool_call",
+      "tool": "read_file",
+      "params": {
+        "path": "/company-memory/proposal-{{ query.proposal_id }}.json"
+      },
+      "output_key": "proposal_file"
+    },
+    {
+      "id": "parse-proposal",
+      "type": "code_execution",
+      "code": "const p0={{ json .proposal_file }}; let p; try{p=typeof p0===\"string\"?JSON.parse(p0):JSON.parse(p0.content||JSON.stringify(p0))}catch(e){throw new Error(\"proposal_invalid\")} if(p.proposal_id!==(({{ json .query }}).proposal_id)||typeof p.source_id!==\"string\"||!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(p.source_id)||p.status!==\"proposed\") throw new Error(\"proposal_corrupt_or_mismatch\"); return p;",
+      "output_key": "proposal"
+    },
+    {
+      "id": "read-source",
+      "type": "tool_call",
+      "tool": "read_file",
+      "params": {
+        "path": "/company-memory/source-{{ proposal.source_id }}.json"
+      },
+      "output_key": "source_file"
+    },
+    {
+      "id": "inspect",
+      "type": "code_execution",
+      "code": "const p={{ json .proposal }}; const s0={{ json .source_file }}; const s=typeof s0===\"string\"?JSON.parse(s0):JSON.parse(s0.content||JSON.stringify(s0)); if(s.source_id!==p.source_id||!s.content.includes(p.evidence_quote)) throw new Error(\"evidence_or_source_mismatch\"); return {proposal_id:p.proposal_id,title:p.title,content:p.content,evidence_quote:p.evidence_quote,source_id:p.source_id,source_ref:s.ref,source_content:s.content,review_due:p.review_due,status:p.status};",
+      "output_key": "inspection"
+    }
+  ],
+  "output": {
+    "proposal_id": "{{ inspection.proposal_id }}",
+    "title": "{{ inspection.title }}",
+    "content": "{{ inspection.content }}",
+    "evidence_quote": "{{ inspection.evidence_quote }}",
+    "source_id": "{{ inspection.source_id }}",
+    "source_ref": "{{ inspection.source_ref }}",
+    "source_content": "{{ inspection.source_content }}",
+    "review_due": "{{ inspection.review_due }}",
+    "status": "{{ inspection.status }}"
+  }
+}

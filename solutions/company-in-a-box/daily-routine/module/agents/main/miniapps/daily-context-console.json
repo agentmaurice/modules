@@ -1,0 +1,151 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "daily-context-console",
+  "version": "1",
+  "title": "Ma routine — dossier et mémoire",
+  "description": "Routine manuelle interne ; aucun envoi ni publication.",
+  "ui": {
+    "renderer": "component",
+    "component": "daily-routine",
+    "configuration": {
+      "layout": [
+        {
+          "type": "steps",
+          "items": [
+            {
+              "title": "Choisir un dossier",
+              "description": "Veille : source datée. Contenu : brouillon interne. Accompagnement : prochaine aide à préparer.",
+              "status": "todo"
+            },
+            {
+              "title": "Consulter la mémoire",
+              "description": "Chercher une révision, vérifier sa date et ses citations.",
+              "status": "todo"
+            },
+            {
+              "title": "Préparer et relire",
+              "description": "Utiliser les écrans du rôle. Un brouillon préparé ne prouve ni publication ni essai réussi.",
+              "status": "todo"
+            },
+            {
+              "title": "Noter le temps et le retour",
+              "description": "Journal de temps, puis extrait proposé à la mémoire. La revue mémoire reste distincte.",
+              "status": "todo"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.message"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Dossier local"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.content"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Mémoire"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.memory_status"
+          }
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.memory_answer"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Révision"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.proposal_id"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Sources"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.citations"
+          }
+        },
+        {
+          "type": "text",
+          "value": "À revoir avant"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.expires_at"
+          }
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "dossier_id": {
+        "type": "string"
+      },
+      "proposal_id": {
+        "type": "string"
+      },
+      "result": {
+        "type": "object"
+      },
+      "listing": {
+        "type": "object"
+      },
+      "selected": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "dossier_id": "",
+    "proposal_id": "",
+    "result": {
+      "message": "Aucune saisie effectuée."
+    },
+    "listing": {
+      "items": []
+    },
+    "selected": {
+      "content": ""
+    }
+  },
+  "events": [
+    {
+      "event_id": "submit",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "daily-context",
+        "input": {
+          "dossier_id": "{{ state.dossier_id }}",
+          "proposal_id": "{{ state.proposal_id }}"
+        }
+      },
+      "result_to_state": "result"
+    }
+  ]
+}

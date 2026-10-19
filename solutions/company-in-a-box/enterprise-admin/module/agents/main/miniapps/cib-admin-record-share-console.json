@@ -1,0 +1,86 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "cib-admin-record-share-console",
+  "version": "1",
+  "title": "Administration — partager une fiche historique",
+  "description": "Partage ACL unitaire à partir des métadonnées déjà lues ; aucune lecture du corps métier, aucun transfert ni partage en masse.",
+  "ui": {
+    "renderer": "component",
+    "component": "company-in-a-box",
+    "configuration": {
+      "layout": [
+        {
+          "type": "text",
+          "value": "Copiez depuis la console des fiches historiques les quatre informations connues : namespace, clé de fiche, révision et identifiant du membre. N’inscrivez aucun secret. Une seule fiche et un seul membre sont traités à la fois ; l’administrateur reste dépositaire."
+        },
+        {
+          "type": "text",
+          "value": "Ouvrez le formulaire « Administration — partager une fiche historique » dans les interactions disponibles, puis confirmez le partage ou le retrait."
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.message"
+          }
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "namespace": {
+        "type": "string"
+      },
+      "record_key": {
+        "type": "string"
+      },
+      "expected_revision": {
+        "type": "string"
+      },
+      "subject_user_id": {
+        "type": "string"
+      },
+      "permission": {
+        "type": "string"
+      },
+      "confirmation_manuelle": {
+        "type": "string"
+      },
+      "result": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "namespace": "cib-cases",
+    "record_key": "",
+    "expected_revision": "",
+    "subject_user_id": "",
+    "permission": "read",
+    "confirmation_manuelle": "non",
+    "result": {
+      "message": "Aucune action."
+    }
+  },
+  "events": [
+    {
+      "event_id": "share",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "cib-admin-record-share",
+        "input": {
+          "namespace": "{{ state.namespace }}",
+          "record_key": "{{ state.record_key }}",
+          "expected_revision": "{{ state.expected_revision }}",
+          "subject_user_id": "{{ state.subject_user_id }}",
+          "permission": "{{ state.permission }}",
+          "confirmation_manuelle": "{{ state.confirmation_manuelle }}"
+        }
+      },
+      "result_to_state": "result"
+    }
+  ]
+}

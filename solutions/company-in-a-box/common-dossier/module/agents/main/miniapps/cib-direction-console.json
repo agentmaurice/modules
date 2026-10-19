@@ -1,0 +1,185 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "cib-direction-console",
+  "version": "3",
+  "title": "Briefing Direction",
+  "description": "Projection ACL des dossiers communs, sans autorité additionnelle.",
+  "ui": {
+    "renderer": "component",
+    "component": "company-in-a-box",
+    "configuration": {
+      "layout": [
+        {
+          "type": "text",
+          "value": "Briefing Direction ACL interne. Les entrées sont déjà filtrées par le broker."
+        },
+        {
+          "type": "metric",
+          "label": "Total autorisé",
+          "value": {
+            "state": "result.summary.total"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Dossiers bloqués"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.summary.blocked_count"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Dossiers prêts à revoir"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.summary.ready_count"
+          }
+        },
+        {
+          "type": "table",
+          "columns": [
+            "case_id",
+            "statut",
+            "priorite",
+            "service",
+            "responsable_role",
+            "prochaine_action"
+          ],
+          "column_labels": {
+            "case_id": "Dossier",
+            "statut": "État déclaré",
+            "priorite": "Priorité",
+            "service": "Service",
+            "responsable_role": "Responsable",
+            "prochaine_action": "Prochaine action"
+          },
+          "rows": {
+            "state": "result.items"
+          },
+          "on_row_click": "select"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.message"
+          }
+        },
+        {
+          "type": "section",
+          "title": "Dossier sélectionné",
+          "children": [
+            {
+              "type": "text",
+              "value": "Révision"
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "selected.revision"
+              }
+            },
+            {
+              "type": "text",
+              "value": "Permissions"
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "selected.permissions_summary"
+              }
+            },
+            {
+              "type": "text",
+              "value": "Objectif"
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "selected.record.objectif"
+              }
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "selected.record.critere_fin"
+              }
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "selected.record.prochaine_action"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "jeu": {
+        "type": "string"
+      },
+      "result": {
+        "type": "object"
+      },
+      "selected": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "jeu": "usage",
+    "result": {
+      "items": [],
+      "summary": {
+        "total": 0,
+        "blocked": [],
+        "blocked_count": 0,
+        "ready": [],
+        "ready_count": 0
+      },
+      "message": "Aucun briefing consulté."
+    },
+    "selected": {
+      "content": "",
+      "revision": 0,
+      "permissions": {},
+      "permissions_summary": "Lecture : non · Modification : non · Partage : non",
+      "share_count": 0
+    }
+  },
+  "events": [
+    {
+      "event_id": "brief",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "cib-direction-brief",
+        "input": {
+          "jeu": "{{ state.jeu }}"
+        }
+      },
+      "result_to_state": "result"
+    },
+    {
+      "event_id": "select",
+      "trigger": "table.row_click",
+      "workflow": {
+        "workflow_id": "cib-case-read",
+        "input": {
+          "jeu": "{{ state.jeu }}",
+          "case_id": "{{ event.payload.item.case_id }}"
+        }
+      },
+      "result_to_state": "selected"
+    }
+  ]
+}

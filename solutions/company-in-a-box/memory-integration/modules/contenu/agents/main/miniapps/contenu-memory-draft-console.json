@@ -1,0 +1,88 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "contenu-memory-draft-console",
+  "version": "1",
+  "title": "Contenu — Brouillon depuis une révision validée",
+  "ui": {
+    "renderer": "component",
+    "component": "company-in-a-box",
+    "configuration": {
+      "layout": [
+        {
+          "type": "text",
+          "value": "Mode manuel. Les apports restent proposés jusqu’à la revue dans le Module mémoire."
+        },
+        {
+          "type": "text",
+          "value": "Brouillon interne"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.record.brouillon"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Révision utilisée"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.proposal_id"
+          }
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "dossier_id": {
+        "type": "string"
+      },
+      "entreprise": {
+        "type": "string"
+      },
+      "sujet": {
+        "type": "string"
+      },
+      "proposal_id": {
+        "type": "string"
+      },
+      "confirmation_manuelle": {
+        "type": "string"
+      },
+      "result": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "dossier_id": "",
+    "entreprise": "",
+    "sujet": "",
+    "proposal_id": "",
+    "confirmation_manuelle": "non",
+    "result": {}
+  },
+  "events": [
+    {
+      "event_id": "submit",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "contenu-memory-draft",
+        "input": {
+          "dossier_id": "{{ state.dossier_id }}",
+          "entreprise": "{{ state.entreprise }}",
+          "sujet": "{{ state.sujet }}",
+          "proposal_id": "{{ state.proposal_id }}",
+          "confirmation_manuelle": "{{ state.confirmation_manuelle }}"
+        }
+      },
+      "result_to_state": "result"
+    }
+  ]
+}

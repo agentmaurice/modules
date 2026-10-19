@@ -1,0 +1,8 @@
+{
+  "agents/veille/workflows/daily-role-read.json": "93ba3ad2fd3416f1cce337a80a508833ae7651c5ae635b75ed04e2948fcd7637",
+  "agents/veille/workflows/daily-context.json": "c2f566f51b879f88d59ee380d714de645e75521fc2f710617ebacc816b8678f4",
+  "agents/contenu/workflows/daily-role-read.json": "1e85aec057d79567c9dde1400cb4650d56e7a31bc4bc2daa1b08c244157da536",
+  "agents/contenu/workflows/daily-context.json": "c2f566f51b879f88d59ee380d714de645e75521fc2f710617ebacc816b8678f4",
+  "agents/accompagnement/workflows/daily-role-read.json": "6d4955e8e912d88a7b1896610d1ed5e345e78be8fa369f301bb389fb6d7d3037",
+  "agents/accompagnement/workflows/daily-context.json": "c2f566f51b879f88d59ee380d714de645e75521fc2f710617ebacc816b8678f4"
+}

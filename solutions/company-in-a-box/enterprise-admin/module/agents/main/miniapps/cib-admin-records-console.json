@@ -1,0 +1,203 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "cib-admin-records-console",
+  "version": "1",
+  "title": "Administration — fiches historiques",
+  "description": "Contrôle unitaire des métadonnées et partages ACL des fiches historiques. Les fiches restent privées par défaut.",
+  "ui": {
+    "renderer": "component",
+    "component": "company-in-a-box",
+    "configuration": {
+      "layout": [
+        {
+          "type": "text",
+          "value": "Saisissez une fiche à la fois. L’administrateur reste dépositaire ; aucun transfert ni partage en masse n’est disponible."
+        },
+        {
+          "type": "button",
+          "label": "Lire les métadonnées ACL",
+          "on_click": "read"
+        },
+        {
+          "type": "button",
+          "label": "Charger les membres existants",
+          "on_click": "people"
+        },
+        {
+          "type": "section",
+          "title": "Métadonnées ACL",
+          "children": [
+            {
+              "type": "text",
+              "value": {
+                "state": "read.message"
+              }
+            },
+            {
+              "type": "table",
+              "columns": [
+                "namespace",
+                "record_key",
+                "revision",
+                "owner_user_id",
+                "body_included"
+              ],
+              "rows": {
+                "state": "read.rows"
+              }
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "title": "Membres existants — cliquer pour sélectionner",
+          "children": [
+            {
+              "type": "table",
+              "columns": [
+                "user_id",
+                "display_name"
+              ],
+              "rows": {
+                "state": "people.people"
+              },
+              "on_row_click": "select-person"
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "title": "Partage unitaire",
+          "children": [
+            {
+              "type": "text",
+              "value": {
+                "state": "people.selected_target.display_name"
+              }
+            },
+            {
+              "type": "text",
+              "value": "Pour partager ou retirer un accès, ouvrez la console dédiée cib-admin-record-share-console depuis la navigation et recopiez namespace, clé, révision et membre connus."
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "share.message"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "read": {
+        "type": "object"
+      },
+      "people": {
+        "type": "object"
+      },
+      "share": {
+        "type": "object"
+      },
+      "namespace": {
+        "type": "string"
+      },
+      "record_key": {
+        "type": "string"
+      },
+      "expected_revision": {
+        "type": "string"
+      },
+      "subject_user_id": {
+        "type": "string"
+      },
+      "permission": {
+        "type": "string"
+      },
+      "confirmation_manuelle": {
+        "type": "string"
+      }
+    }
+  },
+  "initial_state": {
+    "read": {
+      "message": "Aucune fiche lue.",
+      "rows": []
+    },
+    "people": {
+      "message": "Aucun membre chargé.",
+      "people": [],
+      "selected_target": null
+    },
+    "share": {
+      "message": "Aucune action.",
+      "rows": []
+    },
+    "namespace": "cib-cases",
+    "record_key": "",
+    "expected_revision": "",
+    "subject_user_id": "",
+    "permission": "read",
+    "confirmation_manuelle": "non"
+  },
+  "events": [
+    {
+      "event_id": "read",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "cib-admin-record-read",
+        "input": {
+          "namespace": "{{ state.namespace }}",
+          "record_key": "{{ state.record_key }}"
+        }
+      },
+      "result_to_state": "read"
+    },
+    {
+      "event_id": "people",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "cib-admin-record-people",
+        "input": {
+          "namespace": "{{ state.read.namespace }}",
+          "record_key": "{{ state.read.record_key }}"
+        }
+      },
+      "result_to_state": "people"
+    },
+    {
+      "event_id": "select-person",
+      "trigger": "table.row_click",
+      "workflow": {
+        "workflow_id": "cib-admin-record-people",
+        "input": {
+          "namespace": "{{ state.read.namespace }}",
+          "record_key": "{{ state.read.record_key }}",
+          "subject_user_id": "{{ event.payload.item.user_id }}"
+        }
+      },
+      "result_to_state": "people"
+    },
+    {
+      "event_id": "share",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "cib-admin-record-share",
+        "input": {
+          "namespace": "{{ state.read.namespace }}",
+          "record_key": "{{ state.read.record_key }}",
+          "expected_revision": "{{ state.read.revision }}",
+          "subject_user_id": "{{ state.people.selected_target.user_id }}",
+          "permission": "{{ state.permission }}",
+          "confirmation_manuelle": "{{ state.confirmation_manuelle }}"
+        }
+      },
+      "result_to_state": "share"
+    }
+  ]
+}

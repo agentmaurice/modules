@@ -1,0 +1,26 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "veille-list",
+  "version": "2",
+  "title": "Veille — liste des dossiers",
+  "actions": [
+    {
+      "id": "list",
+      "type": "code_execution",
+      "context": {
+        "allowed_tools": [
+          "recipe--application_data_v1"
+        ]
+      },
+      "code": "import { callTool } from './tools/nats_bridge.ts';\nconst response=await callTool(\"recipe--application_data_v1\",{operation:\"list\",namespace:\"cib-veille\",prefix:\"\"});\nconst payload=response&&response.data?response.data:response;\nif(!payload||!Array.isArray(payload.items)||!Number.isSafeInteger(payload.total)||payload.total!==payload.items.length) throw new Error(\"broker_list_invalid\");\nconst items=payload.items.map((view)=>{const key=typeof view.record_key===\"string\"?view.record_key:view.key;if(typeof key!==\"string\"||!/^[a-z0-9][a-z0-9-]{0,63}$/.test(key)) throw new Error(\"broker_list_key_invalid\");const permissions=view.permissions&&typeof view.permissions===\"object\"?view.permissions:{};const shares=Array.isArray(view.shares)?view.shares:[];const permissions_summary=\"Lecture : \"+(permissions.can_read===true?\"oui\":\"non\")+\" · Modification : \"+(permissions.can_write===true?\"oui\":\"non\")+\" · Partage : \"+(permissions.can_manage===true?\"oui\":\"non\");return {id:key,path:\"/company-in-a-box/veille/\"+key+\".json\",size:view.size??null,revision:view.revision,owner_user_id:typeof view.owner_user_id===\"string\"?view.owner_user_id:\"\",permissions,permissions_summary,share_count:shares.length,shares,record:view.data||view.record||null};});\nreturn {items,total:payload.total,namespace:\"cib-veille\"};",
+      "output_key": "result"
+    }
+  ],
+  "output": {
+    "items": "{{ result.items }}",
+    "total": "{{ result.total }}",
+    "namespace": "{{ result.namespace }}"
+  }
+}

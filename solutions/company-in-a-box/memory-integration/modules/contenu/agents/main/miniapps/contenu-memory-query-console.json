@@ -1,0 +1,98 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "contenu-memory-query-console",
+  "version": "1",
+  "title": "Contenu — Consulter une révision",
+  "ui": {
+    "renderer": "component",
+    "component": "company-in-a-box",
+    "configuration": {
+      "layout": [
+        {
+          "type": "text",
+          "value": "Mode manuel. Les apports restent proposés jusqu’à la revue dans le Module mémoire."
+        },
+        {
+          "type": "text",
+          "value": "Résultat"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.answer"
+          }
+        },
+        {
+          "type": "text",
+          "value": "État"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.status"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Sources citées"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.citations"
+          }
+        },
+        {
+          "type": "text",
+          "value": "À revoir avant"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.expires_at"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Portée de la réponse"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.warning"
+          }
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "proposal_id": {
+        "type": "string"
+      },
+      "result": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "proposal_id": "",
+    "result": {}
+  },
+  "events": [
+    {
+      "event_id": "submit",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "contenu-memory-query",
+        "input": {
+          "proposal_id": "{{ state.proposal_id }}"
+        }
+      },
+      "result_to_state": "result"
+    }
+  ]
+}

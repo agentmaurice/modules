@@ -1,0 +1,234 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "cib-launch-support-console",
+  "version": "1",
+  "title": "Accompagnement — progression de l’essai",
+  "description": "4. Le rôle Accompagnement prépare sa fiche existante. Sélectionnez l’essai explicitement partagé, passez-le en cours, puis reliez le résultat déclaré, sa preuve et sa date. Une déclaration interne ne prouve ni vente ni publication.",
+  "ui": {
+    "renderer": "component",
+    "component": "company-in-a-box",
+    "configuration": {
+      "layout": [
+        {
+          "type": "text",
+          "value": "4. Le rôle Accompagnement prépare sa fiche existante. Sélectionnez l’essai explicitement partagé, passez-le en cours, puis reliez le résultat déclaré, sa preuve et sa date. Une déclaration interne ne prouve ni vente ni publication."
+        },
+        {
+          "type": "text",
+          "value": "Ouvrez le formulaire par son titre dans les interactions disponibles. Les champs longs sont des mémos. Le responsable indiqué ne crée aucun droit AM."
+        },
+        {
+          "type": "button",
+          "label": "Actualiser le travail réel",
+          "on_click": "refresh-usage"
+        },
+        {
+          "type": "button",
+          "label": "Actualiser les essais",
+          "on_click": "refresh-qualification"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "listing.message"
+          }
+        },
+        {
+          "type": "table",
+          "columns": [
+            "kind",
+            "id",
+            "phase",
+            "revision",
+            "objectif"
+          ],
+          "rows": {
+            "state": "listing.items"
+          },
+          "on_row_click": "select"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.message"
+          }
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.permissions_summary"
+          }
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.record.objectif"
+          }
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.record.resultat_observe"
+          }
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.record.preuve_ref"
+          }
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "accompagnement_ref": {
+        "type": "string"
+      },
+      "accompagnement_revision": {
+        "type": "string"
+      },
+      "campaign_revision": {
+        "type": "string"
+      },
+      "confirmation_manuelle": {
+        "type": "string"
+      },
+      "confirmation_resultat": {
+        "type": "string"
+      },
+      "date_confirmation": {
+        "type": "string"
+      },
+      "expected_revision": {
+        "type": "string"
+      },
+      "jeu": {
+        "type": "string"
+      },
+      "kind": {
+        "type": "string"
+      },
+      "permission": {
+        "type": "string"
+      },
+      "phase": {
+        "type": "string"
+      },
+      "trial_id": {
+        "type": "string"
+      },
+      "listing": {
+        "type": "object"
+      },
+      "selected": {
+        "type": "object"
+      },
+      "people": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "jeu": "usage",
+    "trial_id": "",
+    "expected_revision": "0",
+    "phase": "en_cours",
+    "accompagnement_ref": "",
+    "accompagnement_revision": "",
+    "date_confirmation": "",
+    "confirmation_resultat": "non",
+    "confirmation_manuelle": "non",
+    "campaign_revision": "0",
+    "permission": "read",
+    "kind": "campaign",
+    "listing": {
+      "items": [],
+      "message": "Aucune liste chargée.",
+      "summary": {}
+    },
+    "selected": {
+      "record": {},
+      "prefill": {
+        "jeu": "usage",
+        "trial_id": "",
+        "expected_revision": "0",
+        "phase": "en_cours",
+        "accompagnement_ref": "",
+        "accompagnement_revision": "",
+        "date_confirmation": "",
+        "confirmation_resultat": "non",
+        "confirmation_manuelle": "non",
+        "campaign_revision": "0",
+        "permission": "read",
+        "kind": "campaign"
+      },
+      "message": "Aucune fiche sélectionnée."
+    },
+    "people": {
+      "people": []
+    }
+  },
+  "events": [
+    {
+      "event_id": "refresh-usage",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "cib-launch-list",
+        "input": {
+          "jeu": "usage",
+          "kind": "trial"
+        }
+      },
+      "result_to_state": "listing"
+    },
+    {
+      "event_id": "refresh-qualification",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "cib-launch-list",
+        "input": {
+          "jeu": "qualification",
+          "kind": "trial"
+        }
+      },
+      "result_to_state": "listing"
+    },
+    {
+      "event_id": "select",
+      "trigger": "table.row_click",
+      "workflow": {
+        "workflow_id": "cib-launch-read",
+        "input": {
+          "jeu": "{{ event.payload.item.jeu }}",
+          "kind": "{{ event.payload.item.kind }}",
+          "id": "{{ event.payload.item.id }}",
+          "form_id": "support"
+        }
+      },
+      "result_to_state": "selected"
+    },
+    {
+      "event_id": "save",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "cib-launch-progress",
+        "input": {
+          "jeu": "{{ state.jeu }}",
+          "trial_id": "{{ state.trial_id }}",
+          "expected_revision": "{{ state.expected_revision }}",
+          "phase": "{{ state.phase }}",
+          "accompagnement_ref": "{{ state.accompagnement_ref }}",
+          "accompagnement_revision": "{{ state.accompagnement_revision }}",
+          "date_confirmation": "{{ state.date_confirmation }}",
+          "confirmation_resultat": "{{ state.confirmation_resultat }}",
+          "confirmation_manuelle": "{{ state.confirmation_manuelle }}"
+        }
+      },
+      "result_to_state": "selected"
+    }
+  ]
+}

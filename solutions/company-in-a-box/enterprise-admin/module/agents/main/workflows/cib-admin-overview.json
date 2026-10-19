@@ -1,0 +1,30 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "cib-admin-overview",
+  "version": "2",
+  "title": "Administration — état",
+  "actions": [
+    {
+      "id": "read",
+      "type": "code_execution",
+      "context": {
+        "allowed_tools": [
+          "recipe--company_admin_v1"
+        ]
+      },
+      "code": "import { callTool } from './tools/nats_bridge.ts';\nconst directory = await callTool(\"recipe--company_admin_v1\", {operation:\"directory_snapshot\"});\nconst application_people = await callTool(\"recipe--company_admin_v1\", {operation:\"application_people_list\"});\nconst approval_mandates = await callTool(\"recipe--company_admin_v1\", {operation:\"approval_mandates_list\"});\nreturn {people: directory.people || [], grants: directory.grants || [], application_people: application_people.people || [], approval_mandates: (approval_mandates.items || []).map(item => ({mandate_id: item.mandate?.mandate_id || item.mandate_id || \"\", status: item.status || \"\"})), mandate_count: approval_mandates.count || 0, message:\"État administratif lu ; aucune mutation.\"};",
+      "output_key": "result"
+    }
+  ],
+  "output": {
+    "people": "{{ result.people }}",
+    "grants": "{{ result.grants }}",
+    "application_people": "{{ result.application_people }}",
+    "approval_mandates": "{{ result.approval_mandates }}",
+    "mandate_count": "{{ result.mandate_count }}",
+    "message": "{{ result.message }}",
+    "external_effect": false
+  }
+}

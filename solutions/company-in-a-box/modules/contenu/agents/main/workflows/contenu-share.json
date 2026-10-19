@@ -1,0 +1,105 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "contenu-share",
+  "version": "1",
+  "title": "Contenu — partage ACL",
+  "actions": [
+    {
+      "id": "share",
+      "type": "code_execution",
+      "context": {
+        "allowed_tools": [
+          "recipe--application_data_v1"
+        ]
+      },
+      "code": "import { callTool } from './tools/nats_bridge.ts';\nconst input={{ json . }};\nconst dossier_id=input.share_dossier_id;\nconst expected_revision_input=input.share_expected_revision;\nconst subject_user_id=input.share_subject_user_id;\nconst permission=input.share_permission;\nconst confirmation_manuelle=input.share_confirmation_manuelle;\nconst selection_dossier_id=input.selection_dossier_id;\nif (!input || typeof dossier_id !== \"string\" || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(dossier_id)) throw new Error(\"dossier_id_invalid\");\nif (selection_dossier_id != null && (typeof selection_dossier_id !== \"string\" || selection_dossier_id !== dossier_id)) throw new Error(\"selection_dossier_mismatch\");\nlet expected_revision=expected_revision_input;\nif(typeof expected_revision===\"string\"&&/^[0-9]+$/.test(expected_revision)) expected_revision=Number(expected_revision);\nif(!Number.isSafeInteger(expected_revision)||expected_revision<0) throw new Error(\"expected_revision_invalid\");\nif(typeof subject_user_id!==\"string\"||!subject_user_id.trim()||subject_user_id.length>256||/[\\/\\s]/.test(subject_user_id)) throw new Error(\"subject_user_id_invalid\");\nif(![\"read\",\"write\",\"none\"].includes(permission)) throw new Error(\"permission_invalid\");\nif(confirmation_manuelle!==true&&confirmation_manuelle!==\"oui\") throw new Error(\"manual_confirmation_required\");\nconst response=await callTool(\"recipe--application_data_v1\",{operation:\"share\",namespace:\"cib-contenu\",record_key:dossier_id,expected_revision,subject_user_id:subject_user_id.trim(),permission});\nconst payload=response&&response.data?response.data:response;\nconst item=payload&&payload.record;\nif(!item||item.namespace!==\"cib-contenu\"||item.key!==dossier_id) throw new Error(\"broker_record_identity_invalid\");\nif(!Number.isSafeInteger(item.revision)||item.revision<0) throw new Error(\"broker_revision_invalid\");\nconst permissions=item.permissions;\nif(!permissions||typeof permissions.can_read!==\"boolean\"||typeof permissions.can_write!==\"boolean\"||typeof permissions.can_manage!==\"boolean\") throw new Error(\"broker_permissions_invalid\");\nconst shares=Array.isArray(item.shares)?item.shares:[];\nreturn {record:item.data||null,revision:item.revision,owner_user_id:typeof item.owner_user_id===\"string\"?item.owner_user_id:\"\",permissions,permissions_summary:\"Lecture : \"+(permissions.can_read?\"oui\":\"non\")+\" · Modification : \"+(permissions.can_write?\"oui\":\"non\")+\" · Partage : \"+(permissions.can_manage?\"oui\":\"non\"),shares,share_count:shares.length,confirmation_manuelle:false,effects:[{type:\"open_form\",payload:{form_id:\"contenu-share\",submit_event:\"share\",prefill:{share_dossier_id:dossier_id,share_expected_revision:String(item.revision),share_subject_user_id:\"\",share_permission:\"read\",share_confirmation_manuelle:\"non\"}}}],external_effect:false,message:\"Partage ACL mis à jour par le broker natif. Partager une fiche ne donne pas accès au service.\"};",
+      "output_key": "result"
+    }
+  ],
+  "output": {
+    "record": "{{ result.record }}",
+    "revision": "{{ result.revision }}",
+    "owner_user_id": "{{ result.owner_user_id }}",
+    "permissions": "{{ result.permissions }}",
+    "permissions_summary": "{{ result.permissions_summary }}",
+    "shares": "{{ result.shares }}",
+    "share_count": "{{ result.share_count }}",
+    "message": "{{ result.message }}",
+    "confirmation_manuelle": false,
+    "scope": "internal_only",
+    "external_effect": false,
+    "effects": "{{ result.effects }}"
+  },
+  "forms": [
+    {
+      "id": "contenu-share",
+      "title": "Contenu — partager ou retirer l’accès",
+      "fields": [
+        {
+          "name": "share_dossier_id",
+          "title": "Identifiant de la fiche",
+          "type": "string",
+          "required": true,
+          "default": "{{ state.selected.record.id }}"
+        },
+        {
+          "name": "share_expected_revision",
+          "title": "Révision attendue",
+          "type": "string",
+          "required": true,
+          "default": "{{ state.selected.revision }}"
+        },
+        {
+          "name": "share_subject_user_id",
+          "title": "Membre",
+          "type": "string",
+          "required": true,
+          "default": "{{ state.people.selected_target.user_id }}"
+        },
+        {
+          "name": "share_permission",
+          "title": "Droit",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "read",
+              "label": "Lecture"
+            },
+            {
+              "value": "write",
+              "label": "Écriture"
+            },
+            {
+              "value": "none",
+              "label": "Retirer"
+            }
+          ],
+          "default": "{{ state.share_permission }}"
+        },
+        {
+          "name": "share_confirmation_manuelle",
+          "title": "Je confirme ce partage",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "non",
+              "label": "Non"
+            },
+            {
+              "value": "oui",
+              "label": "Oui"
+            }
+          ],
+          "default": "non"
+        }
+      ],
+      "actions_on_submit": [
+        "share"
+      ]
+    }
+  ]
+}

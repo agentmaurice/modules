@@ -1,0 +1,202 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "daily-time-console",
+  "version": "1",
+  "title": "Journal de temps",
+  "description": "Routine manuelle interne ; aucun envoi ni publication.",
+  "ui": {
+    "renderer": "component",
+    "component": "daily-routine",
+    "configuration": {
+      "layout": [
+        {
+          "type": "text",
+          "value": "Mesurez le temps humain réel, pauses exclues. Affectez chaque minute à un seul dossier. Même identifiant = correction du relevé, pas ajout."
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.message"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Temps humain récurrent (minutes)"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.record.temps_humain_minutes"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Mise en place initiale (minutes), hors gain récurrent"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.record.installation_minutes"
+          }
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "jeu": {
+        "type": "string"
+      },
+      "session_id": {
+        "type": "string"
+      },
+      "comparaison_id": {
+        "type": "string"
+      },
+      "date": {
+        "type": "string"
+      },
+      "phase": {
+        "type": "string"
+      },
+      "dossier_id": {
+        "type": "string"
+      },
+      "categorie": {
+        "type": "string"
+      },
+      "complexite": {
+        "type": "string"
+      },
+      "critere_qualite": {
+        "type": "string"
+      },
+      "qualite": {
+        "type": "string"
+      },
+      "mesure_ref": {
+        "type": "string"
+      },
+      "prochaine_etape": {
+        "type": "string"
+      },
+      "execution_minutes": {
+        "type": [
+          "number",
+          "string"
+        ]
+      },
+      "relecture_minutes": {
+        "type": [
+          "number",
+          "string"
+        ]
+      },
+      "correction_minutes": {
+        "type": [
+          "number",
+          "string"
+        ]
+      },
+      "supervision_minutes": {
+        "type": [
+          "number",
+          "string"
+        ]
+      },
+      "maintenance_minutes": {
+        "type": [
+          "number",
+          "string"
+        ]
+      },
+      "installation_minutes": {
+        "type": [
+          "number",
+          "string"
+        ]
+      },
+      "temps_observe": {
+        "type": "string"
+      },
+      "confirmation_manuelle": {
+        "type": "string"
+      },
+      "result": {
+        "type": "object"
+      },
+      "listing": {
+        "type": "object"
+      },
+      "selected": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "jeu": "usage",
+    "session_id": "",
+    "comparaison_id": "",
+    "date": "",
+    "phase": "reference",
+    "dossier_id": "",
+    "categorie": "",
+    "complexite": "standard",
+    "critere_qualite": "",
+    "qualite": "a_revoir",
+    "mesure_ref": "",
+    "prochaine_etape": "",
+    "execution_minutes": 0,
+    "relecture_minutes": 0,
+    "correction_minutes": 0,
+    "supervision_minutes": 0,
+    "maintenance_minutes": 0,
+    "installation_minutes": 0,
+    "temps_observe": "non",
+    "confirmation_manuelle": "non",
+    "result": {
+      "message": "Aucune saisie effectuée."
+    },
+    "listing": {
+      "items": []
+    },
+    "selected": {
+      "content": ""
+    }
+  },
+  "events": [
+    {
+      "event_id": "submit",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "daily-time-save",
+        "input": {
+          "jeu": "{{ state.jeu }}",
+          "session_id": "{{ state.session_id }}",
+          "comparaison_id": "{{ state.comparaison_id }}",
+          "date": "{{ state.date }}",
+          "phase": "{{ state.phase }}",
+          "dossier_id": "{{ state.dossier_id }}",
+          "categorie": "{{ state.categorie }}",
+          "complexite": "{{ state.complexite }}",
+          "critere_qualite": "{{ state.critere_qualite }}",
+          "qualite": "{{ state.qualite }}",
+          "mesure_ref": "{{ state.mesure_ref }}",
+          "prochaine_etape": "{{ state.prochaine_etape }}",
+          "execution_minutes": "{{ state.execution_minutes }}",
+          "relecture_minutes": "{{ state.relecture_minutes }}",
+          "correction_minutes": "{{ state.correction_minutes }}",
+          "supervision_minutes": "{{ state.supervision_minutes }}",
+          "maintenance_minutes": "{{ state.maintenance_minutes }}",
+          "installation_minutes": "{{ state.installation_minutes }}",
+          "temps_observe": "{{ state.temps_observe }}",
+          "confirmation_manuelle": "{{ state.confirmation_manuelle }}"
+        }
+      },
+      "result_to_state": "result"
+    }
+  ]
+}

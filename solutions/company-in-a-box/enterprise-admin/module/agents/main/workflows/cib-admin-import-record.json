@@ -1,0 +1,83 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "cib-admin-import-record",
+  "version": "1",
+  "title": "Administration — reprendre une fiche historique",
+  "description": "Reprise manuelle à chemin fixe. Le propriétaire initial est l’administrateur authentifié qui reprend le dossier ; aucun accès implicite des autres personnes.",
+  "forms": [
+    {
+      "id": "import",
+      "title": "Reprise administrative explicite",
+      "fields": [
+        {
+          "name": "namespace",
+          "type": "select",
+          "title": "Type de fiche",
+          "required": true,
+          "options": [
+            {
+              "value": "cib-cases",
+              "label": "cases"
+            },
+            {
+              "value": "cib-veille",
+              "label": "veille"
+            },
+            {
+              "value": "cib-contenu",
+              "label": "contenu"
+            },
+            {
+              "value": "cib-accompagnement",
+              "label": "accompagnement"
+            }
+          ]
+        },
+        {
+          "name": "record_key",
+          "type": "string",
+          "title": "Identifiant (jeu/identifiant pour les dossiers communs)",
+          "required": true
+        },
+        {
+          "name": "confirmation_manuelle",
+          "type": "select",
+          "title": "Reprendre cette fiche, en conserver le fichier original et en devenir le dépositaire",
+          "required": true,
+          "options": [
+            {
+              "value": "non",
+              "label": "Non"
+            },
+            {
+              "value": "oui",
+              "label": "Oui"
+            }
+          ]
+        }
+      ],
+      "actions_on_submit": [
+        "import"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "import",
+      "type": "code_execution",
+      "context": {
+        "allowed_tools": [
+          "recipe--application_data_v1"
+        ]
+      },
+      "code": "import { callTool } from './tools/nats_bridge.ts';\nconst input={{ json . }};\nif(input.confirmation_manuelle!==true&&input.confirmation_manuelle!==\"oui\") throw Error(\"manual_confirmation_required\");\nconst result=await callTool(\"recipe--application_data_v1\",{operation:\"import_legacy\",namespace:input.namespace,record_key:input.record_key,confirmation_manuelle:true});\nreturn {revision:result.record?.revision,permissions:result.record?.permissions,legacy_file_preserved:result.legacy_file_preserved,external_effect:false};",
+      "output_key": "result"
+    }
+  ],
+  "output": {
+    "result": "{{ result }}",
+    "external_effect": false
+  }
+}

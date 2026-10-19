@@ -1,0 +1,137 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "workflow_id": "accompagnement-save",
+  "kind": "workflow",
+  "title": "Enregistrer un dossier d'accompagnement",
+  "version": "3",
+  "forms": [
+    {
+      "id": "save-dossier",
+      "title": "Enregistrer un suivi manuel",
+      "fields": [
+        {
+          "name": "dossier_id",
+          "type": "string",
+          "required": true,
+          "title": "Identifiant du dossier",
+          "default": "{{ state.selected.record.id }}"
+        },
+        {
+          "name": "entreprise",
+          "type": "string",
+          "required": true,
+          "title": "Entreprise",
+          "default": "{{ state.selected.record.entreprise }}"
+        },
+        {
+          "name": "objectif",
+          "type": "text",
+          "required": true,
+          "title": "Objectif",
+          "default": "{{ state.selected.record.objectif }}"
+        },
+        {
+          "name": "resultat_observe",
+          "type": "text",
+          "required": false,
+          "title": "Résultat observé",
+          "default": "{{ state.selected.record.resultat_observe }}"
+        },
+        {
+          "name": "preuve_ref",
+          "type": "string",
+          "required": false,
+          "title": "Référence de preuve",
+          "default": "{{ state.selected.record.preuve_ref }}"
+        },
+        {
+          "name": "blocage",
+          "type": "text",
+          "required": false,
+          "title": "Blocage",
+          "default": "{{ state.selected.record.blocage }}"
+        },
+        {
+          "name": "prochaine_etape",
+          "type": "text",
+          "required": true,
+          "title": "Prochaine étape",
+          "default": "{{ state.selected.record.prochaine_etape }}"
+        },
+        {
+          "name": "confirmation_manuelle",
+          "type": "select",
+          "required": true,
+          "title": "Je confirme l'enregistrement interne",
+          "description": "Je confirme l'enregistrement interne",
+          "options": [
+            {
+              "value": "non",
+              "label": "Non"
+            },
+            {
+              "value": "oui",
+              "label": "Oui"
+            }
+          ],
+          "default": "non"
+        }
+      ],
+      "actions_on_submit": [
+        "validate-input",
+        "guard-save",
+        "require-eligible",
+        "write-dossier"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "validate-input",
+      "type": "code_execution",
+      "code": "const x = {{ json . }};\nif(x.confirmation_manuelle === \"oui\") x.confirmation_manuelle=true; else if(x.confirmation_manuelle === \"non\") x.confirmation_manuelle=false;\nif(x.contradiction === \"oui\") x.contradiction=true; else if(x.contradiction === \"non\" || x.contradiction == null) x.contradiction=false;\nif(typeof x.dossier_id!==\"string\" || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(x.dossier_id)) throw new Error(\"invalid_dossier_id\");\nfor(const f of [\"entreprise\",\"objectif\",\"prochaine_etape\"]) if(typeof x[f]!==\"string\" || !x[f].trim() || x[f].length>8000) throw new Error(\"invalid_input_\"+f);\nfor(const f of [\"resultat_observe\",\"preuve_ref\",\"blocage\"]) if(x[f]!=null && (typeof x[f]!==\"string\" || x[f].length>8000)) throw new Error(\"invalid_input_\"+f);\nconst etat=x.blocage?\"bloque\":x.resultat_observe?\"pret_a_revoir\":\"en_cours\";\nreturn {id:x.dossier_id,dossier_id:x.dossier_id,entreprise:x.entreprise,role:\"accompagnement\",objectif:x.objectif,resultat_observe:x.resultat_observe||\"\",preuve_ref:x.preuve_ref||\"\",blocage:x.blocage||\"\",prochaine_etape:x.prochaine_etape,confirmation_manuelle:x.confirmation_manuelle===true,etat,external_effect:false};",
+      "output_key": "dossier"
+    },
+    {
+      "id": "guard-save",
+      "type": "workflow_call",
+      "workflow_id": "accompagnement-guard-action",
+      "workflow_version": "1",
+      "execution": "sync",
+      "input": {
+        "action": "save_internal_draft",
+        "confirmation_manuelle": "{{ dossier.confirmation_manuelle }}"
+      },
+      "output_key": "guard"
+    },
+    {
+      "id": "require-eligible",
+      "type": "code_execution",
+      "code": "const guard = {{ json .guard.data }};\nif (!guard || guard.decision !== 'eligible') throw new Error(guard && guard.decision === 'waiting_for_approval' ? 'manual confirmation is required' : 'action denied');\nreturn { eligible: true };",
+      "output_key": "eligibility"
+    },
+    {
+      "id": "write-dossier",
+      "type": "code_execution",
+      "context": {
+        "allowed_tools": [
+          "recipe--application_data_v1"
+        ]
+      },
+      "code": "import { callTool } from './tools/nats_bridge.ts';\nconst input={{ json . }};\nconst data={{ json .dossier }};\nif(!data||typeof data!==\"object\") throw new Error(\"broker_save_data_invalid\");\nconst expected_revision=input.expected_revision==null||input.expected_revision===\"\"?0:Number(input.expected_revision);\nif(!Number.isSafeInteger(expected_revision)||expected_revision<0) throw new Error(\"expected_revision_invalid\");\nconst response=await callTool(\"recipe--application_data_v1\",{operation:\"save\",namespace:\"cib-accompagnement\",record_key:data.id,data,expected_revision});\nconst payload=response&&response.data?response.data:response;\nif(!payload||!payload.record||typeof payload.record!==\"object\") throw new Error(\"broker_record_invalid\");\nconst item=payload.record;\nif(item.namespace!==\"cib-accompagnement\"||item.key!==data.id) throw new Error(\"broker_record_identity_invalid\");\nif(!Number.isSafeInteger(item.revision)||item.revision<0) throw new Error(\"broker_revision_invalid\");\nif(!item.data||typeof item.data!==\"object\") throw new Error(\"broker_record_data_invalid\");\nconst permissions=item.permissions;\nif(!permissions||typeof permissions.can_read!==\"boolean\"||typeof permissions.can_write!==\"boolean\"||typeof permissions.can_manage!==\"boolean\") throw new Error(\"broker_permissions_invalid\");\nconst shares=Array.isArray(item.shares)?item.shares:[];const permissions_summary=\"Lecture : \"+(permissions.can_read===true?\"oui\":\"non\")+\" · Modification : \"+(permissions.can_write===true?\"oui\":\"non\")+\" · Partage : \"+(permissions.can_manage===true?\"oui\":\"non\");const share_count=shares.length;\nreturn {record:item.data,content:JSON.stringify(item.data,null,2),revision:item.revision,owner_user_id:typeof item.owner_user_id===\"string\"?item.owner_user_id:\"\",permissions,permissions_summary,shares,share_count,path:\"/company-in-a-box/accompagnement/\"+item.key};",
+      "output_key": "broker_result"
+    }
+  ],
+  "output": {
+    "record": "{{ broker_result.record }}",
+    "content": "{{ broker_result.content }}",
+    "revision": "{{ broker_result.revision }}",
+    "owner_user_id": "{{ broker_result.owner_user_id }}",
+    "permissions": "{{ broker_result.permissions }}",
+    "shares": "{{ broker_result.shares }}",
+    "path": "{{ broker_result.path }}",
+    "permissions_summary": "{{ broker_result.permissions_summary }}",
+    "share_count": "{{ broker_result.share_count }}"
+  }
+}

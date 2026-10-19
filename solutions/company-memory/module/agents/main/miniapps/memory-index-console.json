@@ -1,0 +1,72 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "memory-index-console",
+  "title": "Mémoire — indexer une révision",
+  "description": "Action manuelle dans la mémoire dédiée ; aucune publication externe.",
+  "version": "2",
+  "ui": {
+    "renderer": "component",
+    "component": "company-memory",
+    "configuration": {
+      "layout": [
+        {
+          "type": "text",
+          "value": "Révisions exactes et sourcées ; la recherche ne garantit pas la dernière version d’une page."
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.status"
+          }
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.proposal_id"
+          }
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.citations"
+          }
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "proposal_id": {
+        "type": "string"
+      },
+      "confirmation_manuelle": {
+        "type": "string"
+      },
+      "result": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "proposal_id": "",
+    "confirmation_manuelle": "",
+    "result": {}
+  },
+  "events": [
+    {
+      "event_id": "submit",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "memory-index-revision",
+        "input": {
+          "proposal_id": "{{ state.proposal_id }}",
+          "confirmation_manuelle": "{{ state.confirmation_manuelle }}"
+        }
+      },
+      "result_to_state": "result"
+    }
+  ]
+}

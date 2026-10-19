@@ -1,0 +1,136 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "memory-propose-update",
+  "version": "2",
+  "title": "Proposer une mise à jour mémoire",
+  "forms": [
+    {
+      "id": "submit",
+      "title": "Saisie manuelle",
+      "fields": [
+        {
+          "name": "proposal_id",
+          "type": "string",
+          "required": true,
+          "title": "Identifiant proposition"
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "required": true,
+          "title": "Titre"
+        },
+        {
+          "name": "content",
+          "type": "text",
+          "required": true,
+          "title": "Texte proposé"
+        },
+        {
+          "name": "source_id",
+          "type": "string",
+          "required": true,
+          "title": "Source"
+        },
+        {
+          "name": "evidence_quote",
+          "type": "text",
+          "required": true,
+          "title": "Citation exacte"
+        },
+        {
+          "name": "review_due",
+          "type": "string",
+          "required": true,
+          "title": "Date limite ISO"
+        },
+        {
+          "name": "previous_revision",
+          "type": "string",
+          "required": false,
+          "title": "Révision précédente"
+        },
+        {
+          "name": "confirmation_manuelle",
+          "type": "select",
+          "required": true,
+          "title": "Confirmer l’écriture",
+          "options": [
+            {
+              "value": "non",
+              "label": "Non"
+            },
+            {
+              "value": "oui",
+              "label": "Oui"
+            }
+          ]
+        }
+      ],
+      "actions_on_submit": [
+        "validate",
+        "read-source",
+        "check-evidence",
+        "check-absent",
+        "check-absent-2",
+        "write"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "validate",
+      "type": "code_execution",
+      "code": "const x={{ json . }}; if(typeof x.proposal_id!==\"string\" || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(x.proposal_id)) throw new Error(\"invalid_slug\");\nif(typeof x.source_id!==\"string\" || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(x.source_id)) throw new Error(\"invalid_slug\");\nif(x.confirmation_manuelle!==\"oui\") throw new Error(\"manual_confirmation_required\");\nfor(const f of [\"title\",\"content\",\"evidence_quote\"]) if(typeof x[f]!==\"string\"||!x[f].trim()||x[f].length>(f===\"content\"?20000:f===\"evidence_quote\"?4000:200)) throw new Error(\"invalid_\"+f);\nif(typeof x.review_due!==\"string\"||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.\\d{3}Z)?$/.test(x.review_due)||Number.isNaN(Date.parse(x.review_due))||(x.review_due.length===10?new Date(x.review_due+\"T00:00:00Z\").toISOString().slice(0,10)!==x.review_due:new Date(x.review_due).toISOString()!==x.review_due)) throw new Error(\"invalid_review_due\");\nif(x.previous_revision===\"\") x.previous_revision=null; if(x.previous_revision!=null&&(typeof x.previous_revision!==\"string\"||!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(x.previous_revision))) throw new Error(\"invalid_previous_revision\"); return {proposal_id:x.proposal_id,title:x.title,content:x.content,source_id:x.source_id,evidence_quote:x.evidence_quote,review_due:x.review_due,previous_revision:x.previous_revision,status:\"proposed\",confirmation_manuelle:true};",
+      "output_key": "proposal"
+    },
+    {
+      "id": "read-source",
+      "type": "tool_call",
+      "tool": "read_file",
+      "params": {
+        "path": "/company-memory/source-{{ proposal.source_id }}.json"
+      },
+      "output_key": "source_file"
+    },
+    {
+      "id": "check-evidence",
+      "type": "code_execution",
+      "code": "const s0={{ json .source_file }}; const p={{ json .proposal }}; const raw=typeof s0===\"string\"?s0:(s0&&typeof s0.content===\"string\"?s0.content:JSON.stringify(s0)); let d; try{d=JSON.parse(raw)}catch(e){throw new Error(\"source_invalid\")} if(d.source_id!==p.source_id||typeof d.content!==\"string\"||!d.content.includes(p.evidence_quote)) throw new Error(\"evidence_or_source_mismatch\"); return {ok:true};",
+      "output_key": "evidence"
+    },
+    {
+      "id": "check-absent",
+      "type": "tool_call",
+      "tool": "list_files",
+      "params": {
+        "path": "/company-memory"
+      },
+      "output_key": "files"
+    },
+    {
+      "id": "check-absent-2",
+      "type": "code_execution",
+      "code": "const fs={{ json .files }}; const r={{ json .proposal }}; const p=\"/company-memory/proposal-\"+r.proposal_id+\".json\"; if(!Array.isArray(fs)) throw new Error(\"storage_listing_unavailable\"); if(fs.some(f=>f&&f.path===p)) throw new Error(\"proposal_already_exists\"); if(r.previous_revision && !fs.some(f=>f&&f.path===\"/company-memory/proposal-\"+r.previous_revision+\".json\")) throw new Error(\"previous_revision_missing\"); return {path:p};",
+      "output_key": "target"
+    },
+    {
+      "id": "write",
+      "type": "tool_call",
+      "tool": "write_file",
+      "params": {
+        "path": "{{ target.path }}",
+        "content": "{{ json .proposal }}",
+        "overwrite": false
+      },
+      "output_key": "saved"
+    }
+  ],
+  "output": {
+    "proposal": "{{ proposal }}",
+    "path": "{{ saved.path }}",
+    "status": "proposed"
+  }
+}

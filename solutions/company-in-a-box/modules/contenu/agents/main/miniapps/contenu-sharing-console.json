@@ -1,0 +1,385 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "contenu-sharing-console",
+  "title": "Contenu — partage des fiches",
+  "description": "Partage ACL fermé des fiches sélectionnées. Sélectionnez une fiche, fermez le formulaire de lecture avec Annuler, rechargez les membres, sélectionnez la cible, puis ouvrez le formulaire de partage.",
+  "version": "1",
+  "ui": {
+    "renderer": "component",
+    "component": "company-in-a-box",
+    "configuration": {
+      "layout": [
+        {
+          "type": "text",
+          "value": "Parcours Contenu : sélectionnez une fiche, fermez le formulaire de lecture avec Annuler, rechargez les membres, sélectionnez un membre, puis ouvrez « Contenu — partager ou retirer l’accès » pour partager ou retirer l’accès."
+        },
+        {
+          "type": "text",
+          "value": "La confirmation de partage est distincte de la sauvegarde et revient à Non après opération."
+        },
+        {
+          "type": "text",
+          "value": "Partager une fiche ne donne pas accès au service."
+        },
+        {
+          "type": "text",
+          "value": "Mode manuel : données fournies par la personne, aucune recherche ni publication automatique."
+        },
+        {
+          "type": "text",
+          "value": "Pour partager une fiche, ouvrez la console dédiée depuis la navigation."
+        },
+        {
+          "type": "button",
+          "label": "Actualiser les dossiers",
+          "on_click": "refresh"
+        },
+        {
+          "type": "button",
+          "label": "Actualiser les membres",
+          "on_click": "people"
+        },
+        {
+          "type": "table",
+          "columns": [
+            "id"
+          ],
+          "column_labels": {
+            "id": "Dossier"
+          },
+          "rows": {
+            "state": "listing.items"
+          },
+          "on_row_click": "select"
+        },
+        {
+          "type": "text",
+          "value": "Entreprise"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.record.entreprise"
+          }
+        },
+        {
+          "type": "text",
+          "value": "État"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.record.etat"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Sujet"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.record.sujet"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Faits"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.record.faits"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Source"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.record.source_ref"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Brouillon à relire"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.record.brouillon"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Revue interne"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.record.decision.decision"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Révision"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.revision"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Propriétaire"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.owner_user_id"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Permissions"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.permissions_summary"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Partages"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.share_count"
+          }
+        },
+        {
+          "type": "section",
+          "title": "Partage de la fiche sélectionnée",
+          "children": [
+            {
+              "type": "text",
+              "value": "Fiche associée aux membres"
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "people.dossier_id"
+              }
+            },
+            {
+              "type": "text",
+              "value": "Rechargez les membres après chaque sélection de fiche."
+            },
+            {
+              "type": "text",
+              "value": "Membres partageables"
+            },
+            {
+              "type": "table",
+              "columns": [
+                "user_id",
+                "display_name"
+              ],
+              "column_labels": {
+                "user_id": "Identifiant",
+                "display_name": "Membre"
+              },
+              "rows": {
+                "state": "people.people"
+              },
+              "on_row_click": "select-person"
+            },
+            {
+              "type": "text",
+              "value": "Membre sélectionné"
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "people.selected_target.display_name"
+              }
+            },
+            {
+              "type": "text",
+              "value": "Droit sélectionné"
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "share_permission"
+              }
+            },
+            {
+              "type": "text",
+              "value": "La confirmation de partage est distincte de la sauvegarde et revient à Non après opération."
+            },
+            {
+              "type": "text",
+              "value": "Partager une fiche ne donne pas accès au service."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "dossier_id": {
+        "type": "string"
+      },
+      "entreprise": {
+        "type": "string"
+      },
+      "sujet": {
+        "type": "string"
+      },
+      "faits": {
+        "type": "string"
+      },
+      "source_ref": {
+        "type": "string"
+      },
+      "brouillon": {
+        "type": "string"
+      },
+      "confirmation_manuelle": {
+        "type": "string"
+      },
+      "result": {
+        "type": "object"
+      },
+      "selected": {
+        "type": "object"
+      },
+      "listing": {
+        "type": "object"
+      },
+      "share_permission": {
+        "type": "string"
+      },
+      "share_confirmation_manuelle": {
+        "type": "string"
+      },
+      "people": {
+        "type": "object"
+      },
+      "share_dossier_id": {
+        "type": "string"
+      },
+      "share_expected_revision": {
+        "type": "string"
+      },
+      "share_subject_user_id": {
+        "type": "string"
+      }
+    }
+  },
+  "initial_state": {
+    "dossier_id": "",
+    "entreprise": "",
+    "sujet": "",
+    "faits": "",
+    "source_ref": "",
+    "brouillon": "",
+    "confirmation_manuelle": "non",
+    "result": {
+      "record": {}
+    },
+    "selected": {
+      "record": {},
+      "revision": 0,
+      "owner_user_id": "",
+      "permissions": {},
+      "shares": [],
+      "permissions_summary": "Lecture : non · Modification : non · Partage : non",
+      "share_count": 0
+    },
+    "listing": {
+      "items": []
+    },
+    "share_permission": "read",
+    "share_confirmation_manuelle": "non",
+    "people": {
+      "people": [],
+      "selected_target": null,
+      "dossier_id": ""
+    },
+    "share_dossier_id": "",
+    "share_expected_revision": "",
+    "share_subject_user_id": ""
+  },
+  "events": [
+    {
+      "event_id": "refresh",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "contenu-list",
+        "input": {}
+      },
+      "result_to_state": "listing"
+    },
+    {
+      "event_id": "select",
+      "trigger": "table.row_click",
+      "workflow": {
+        "workflow_id": "contenu-read",
+        "input": {
+          "dossier_id": "{{ event.payload.item.id }}"
+        }
+      },
+      "result_to_state": "selected"
+    },
+    {
+      "event_id": "people",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "contenu-people",
+        "input": {
+          "dossier_id": "{{ state.selected.record.id }}"
+        }
+      },
+      "result_to_state": "people"
+    },
+    {
+      "event_id": "select-person",
+      "trigger": "table.row_click",
+      "workflow": {
+        "workflow_id": "contenu-people",
+        "input": {
+          "dossier_id": "{{ state.selected.record.id }}",
+          "subject_user_id": "{{ event.payload.item.user_id }}"
+        }
+      },
+      "result_to_state": "people"
+    },
+    {
+      "event_id": "share",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "contenu-share",
+        "input": {
+          "share_dossier_id": "{{ state.selected.record.id }}",
+          "share_expected_revision": "{{ state.selected.revision }}",
+          "share_subject_user_id": "{{ state.people.selected_target.user_id }}",
+          "share_permission": "{{ state.share_permission }}",
+          "share_confirmation_manuelle": "{{ state.share_confirmation_manuelle }}",
+          "selection_dossier_id": "{{ state.people.dossier_id }}"
+        }
+      },
+      "result_to_state": "selected"
+    }
+  ]
+}

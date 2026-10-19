@@ -1,0 +1,412 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "cib-case-console",
+  "version": "5",
+  "title": "Dossiers communs",
+  "description": "Coordination interne ACL manuelle, portée par Veille.",
+  "ui": {
+    "renderer": "component",
+    "component": "company-in-a-box",
+    "configuration": {
+      "layout": [
+        {
+          "type": "text",
+          "value": "Dossier commun ACL interne. Le broker filtre les accès ; la révision est obligatoire pour toute mise à jour."
+        },
+        {
+          "type": "button",
+          "label": "Actualiser la liste",
+          "on_click": "refresh"
+        },
+        {
+          "type": "button",
+          "label": "Actualiser les membres",
+          "on_click": "people"
+        },
+        {
+          "type": "table",
+          "columns": [
+            "case_id",
+            "statut",
+            "priorite",
+            "service",
+            "responsable_role",
+            "prochaine_action"
+          ],
+          "column_labels": {
+            "case_id": "Dossier",
+            "statut": "État déclaré",
+            "priorite": "Priorité",
+            "service": "Service",
+            "responsable_role": "Responsable",
+            "prochaine_action": "Prochaine action"
+          },
+          "rows": {
+            "state": "listing.items"
+          },
+          "on_row_click": "select"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.message"
+          }
+        },
+        {
+          "type": "section",
+          "title": "Dossier sélectionné",
+          "children": [
+            {
+              "type": "text",
+              "value": "Révision"
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "selected.revision"
+              }
+            },
+            {
+              "type": "text",
+              "value": "Propriétaire"
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "selected.owner_user_id"
+              }
+            },
+            {
+              "type": "text",
+              "value": "Permissions"
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "selected.permissions_summary"
+              }
+            },
+            {
+              "type": "text",
+              "value": "Partages"
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "selected.share_count"
+              }
+            },
+            {
+              "type": "text",
+              "value": "Membres partageables"
+            },
+            {
+              "type": "table",
+              "columns": [
+                "display_name"
+              ],
+              "column_labels": {
+                "display_name": "Membre"
+              },
+              "rows": {
+                "state": "people.people"
+              },
+              "on_row_click": "select-person"
+            },
+            {
+              "type": "text",
+              "value": "Membre sélectionné"
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "people.selected_target.display_name"
+              }
+            },
+            {
+              "type": "text",
+              "value": "Objectif"
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "selected.record.objectif"
+              }
+            },
+            {
+              "type": "text",
+              "value": "Critère de fin"
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "selected.record.critere_fin"
+              }
+            },
+            {
+              "type": "text",
+              "value": "Blocage"
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "selected.record.blocage"
+              }
+            },
+            {
+              "type": "text",
+              "value": "Prochaine action"
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "selected.record.prochaine_action"
+              }
+            },
+            {
+              "type": "text",
+              "value": "Fiche Veille liée"
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "selected.record.veille_ref"
+              }
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "selected.record.contenu_ref"
+              }
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "selected.record.accompagnement_ref"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "jeu": {
+        "type": "string"
+      },
+      "case_id": {
+        "type": "string"
+      },
+      "objectif": {
+        "type": "string"
+      },
+      "critere_fin": {
+        "type": "string"
+      },
+      "service": {
+        "type": "string"
+      },
+      "responsable_role": {
+        "type": "string"
+      },
+      "priorite": {
+        "type": "string"
+      },
+      "statut": {
+        "type": "string"
+      },
+      "prochaine_action": {
+        "type": "string"
+      },
+      "blocage": {
+        "type": "string"
+      },
+      "veille_ref": {
+        "type": "string"
+      },
+      "veille_version": {
+        "type": "string"
+      },
+      "contenu_ref": {
+        "type": "string"
+      },
+      "contenu_version": {
+        "type": "string"
+      },
+      "accompagnement_ref": {
+        "type": "string"
+      },
+      "accompagnement_version": {
+        "type": "string"
+      },
+      "memoire_ref": {
+        "type": "string"
+      },
+      "preuve_ref": {
+        "type": "string"
+      },
+      "revue_manuelle": {
+        "type": "string"
+      },
+      "confirmation_manuelle": {
+        "type": "string"
+      },
+      "share_permission": {
+        "type": "string"
+      },
+      "result": {
+        "type": "object"
+      },
+      "listing": {
+        "type": "object"
+      },
+      "selected": {
+        "type": "object"
+      },
+      "people": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "jeu": "usage",
+    "case_id": "",
+    "objectif": "",
+    "critere_fin": "",
+    "service": "interne",
+    "responsable_role": "veille",
+    "priorite": "normale",
+    "statut": "a_qualifier",
+    "prochaine_action": "",
+    "blocage": "",
+    "veille_ref": "",
+    "veille_version": "",
+    "contenu_ref": "",
+    "contenu_version": "",
+    "accompagnement_ref": "",
+    "accompagnement_version": "",
+    "memoire_ref": "",
+    "preuve_ref": "",
+    "revue_manuelle": "non",
+    "confirmation_manuelle": "non",
+    "share_permission": "read",
+    "result": {},
+    "listing": {
+      "items": []
+    },
+    "selected": {
+      "content": "",
+      "revision": 0,
+      "permissions": {},
+      "permissions_summary": "Lecture : non · Modification : non · Partage : non",
+      "shares": [],
+      "share_count": 0,
+      "message": ""
+    },
+    "people": {
+      "people": [],
+      "selected_target": null
+    }
+  },
+  "events": [
+    {
+      "event_id": "save",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "cib-case-save",
+        "input": {
+          "jeu": "{{ state.jeu }}",
+          "case_id": "{{ state.case_id }}",
+          "objectif": "{{ state.objectif }}",
+          "critere_fin": "{{ state.critere_fin }}",
+          "service": "{{ state.service }}",
+          "responsable_role": "{{ state.responsable_role }}",
+          "priorite": "{{ state.priorite }}",
+          "statut": "{{ state.statut }}",
+          "prochaine_action": "{{ state.prochaine_action }}",
+          "blocage": "{{ state.blocage }}",
+          "veille_ref": "{{ state.veille_ref }}",
+          "veille_version": "{{ state.veille_version }}",
+          "contenu_ref": "{{ state.contenu_ref }}",
+          "contenu_version": "{{ state.contenu_version }}",
+          "accompagnement_ref": "{{ state.accompagnement_ref }}",
+          "accompagnement_version": "{{ state.accompagnement_version }}",
+          "memoire_ref": "{{ state.memoire_ref }}",
+          "preuve_ref": "{{ state.preuve_ref }}",
+          "revue_manuelle": "{{ state.revue_manuelle }}",
+          "confirmation_manuelle": "{{ state.confirmation_manuelle }}",
+          "expected_revision": "{{ state.selected.revision }}"
+        }
+      },
+      "result_to_state": "selected"
+    },
+    {
+      "event_id": "refresh",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "cib-case-list",
+        "input": {
+          "jeu": "{{ state.jeu }}"
+        }
+      },
+      "result_to_state": "listing"
+    },
+    {
+      "event_id": "select",
+      "trigger": "table.row_click",
+      "workflow": {
+        "workflow_id": "cib-case-read",
+        "input": {
+          "jeu": "{{ state.jeu }}",
+          "case_id": "{{ event.payload.item.case_id }}"
+        }
+      },
+      "result_to_state": "selected"
+    },
+    {
+      "event_id": "people",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "cib-case-people",
+        "input": {
+          "jeu": "{{ state.jeu }}",
+          "case_id": "{{ state.selected.record.case_id }}"
+        }
+      },
+      "result_to_state": "people"
+    },
+    {
+      "event_id": "select-person",
+      "trigger": "table.row_click",
+      "workflow": {
+        "workflow_id": "cib-case-people",
+        "input": {
+          "jeu": "{{ state.jeu }}",
+          "case_id": "{{ state.selected.record.case_id }}",
+          "subject_user_id": "{{ event.payload.item.user_id }}"
+        }
+      },
+      "result_to_state": "people"
+    },
+    {
+      "event_id": "share",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "cib-case-share",
+        "input": {
+          "jeu": "{{ state.jeu }}",
+          "case_id": "{{ state.selected.record.case_id }}",
+          "expected_revision": "{{ state.selected.revision }}",
+          "subject_user_id": "{{ state.people.selected_target.user_id }}",
+          "permission": "{{ state.share_permission }}",
+          "confirmation_manuelle": "{{ state.confirmation_manuelle }}"
+        }
+      },
+      "result_to_state": "selected"
+    }
+  ]
+}

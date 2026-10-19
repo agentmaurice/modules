@@ -1,0 +1,291 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "cib-case-save",
+  "version": "4",
+  "title": "Dossier commun — enregistrer",
+  "actions": [
+    {
+      "id": "validate",
+      "type": "code_execution",
+      "code": "const input={{ json . }};\nconst ID = /^[a-z0-9][a-z0-9-]{0,63}$/;\nconst REF = /^[a-z0-9][a-z0-9:_./-]{0,127}$/;\nconst GAMES = new Set([\"usage\", \"qualification\"]);\nconst SERVICES = new Set([\"marketing\", \"service_client\", \"interne\"]);\nconst ROLES = new Set([\"veille\", \"contenu\", \"accompagnement\"]);\nconst PRIORITIES = new Set([\"haute\", \"normale\", \"basse\"]);\nconst STATUSES = new Set([\"a_qualifier\", \"en_cours\", \"bloque\", \"pret_a_revoir\", \"termine_interne\", \"abandonne\"]);\n\nfunction text(value, name, max = 8000, required = true) {\n  if (value == null && !required) return \"\";\n  if (typeof value !== \"string\" || value.length > max || (required && !value.trim())) throw new Error(`${name}_invalid`);\n  return value.trim();\n}\nfunction id(value, name) { if (typeof value !== \"string\" || !ID.test(value)) throw new Error(`${name}_invalid`); return value; }\nfunction ref(value, name, required = false) { if (value == null || value === \"\") { if (required) throw new Error(`${name}_invalid`); return \"\"; } if (typeof value !== \"string\" || !REF.test(value) || value.includes(\"..\") || value.toLowerCase().includes(\"secret://\")) throw new Error(`${name}_invalid`); return value; }\nfunction roleRef(value, name) { if (value == null || value === \"\") return \"\"; return id(value, name); }\nfunction optionalId(value, name) { if (value == null || value === \"\") return \"\"; return id(value, name); }\nfunction version(value, name, paired) { if (value == null || value === \"\") { if (paired) throw new Error(`${name}_invalid`); return \"\"; } if (typeof value !== \"string\" || !/^[1-9][0-9]*$/.test(value)) throw new Error(`${name}_invalid`); return value; }\nfunction yes(value, name) { if (value === true || value === \"oui\") return true; if (value === false || value === \"non\") return false; throw new Error(`${name}_invalid`); }\nfunction validateExpectedRevision(value) {\n  if (value == null || value === \"\") return 0;\n  if (typeof value === \"string\" && /^[0-9]+$/.test(value)) value = Number(value);\n  if (!Number.isSafeInteger(value) || value < 0) throw new Error(\"expected_revision_invalid\");\n  return value;\n}\n\nfunction normalizeCase(input) {\n  if (!input || typeof input !== \"object\" || Array.isArray(input)) throw new Error(\"case_invalid\");\n  const jeu = input.jeu; if (!GAMES.has(jeu)) throw new Error(\"jeu_invalid\");\n  const case_id = id(input.case_id, \"case_id\");\n  const statut = input.statut; if (!STATUSES.has(statut)) throw new Error(\"statut_invalid\");\n  if (!SERVICES.has(input.service)) throw new Error(\"service_invalid\");\n  if (!ROLES.has(input.responsable_role)) throw new Error(\"responsable_role_invalid\");\n  if (!PRIORITIES.has(input.priorite)) throw new Error(\"priorite_invalid\");\n  const blocked = text(input.blocage, \"blocage\", 2000, false);\n  if (statut === \"bloque\" && !blocked) throw new Error(\"blocage_required\");\n  const manualReview = yes(input.revue_manuelle, \"revue_manuelle\");\n  const confirmation = yes(input.confirmation_manuelle, \"confirmation_manuelle\");\n  if (!confirmation) throw new Error(\"manual_confirmation_required\");\n  const refs = {\n    veille_ref: roleRef(input.veille_ref, \"veille_ref\"),\n    veille_version: version(input.veille_version, \"veille_version\", !!input.veille_ref || !!input.veille_version),\n    contenu_ref: roleRef(input.contenu_ref, \"contenu_ref\"),\n    contenu_version: version(input.contenu_version, \"contenu_version\", !!input.contenu_ref || !!input.contenu_version),\n    accompagnement_ref: roleRef(input.accompagnement_ref, \"accompagnement_ref\"),\n    accompagnement_version: version(input.accompagnement_version, \"accompagnement_version\", !!input.accompagnement_ref || !!input.accompagnement_version),\n    memoire_ref: optionalId(input.memoire_ref, \"memoire_ref\"),\n    preuve_ref: ref(input.preuve_ref, \"preuve_ref\"),\n  };\n  for (const role of ROLES) if (Boolean(refs[role + \"_ref\"]) !== Boolean(refs[role + \"_version\"])) throw new Error(role + \"_ref_version_pair_required\");\n  const roleReference = refs.veille_ref || refs.contenu_ref || refs.accompagnement_ref;\n  if (statut === \"termine_interne\" && (!manualReview || !refs.preuve_ref || !roleReference)) throw new Error(\"internal_closure_requires_manual_review_proof_and_role_ref\");\n  return { schema_version: 1, jeu, case_id, objectif: text(input.objectif, \"objectif\", 4000), critere_fin: text(input.critere_fin, \"critere_fin\", 4000), service: input.service, responsable_role: input.responsable_role, priorite: input.priorite, statut, prochaine_action: text(input.prochaine_action, \"prochaine_action\", 4000), blocage: blocked, ...refs, revue_manuelle: manualReview, confirmation_manuelle: confirmation, scope: \"internal_only\", validation_mode: \"manual_attestation\" };\n}\n\nfunction validateStored(record, expectedJeu, expectedId) {\n  if (!record || record.schema_version !== 1) throw new Error(\"stored_schema_invalid\");\n  const value = normalizeCase(record);\n  if (value.jeu !== expectedJeu || value.case_id !== expectedId) throw new Error(\"stored_identity_mismatch\");\n  return value;\n}\n\nfunction summarize(items) {\n  const rows = items.map((item) => ({ case_id: item.case_id, statut: item.statut, priorite: item.priorite, service: item.service, responsable_role: item.responsable_role, prochaine_action: item.prochaine_action }));\n  return { total: rows.length, counts: rows.reduce((a, row) => { a[row.statut] = (a[row.statut] || 0) + 1; return a; }, {}), blocked: rows.filter((r) => r.statut === \"bloque\").map((r) => r.case_id), ready: rows.filter((r) => r.statut === \"pret_a_revoir\").map((r) => r.case_id), next_actions: rows.filter((r) => r.prochaine_action).map((r) => ({ case_id: r.case_id, action: r.prochaine_action })) };\n}\n\nreturn normalizeCase(input);",
+      "output_key": "record"
+    },
+    {
+      "id": "save",
+      "type": "code_execution",
+      "context": {
+        "allowed_tools": [
+          "recipe--application_data_v1"
+        ]
+      },
+      "code": "import { callTool } from './tools/nats_bridge.ts';\nconst input={{ json . }};\nconst ID = /^[a-z0-9][a-z0-9-]{0,63}$/;\nconst REF = /^[a-z0-9][a-z0-9:_./-]{0,127}$/;\nconst GAMES = new Set([\"usage\", \"qualification\"]);\nconst SERVICES = new Set([\"marketing\", \"service_client\", \"interne\"]);\nconst ROLES = new Set([\"veille\", \"contenu\", \"accompagnement\"]);\nconst PRIORITIES = new Set([\"haute\", \"normale\", \"basse\"]);\nconst STATUSES = new Set([\"a_qualifier\", \"en_cours\", \"bloque\", \"pret_a_revoir\", \"termine_interne\", \"abandonne\"]);\n\nfunction text(value, name, max = 8000, required = true) {\n  if (value == null && !required) return \"\";\n  if (typeof value !== \"string\" || value.length > max || (required && !value.trim())) throw new Error(`${name}_invalid`);\n  return value.trim();\n}\nfunction id(value, name) { if (typeof value !== \"string\" || !ID.test(value)) throw new Error(`${name}_invalid`); return value; }\nfunction ref(value, name, required = false) { if (value == null || value === \"\") { if (required) throw new Error(`${name}_invalid`); return \"\"; } if (typeof value !== \"string\" || !REF.test(value) || value.includes(\"..\") || value.toLowerCase().includes(\"secret://\")) throw new Error(`${name}_invalid`); return value; }\nfunction roleRef(value, name) { if (value == null || value === \"\") return \"\"; return id(value, name); }\nfunction optionalId(value, name) { if (value == null || value === \"\") return \"\"; return id(value, name); }\nfunction version(value, name, paired) { if (value == null || value === \"\") { if (paired) throw new Error(`${name}_invalid`); return \"\"; } if (typeof value !== \"string\" || !/^[1-9][0-9]*$/.test(value)) throw new Error(`${name}_invalid`); return value; }\nfunction yes(value, name) { if (value === true || value === \"oui\") return true; if (value === false || value === \"non\") return false; throw new Error(`${name}_invalid`); }\nfunction validateExpectedRevision(value) {\n  if (value == null || value === \"\") return 0;\n  if (typeof value === \"string\" && /^[0-9]+$/.test(value)) value = Number(value);\n  if (!Number.isSafeInteger(value) || value < 0) throw new Error(\"expected_revision_invalid\");\n  return value;\n}\n\nfunction normalizeCase(input) {\n  if (!input || typeof input !== \"object\" || Array.isArray(input)) throw new Error(\"case_invalid\");\n  const jeu = input.jeu; if (!GAMES.has(jeu)) throw new Error(\"jeu_invalid\");\n  const case_id = id(input.case_id, \"case_id\");\n  const statut = input.statut; if (!STATUSES.has(statut)) throw new Error(\"statut_invalid\");\n  if (!SERVICES.has(input.service)) throw new Error(\"service_invalid\");\n  if (!ROLES.has(input.responsable_role)) throw new Error(\"responsable_role_invalid\");\n  if (!PRIORITIES.has(input.priorite)) throw new Error(\"priorite_invalid\");\n  const blocked = text(input.blocage, \"blocage\", 2000, false);\n  if (statut === \"bloque\" && !blocked) throw new Error(\"blocage_required\");\n  const manualReview = yes(input.revue_manuelle, \"revue_manuelle\");\n  const confirmation = yes(input.confirmation_manuelle, \"confirmation_manuelle\");\n  if (!confirmation) throw new Error(\"manual_confirmation_required\");\n  const refs = {\n    veille_ref: roleRef(input.veille_ref, \"veille_ref\"),\n    veille_version: version(input.veille_version, \"veille_version\", !!input.veille_ref || !!input.veille_version),\n    contenu_ref: roleRef(input.contenu_ref, \"contenu_ref\"),\n    contenu_version: version(input.contenu_version, \"contenu_version\", !!input.contenu_ref || !!input.contenu_version),\n    accompagnement_ref: roleRef(input.accompagnement_ref, \"accompagnement_ref\"),\n    accompagnement_version: version(input.accompagnement_version, \"accompagnement_version\", !!input.accompagnement_ref || !!input.accompagnement_version),\n    memoire_ref: optionalId(input.memoire_ref, \"memoire_ref\"),\n    preuve_ref: ref(input.preuve_ref, \"preuve_ref\"),\n  };\n  for (const role of ROLES) if (Boolean(refs[role + \"_ref\"]) !== Boolean(refs[role + \"_version\"])) throw new Error(role + \"_ref_version_pair_required\");\n  const roleReference = refs.veille_ref || refs.contenu_ref || refs.accompagnement_ref;\n  if (statut === \"termine_interne\" && (!manualReview || !refs.preuve_ref || !roleReference)) throw new Error(\"internal_closure_requires_manual_review_proof_and_role_ref\");\n  return { schema_version: 1, jeu, case_id, objectif: text(input.objectif, \"objectif\", 4000), critere_fin: text(input.critere_fin, \"critere_fin\", 4000), service: input.service, responsable_role: input.responsable_role, priorite: input.priorite, statut, prochaine_action: text(input.prochaine_action, \"prochaine_action\", 4000), blocage: blocked, ...refs, revue_manuelle: manualReview, confirmation_manuelle: confirmation, scope: \"internal_only\", validation_mode: \"manual_attestation\" };\n}\n\nfunction validateStored(record, expectedJeu, expectedId) {\n  if (!record || record.schema_version !== 1) throw new Error(\"stored_schema_invalid\");\n  const value = normalizeCase(record);\n  if (value.jeu !== expectedJeu || value.case_id !== expectedId) throw new Error(\"stored_identity_mismatch\");\n  return value;\n}\n\nfunction summarize(items) {\n  const rows = items.map((item) => ({ case_id: item.case_id, statut: item.statut, priorite: item.priorite, service: item.service, responsable_role: item.responsable_role, prochaine_action: item.prochaine_action }));\n  return { total: rows.length, counts: rows.reduce((a, row) => { a[row.statut] = (a[row.statut] || 0) + 1; return a; }, {}), blocked: rows.filter((r) => r.statut === \"bloque\").map((r) => r.case_id), ready: rows.filter((r) => r.statut === \"pret_a_revoir\").map((r) => r.case_id), next_actions: rows.filter((r) => r.prochaine_action).map((r) => ({ case_id: r.case_id, action: r.prochaine_action })) };\n}\n\nconst record=normalizeCase(input.record||input);const expected_revision=validateExpectedRevision(input.expected_revision);const target={jeu:record.jeu,case_id:record.case_id,record_key:record.jeu+\"/\"+record.case_id};\nconst response=await callTool(\"recipe--application_data_v1\",{operation:\"save\",namespace:\"cib-cases\",record_key:target.record_key,data:record,expected_revision});\nconst wrapped=response&&response.data?response.data:response;if(!wrapped||!wrapped.record||typeof wrapped.record!==\"object\")throw Error(\"broker_record_invalid\");const item=wrapped.record;if(item.namespace!==\"cib-cases\"||item.key!==target.record_key)throw Error(\"broker_record_identity_invalid\");if(!Number.isSafeInteger(item.revision)||item.revision<0)throw Error(\"broker_revision_invalid\");if(!item.data||typeof item.data!==\"object\")throw Error(\"broker_record_data_invalid\");const canonical=validateStored(item.data,target.jeu,target.case_id);const permissions=item.permissions;if(!permissions||typeof permissions.can_read!==\"boolean\"||typeof permissions.can_write!==\"boolean\"||typeof permissions.can_manage!==\"boolean\")throw Error(\"broker_permissions_invalid\");const shares=Array.isArray(item.shares)?item.shares:[];const permissions_summary=\"Lecture : \"+(permissions.can_read?\"oui\":\"non\")+\" · Modification : \"+(permissions.can_write?\"oui\":\"non\")+\" · Partage : \"+(permissions.can_manage?\"oui\":\"non\");const share_count=shares.length;const result={record:canonical,content:JSON.stringify(canonical,null,2),revision:item.revision,owner_user_id:typeof item.owner_user_id===\"string\"?item.owner_user_id:\"\",permissions,permissions_summary,shares,share_count,path:target.record_key};\nreturn {...result,message:\"Dossier enregistré dans le stockage ACL interne, sans effet externe.\"};",
+      "output_key": "result"
+    }
+  ],
+  "output": {
+    "record": "{{ result.record }}",
+    "path": "{{ result.path }}",
+    "revision": "{{ result.revision }}",
+    "owner_user_id": "{{ result.owner_user_id }}",
+    "permissions": "{{ result.permissions }}",
+    "permissions_summary": "{{ result.permissions_summary }}",
+    "shares": "{{ result.shares }}",
+    "share_count": "{{ result.share_count }}",
+    "message": "{{ result.message }}",
+    "scope": "internal_only",
+    "validation_mode": "manual_attestation",
+    "external_effect": false
+  },
+  "forms": [
+    {
+      "id": "save",
+      "title": "Enregistrer / corriger un dossier",
+      "fields": [
+        {
+          "name": "jeu",
+          "title": "Jeu de données",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "usage",
+              "label": "Usage"
+            },
+            {
+              "value": "qualification",
+              "label": "Qualification"
+            }
+          ],
+          "default": "{{ state.selected.record.jeu }}"
+        },
+        {
+          "name": "case_id",
+          "title": "Identifiant du dossier",
+          "type": "string",
+          "required": true,
+          "default": "{{ state.selected.record.case_id }}"
+        },
+        {
+          "name": "objectif",
+          "title": "Objectif",
+          "type": "text",
+          "required": true,
+          "default": "{{ state.selected.record.objectif }}"
+        },
+        {
+          "name": "critere_fin",
+          "title": "Critère de fin",
+          "type": "text",
+          "required": true,
+          "default": "{{ state.selected.record.critere_fin }}"
+        },
+        {
+          "name": "service",
+          "title": "Service",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "marketing",
+              "label": "Marketing"
+            },
+            {
+              "value": "service_client",
+              "label": "Service client"
+            },
+            {
+              "value": "interne",
+              "label": "Interne"
+            }
+          ],
+          "default": "{{ state.selected.record.service }}"
+        },
+        {
+          "name": "responsable_role",
+          "title": "Rôle responsable",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "veille",
+              "label": "Veille"
+            },
+            {
+              "value": "contenu",
+              "label": "Contenu"
+            },
+            {
+              "value": "accompagnement",
+              "label": "Accompagnement"
+            }
+          ],
+          "default": "{{ state.selected.record.responsable_role }}"
+        },
+        {
+          "name": "priorite",
+          "title": "Priorité",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "haute",
+              "label": "Haute"
+            },
+            {
+              "value": "normale",
+              "label": "Normale"
+            },
+            {
+              "value": "basse",
+              "label": "Basse"
+            }
+          ],
+          "default": "{{ state.selected.record.priorite }}"
+        },
+        {
+          "name": "statut",
+          "title": "Statut",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "a_qualifier",
+              "label": "À qualifier"
+            },
+            {
+              "value": "en_cours",
+              "label": "En cours"
+            },
+            {
+              "value": "bloque",
+              "label": "Bloqué"
+            },
+            {
+              "value": "pret_a_revoir",
+              "label": "Prêt à revoir"
+            },
+            {
+              "value": "termine_interne",
+              "label": "Terminé en interne"
+            },
+            {
+              "value": "abandonne",
+              "label": "Abandonné"
+            }
+          ],
+          "default": "{{ state.selected.record.statut }}"
+        },
+        {
+          "name": "prochaine_action",
+          "title": "Prochaine action",
+          "type": "text",
+          "required": true,
+          "default": "{{ state.selected.record.prochaine_action }}"
+        },
+        {
+          "name": "blocage",
+          "title": "Blocage",
+          "type": "text",
+          "required": false,
+          "default": "{{ state.selected.record.blocage }}"
+        },
+        {
+          "name": "veille_ref",
+          "title": "Référence Veille",
+          "type": "string",
+          "required": false,
+          "default": "{{ state.selected.record.veille_ref }}"
+        },
+        {
+          "name": "veille_version",
+          "title": "Version Veille",
+          "type": "string",
+          "required": false,
+          "default": "{{ state.selected.record.veille_version }}"
+        },
+        {
+          "name": "contenu_ref",
+          "title": "Référence Contenu",
+          "type": "string",
+          "required": false,
+          "default": "{{ state.selected.record.contenu_ref }}"
+        },
+        {
+          "name": "contenu_version",
+          "title": "Version Contenu",
+          "type": "string",
+          "required": false,
+          "default": "{{ state.selected.record.contenu_version }}"
+        },
+        {
+          "name": "accompagnement_ref",
+          "title": "Référence Accompagnement",
+          "type": "string",
+          "required": false,
+          "default": "{{ state.selected.record.accompagnement_ref }}"
+        },
+        {
+          "name": "accompagnement_version",
+          "title": "Version Accompagnement",
+          "type": "string",
+          "required": false,
+          "default": "{{ state.selected.record.accompagnement_version }}"
+        },
+        {
+          "name": "memoire_ref",
+          "title": "Référence mémoire",
+          "type": "string",
+          "required": false,
+          "default": "{{ state.selected.record.memoire_ref }}"
+        },
+        {
+          "name": "preuve_ref",
+          "title": "Référence de preuve",
+          "type": "string",
+          "required": false,
+          "default": "{{ state.selected.record.preuve_ref }}"
+        },
+        {
+          "name": "revue_manuelle",
+          "title": "Revue manuelle",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "oui",
+              "label": "Oui"
+            },
+            {
+              "value": "non",
+              "label": "Non"
+            }
+          ],
+          "default": "non"
+        },
+        {
+          "name": "confirmation_manuelle",
+          "title": "Confirmation manuelle",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "oui",
+              "label": "Oui"
+            },
+            {
+              "value": "non",
+              "label": "Non"
+            }
+          ],
+          "default": "non"
+        }
+      ],
+      "actions_on_submit": [
+        "validate",
+        "save"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "veille-people",
+  "version": "1",
+  "title": "Veille — membres partageables",
+  "actions": [
+    {
+      "id": "people",
+      "type": "code_execution",
+      "context": {
+        "allowed_tools": [
+          "recipe--application_data_v1"
+        ]
+      },
+      "code": "import { callTool } from './tools/nats_bridge.ts';\nconst input={{ json . }};\nif (!input || typeof input.dossier_id !== \"string\" || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(input.dossier_id)) throw new Error(\"dossier_id_invalid\");\nconst response=await callTool(\"recipe--application_data_v1\",{operation:\"people\",namespace:\"cib-veille\",record_key:input.dossier_id});\nconst payload=response&&response.data?response.data:response;\nif(!payload||!Array.isArray(payload.people)) throw new Error(\"broker_people_invalid\");\nconst people=payload.people.map((person)=>{if(!person||typeof person.user_id!==\"string\"||typeof person.display_name!==\"string\") throw new Error(\"broker_person_invalid\");return {user_id:person.user_id,display_name:person.display_name};});\nconst selected=typeof input.subject_user_id===\"string\"?people.find((person)=>person.user_id===input.subject_user_id)||null:null;\nreturn {dossier_id:input.dossier_id,people,selected_target:selected,confirmation_manuelle:false,external_effect:false};",
+      "output_key": "result"
+    }
+  ],
+  "output": {
+    "people": "{{ result.people }}",
+    "selected_target": "{{ result.selected_target }}",
+    "confirmation_manuelle": false,
+    "scope": "internal_only",
+    "external_effect": false,
+    "dossier_id": "{{ result.dossier_id }}"
+  }
+}

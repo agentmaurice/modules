@@ -1,0 +1,265 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "cib-launch-sharing-console",
+  "version": "1",
+  "title": "Marketing — partager ou retirer un accès",
+  "description": "Partagez une seule fiche : sélectionnez-la, chargez les membres, puis cliquez la personne pour ouvrir le formulaire. Retirez avec « Retirer ». Partager ne donne pas le droit d’utiliser un service ni de gérer les partages.",
+  "ui": {
+    "renderer": "component",
+    "component": "company-in-a-box",
+    "configuration": {
+      "layout": [
+        {
+          "type": "text",
+          "value": "Partagez une seule fiche : sélectionnez-la, chargez les membres, puis cliquez la personne pour ouvrir le formulaire. Retirez avec « Retirer ». Partager ne donne pas le droit d’utiliser un service ni de gérer les partages."
+        },
+        {
+          "type": "text",
+          "value": "Ouvrez le formulaire par son titre dans les interactions disponibles. Les champs longs sont des mémos. Le responsable indiqué ne crée aucun droit AM."
+        },
+        {
+          "type": "button",
+          "label": "Actualiser le travail réel",
+          "on_click": "refresh-usage"
+        },
+        {
+          "type": "button",
+          "label": "Actualiser les essais",
+          "on_click": "refresh-qualification"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "listing.message"
+          }
+        },
+        {
+          "type": "table",
+          "columns": [
+            "kind",
+            "id",
+            "phase",
+            "revision",
+            "objectif"
+          ],
+          "rows": {
+            "state": "listing.items"
+          },
+          "on_row_click": "select"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.message"
+          }
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.permissions_summary"
+          }
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.record.objectif"
+          }
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.record.resultat_observe"
+          }
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.record.preuve_ref"
+          }
+        },
+        {
+          "type": "button",
+          "label": "Charger les membres existants",
+          "on_click": "people"
+        },
+        {
+          "type": "table",
+          "columns": [
+            "user_id",
+            "display_name"
+          ],
+          "rows": {
+            "state": "people.people"
+          },
+          "on_row_click": "choose"
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "campaign_revision": {
+        "type": "string"
+      },
+      "confirmation_manuelle": {
+        "type": "string"
+      },
+      "confirmation_resultat": {
+        "type": "string"
+      },
+      "expected_revision": {
+        "type": "string"
+      },
+      "id": {
+        "type": "string"
+      },
+      "jeu": {
+        "type": "string"
+      },
+      "kind": {
+        "type": "string"
+      },
+      "permission": {
+        "type": "string"
+      },
+      "phase": {
+        "type": "string"
+      },
+      "subject_user_id": {
+        "type": "string"
+      },
+      "listing": {
+        "type": "object"
+      },
+      "selected": {
+        "type": "object"
+      },
+      "people": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "jeu": "usage",
+    "kind": "campaign",
+    "id": "",
+    "expected_revision": "0",
+    "subject_user_id": "",
+    "permission": "read",
+    "confirmation_manuelle": "non",
+    "campaign_revision": "0",
+    "confirmation_resultat": "non",
+    "phase": "en_cours",
+    "listing": {
+      "items": [],
+      "message": "Aucune liste chargée.",
+      "summary": {}
+    },
+    "selected": {
+      "record": {},
+      "prefill": {
+        "jeu": "usage",
+        "kind": "campaign",
+        "id": "",
+        "expected_revision": "0",
+        "subject_user_id": "",
+        "permission": "read",
+        "confirmation_manuelle": "non",
+        "campaign_revision": "0",
+        "confirmation_resultat": "non",
+        "phase": "en_cours"
+      },
+      "message": "Aucune fiche sélectionnée."
+    },
+    "people": {
+      "people": []
+    }
+  },
+  "events": [
+    {
+      "event_id": "refresh-usage",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "cib-launch-list",
+        "input": {
+          "jeu": "usage",
+          "kind": "all"
+        }
+      },
+      "result_to_state": "listing"
+    },
+    {
+      "event_id": "refresh-qualification",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "cib-launch-list",
+        "input": {
+          "jeu": "qualification",
+          "kind": "all"
+        }
+      },
+      "result_to_state": "listing"
+    },
+    {
+      "event_id": "select",
+      "trigger": "table.row_click",
+      "workflow": {
+        "workflow_id": "cib-launch-read",
+        "input": {
+          "jeu": "{{ event.payload.item.jeu }}",
+          "kind": "{{ event.payload.item.kind }}",
+          "id": "{{ event.payload.item.id }}",
+          "form_id": "sharing"
+        }
+      },
+      "result_to_state": "selected"
+    },
+    {
+      "event_id": "people",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "cib-launch-people",
+        "input": {
+          "jeu": "{{ state.selected.record.jeu }}",
+          "kind": "{{ state.selected.record.kind }}",
+          "id": "{{ state.selected.record.id }}"
+        }
+      },
+      "result_to_state": "people"
+    },
+    {
+      "event_id": "choose",
+      "trigger": "table.row_click",
+      "workflow": {
+        "workflow_id": "cib-launch-people",
+        "input": {
+          "jeu": "{{ state.selected.record.jeu }}",
+          "kind": "{{ state.selected.record.kind }}",
+          "id": "{{ state.selected.record.id }}",
+          "subject_user_id": "{{ event.payload.item.user_id }}"
+        }
+      },
+      "result_to_state": "people"
+    },
+    {
+      "event_id": "save",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "cib-launch-share",
+        "input": {
+          "jeu": "{{ state.jeu }}",
+          "kind": "{{ state.kind }}",
+          "id": "{{ state.id }}",
+          "expected_revision": "{{ state.expected_revision }}",
+          "subject_user_id": "{{ state.subject_user_id }}",
+          "permission": "{{ state.permission }}",
+          "confirmation_manuelle": "{{ state.confirmation_manuelle }}"
+        }
+      },
+      "result_to_state": "selected"
+    }
+  ]
+}

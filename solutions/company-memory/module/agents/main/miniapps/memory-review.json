@@ -1,0 +1,180 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "memory-review",
+  "title": "Mémoire — revue manuelle",
+  "description": "Charger une proposition, lire sa preuve, puis prendre une décision manuelle.",
+  "version": "3",
+  "ui": {
+    "renderer": "component",
+    "component": "company-memory",
+    "configuration": {
+      "layout": [
+        {
+          "type": "text",
+          "value": "Proposition enregistrée — inspection avant décision."
+        },
+        {
+          "type": "text",
+          "value": "Titre proposé"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.title"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Texte proposé"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.content"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Extrait utilisé comme preuve"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.evidence_quote"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Source conservée"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.source_content"
+          }
+        },
+        {
+          "type": "text",
+          "value": "Référence de la source"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.source_ref"
+          }
+        },
+        {
+          "type": "text",
+          "value": "À revoir avant le début de cette date (UTC)"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "selected.review_due"
+          }
+        },
+        {
+          "type": "button",
+          "label": "Valider cette proposition",
+          "on_click": "validate"
+        },
+        {
+          "type": "button",
+          "label": "Refuser cette proposition",
+          "on_click": "refuse"
+        },
+        {
+          "type": "button",
+          "label": "Signaler une contradiction",
+          "on_click": "dispute"
+        },
+        {
+          "type": "text",
+          "value": "Décision enregistrée"
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.review.decision"
+          }
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "proposal_id": {
+        "type": "string"
+      },
+      "selected": {
+        "type": "object"
+      },
+      "result": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "proposal_id": "",
+    "selected": {},
+    "result": {}
+  },
+  "events": [
+    {
+      "event_id": "inspect",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "memory-inspect",
+        "input": {
+          "proposal_id": "{{ state.proposal_id }}"
+        }
+      },
+      "result_to_state": "selected"
+    },
+    {
+      "event_id": "validate",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "memory-review-update",
+        "input": {
+          "proposal_id": "{{ state.selected.proposal_id }}",
+          "decision": "validated",
+          "review_note": "Revue depuis la MiniApp",
+          "confirmation_manuelle": "oui"
+        }
+      },
+      "result_to_state": "result"
+    },
+    {
+      "event_id": "refuse",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "memory-review-update",
+        "input": {
+          "proposal_id": "{{ state.selected.proposal_id }}",
+          "decision": "refused",
+          "review_note": "Revue depuis la MiniApp",
+          "confirmation_manuelle": "oui"
+        }
+      },
+      "result_to_state": "result"
+    },
+    {
+      "event_id": "dispute",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "memory-review-update",
+        "input": {
+          "proposal_id": "{{ state.selected.proposal_id }}",
+          "decision": "disputed",
+          "review_note": "Revue depuis la MiniApp",
+          "confirmation_manuelle": "oui"
+        }
+      },
+      "result_to_state": "result"
+    }
+  ]
+}

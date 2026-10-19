@@ -1,0 +1,44 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "accompagnement-memory-search",
+  "version": "1",
+  "title": "Accompagnement — Rechercher dans la mémoire",
+  "forms": [
+    {
+      "id": "submit",
+      "title": "Accompagnement — Rechercher dans la mémoire",
+      "fields": [
+        {
+          "name": "query",
+          "type": "string",
+          "required": true,
+          "title": "Recherche dans la mémoire"
+        }
+      ],
+      "actions_on_submit": [
+        "consult"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "consult",
+      "type": "workflow_call",
+      "workflow_id": "company-memory-search",
+      "workflow_version": "1",
+      "execution": "sync",
+      "input": {
+        "query": "{{ query }}"
+      },
+      "output_key": "memory"
+    }
+  ],
+  "output": {
+    "results": "{{ memory.data.results }}",
+    "candidate_count": "{{ memory.data.candidate_count }}",
+    "status": "{{ memory.data.status }}",
+    "summary": "{{ memory.data.summary }}"
+  }
+}

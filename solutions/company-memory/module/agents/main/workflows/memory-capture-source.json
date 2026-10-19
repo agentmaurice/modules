@@ -1,0 +1,84 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "memory-capture-source",
+  "version": "2",
+  "title": "Capturer une source mémoire",
+  "forms": [
+    {
+      "id": "submit",
+      "title": "Saisie manuelle",
+      "fields": [
+        {
+          "name": "source_id",
+          "type": "string",
+          "required": true,
+          "title": "Identifiant source"
+        },
+        {
+          "name": "source_ref",
+          "type": "string",
+          "required": true,
+          "title": "Référence"
+        },
+        {
+          "name": "content",
+          "type": "text",
+          "required": true,
+          "title": "Contenu fourni"
+        },
+        {
+          "name": "source_date",
+          "type": "string",
+          "required": true,
+          "title": "Date ISO"
+        },
+        {
+          "name": "confirmation_manuelle",
+          "type": "select",
+          "required": true,
+          "title": "Confirmer l’écriture",
+          "options": [
+            {
+              "value": "non",
+              "label": "Non"
+            },
+            {
+              "value": "oui",
+              "label": "Oui"
+            }
+          ]
+        }
+      ],
+      "actions_on_submit": [
+        "validate",
+        "write"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "validate",
+      "type": "code_execution",
+      "code": "const x={{ json . }}; if(typeof x.source_id!==\"string\" || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(x.source_id)) throw new Error(\"invalid_slug\");\nif(x.confirmation_manuelle!==\"oui\") throw new Error(\"manual_confirmation_required\");\nif(typeof x.source_ref!==\"string\"||!x.source_ref.trim()||x.source_ref.length>2000) throw new Error(\"invalid_source_ref\");\nif(typeof x.content!==\"string\"||!x.content.trim()||x.content.length>20000) throw new Error(\"invalid_content\");\nif(typeof x.source_date!==\"string\"||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{3})?Z)?$/.test(x.source_date)||Number.isNaN(Date.parse(x.source_date))||(x.source_date.length===10?new Date(x.source_date+\"T00:00:00Z\").toISOString().slice(0,10)!==x.source_date:new Date(x.source_date).toISOString()!==x.source_date)) throw new Error(\"invalid_source_date\");\nreturn {source_id:x.source_id,ref:x.source_ref,content:x.content,date:x.source_date,confirmation_manuelle:true};",
+      "output_key": "source"
+    },
+    {
+      "id": "write",
+      "type": "tool_call",
+      "tool": "write_file",
+      "params": {
+        "path": "/company-memory/source-{{ source.source_id }}.json",
+        "content": "{{ json .source }}",
+        "overwrite": false
+      },
+      "output_key": "saved"
+    }
+  ],
+  "output": {
+    "source": "{{ source }}",
+    "path": "{{ saved.path }}",
+    "status": "captured"
+  }
+}

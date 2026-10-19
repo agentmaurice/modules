@@ -1,0 +1,134 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "workflow_id": "contenu-save",
+  "kind": "workflow",
+  "title": "Enregistrer un dossier de contenu",
+  "version": "2",
+  "description": "Enregistre un brouillon interne dans le dossier fixe du Module Contenu.",
+  "forms": [
+    {
+      "id": "contenu-dossier",
+      "title": "Dossier de contenu",
+      "fields": [
+        {
+          "name": "dossier_id",
+          "type": "string",
+          "required": true,
+          "title": "Identifiant du dossier",
+          "description": "Slug minuscule, chiffres et tirets uniquement.",
+          "default": "{{ state.selected.record.id }}"
+        },
+        {
+          "name": "entreprise",
+          "type": "string",
+          "required": true,
+          "title": "Entreprise",
+          "default": "{{ state.selected.record.entreprise }}"
+        },
+        {
+          "name": "sujet",
+          "type": "string",
+          "required": true,
+          "title": "Sujet",
+          "default": "{{ state.selected.record.sujet }}"
+        },
+        {
+          "name": "faits",
+          "type": "text",
+          "required": true,
+          "title": "Faits",
+          "default": "{{ state.selected.record.faits }}"
+        },
+        {
+          "name": "source_ref",
+          "type": "string",
+          "required": true,
+          "title": "Référence source",
+          "default": "{{ state.selected.record.source_ref }}"
+        },
+        {
+          "name": "brouillon",
+          "type": "text",
+          "required": false,
+          "title": "Brouillon",
+          "description": "Laisser vide pour utiliser le gabarit déterministe.",
+          "default": "{{ state.selected.record.brouillon }}"
+        },
+        {
+          "name": "confirmation_manuelle",
+          "type": "select",
+          "required": true,
+          "title": "Confirmation manuelle",
+          "description": "Confirmation manuelle",
+          "options": [
+            {
+              "value": "non",
+              "label": "Non"
+            },
+            {
+              "value": "oui",
+              "label": "Oui"
+            }
+          ],
+          "default": "non"
+        }
+      ],
+      "actions_on_submit": [
+        "prepare",
+        "review",
+        "attach-review",
+        "save"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "prepare",
+      "type": "code_execution",
+      "code": "const x = {{ json . }};\nif(x.confirmation_manuelle === \"oui\") x.confirmation_manuelle=true; else if(x.confirmation_manuelle === \"non\") x.confirmation_manuelle=false;\nif(x.contradiction === \"oui\") x.contradiction=true; else if(x.contradiction === \"non\" || x.contradiction == null) x.contradiction=false;\nif(typeof x.dossier_id!==\"string\" || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(x.dossier_id)) throw new Error(\"invalid_dossier_id\");\nif(x.confirmation_manuelle!==true) throw new Error(\"manual_confirmation_required\");\nfor(const f of [\"entreprise\",\"sujet\",\"faits\",\"source_ref\"]) if(typeof x[f]!==\"string\" || !x[f].trim() || x[f].length>8000) throw new Error(\"invalid_input_\"+f);\nif(x.brouillon!=null && (typeof x.brouillon!==\"string\" || x.brouillon.length>16000)) throw new Error(\"invalid_draft\");\nconst draft = x.brouillon && x.brouillon.trim() ? x.brouillon.trim() : [\"BROUILLON À RELIRE\",x.sujet,\"Faits fournis :\",x.faits,\"Source : \"+x.source_ref,\"Aucune publication effectuée.\"].join(\"\\n\\n\");\nreturn {id:x.dossier_id,entreprise:x.entreprise,role:\"contenu\",etat:\"brouillon\",sujet:x.sujet,faits:x.faits,source_ref:x.source_ref,brouillon:draft,external_effect:false};",
+      "output_key": "record"
+    },
+    {
+      "id": "review",
+      "type": "workflow_call",
+      "workflow_id": "review_completion",
+      "workflow_version": "1",
+      "execution": "sync",
+      "input": {
+        "dossier_id": "{{ record.id }}",
+        "preuve": "{{ record.source_ref }}",
+        "confirmation_manuelle": true
+      },
+      "output_key": "review"
+    },
+    {
+      "id": "attach-review",
+      "type": "code_execution",
+      "code": "const record = {{ json .record }}; const review = {{ json .review.data }}; return {...record,decision:review,review_scope:\"internal_draft_only\"};",
+      "output_key": "record"
+    },
+    {
+      "id": "save",
+      "type": "code_execution",
+      "context": {
+        "allowed_tools": [
+          "recipe--application_data_v1"
+        ]
+      },
+      "code": "import { callTool } from './tools/nats_bridge.ts';\nconst input={{ json . }};\nconst data={{ json .record }};\nif(!data||typeof data!==\"object\") throw new Error(\"broker_save_data_invalid\");\nconst expected_revision=input.expected_revision==null||input.expected_revision===\"\"?0:Number(input.expected_revision);\nif(!Number.isSafeInteger(expected_revision)||expected_revision<0) throw new Error(\"expected_revision_invalid\");\nconst response=await callTool(\"recipe--application_data_v1\",{operation:\"save\",namespace:\"cib-contenu\",record_key:data.id,data,expected_revision});\nconst payload=response&&response.data?response.data:response;\nif(!payload||!payload.record||typeof payload.record!==\"object\") throw new Error(\"broker_record_invalid\");\nconst item=payload.record;\nif(item.namespace!==\"cib-contenu\"||item.key!==data.id) throw new Error(\"broker_record_identity_invalid\");\nif(!Number.isSafeInteger(item.revision)||item.revision<0) throw new Error(\"broker_revision_invalid\");\nif(!item.data||typeof item.data!==\"object\") throw new Error(\"broker_record_data_invalid\");\nconst permissions=item.permissions;\nif(!permissions||typeof permissions.can_read!==\"boolean\"||typeof permissions.can_write!==\"boolean\"||typeof permissions.can_manage!==\"boolean\") throw new Error(\"broker_permissions_invalid\");\nconst shares=Array.isArray(item.shares)?item.shares:[];const permissions_summary=\"Lecture : \"+(permissions.can_read===true?\"oui\":\"non\")+\" · Modification : \"+(permissions.can_write===true?\"oui\":\"non\")+\" · Partage : \"+(permissions.can_manage===true?\"oui\":\"non\");const share_count=shares.length;\nreturn {record:item.data,content:JSON.stringify(item.data,null,2),revision:item.revision,owner_user_id:typeof item.owner_user_id===\"string\"?item.owner_user_id:\"\",permissions,permissions_summary,shares,share_count,path:\"/company-in-a-box/contenu/\"+item.key};",
+      "output_key": "broker_result"
+    }
+  ],
+  "output": {
+    "record": "{{ broker_result.record }}",
+    "content": "{{ broker_result.content }}",
+    "revision": "{{ broker_result.revision }}",
+    "owner_user_id": "{{ broker_result.owner_user_id }}",
+    "permissions": "{{ broker_result.permissions }}",
+    "shares": "{{ broker_result.shares }}",
+    "path": "{{ broker_result.path }}",
+    "permissions_summary": "{{ broker_result.permissions_summary }}",
+    "share_count": "{{ broker_result.share_count }}"
+  }
+}
