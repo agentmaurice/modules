@@ -12,7 +12,7 @@ python3 solutions/company-in-a-box/memory-integration/compose.py --consumer-dir 
 
 Préconditions : les quatre Agents `veille`, `contenu`, `accompagnement`, `memory`
 initialisés avec des identifiants distincts ; ressources métier et mémoire
-composées ; capacités inter-Agent avec `allowed_callers` et broker humain
+composées ; capacités inter-Agent avec `allowed_agent_ids` et broker humain
 natifs disponibles. Le composeur lit les identités du consommateur, crée les
 liaisons locales et refuse toute ressource ou permission divergente.
 
