@@ -34,19 +34,25 @@ def presentation_candidates(document):
     """Inspect only declared presentation fields, never option values or user data."""
     if not isinstance(document, dict) or document.get('kind') not in {'workflow', 'miniapp'}:
         return []
-    short = {'oui', 'non', 'objectif', 'relecture'}
+    short = {'oui', 'non', 'objectif', 'relecture', 'dossier', 'lecture', 'partage'}
     hits = []
+
+    def is_french_label(text):
+        normalized = text.strip().casefold()
+        # A bare header or a French permission-summary label, not the
+        # ordinary English word "lecture" in prose.
+        return normalized in short or bool(re.search(r'\b(?:lecture|partage)\s*:', normalized))
 
     def walk(value, pointer):
         if isinstance(value, dict):
             for key, child in value.items():
                 child_pointer = pointer + '/' + key.replace('~', '~0').replace('/', '~1')
                 if isinstance(child, str) and (key in {'label', 'title', 'placeholder', 'help'} or
-                    (key == 'value' and value.get('type') == 'text')) and child.strip().casefold() in short:
+                    (key == 'value' and value.get('type') == 'text')) and is_french_label(child):
                     hits.append((child_pointer, child))
                 if key == 'column_labels' and isinstance(child, dict):
                     for column, label in child.items():
-                        if isinstance(label, str) and label.strip().casefold() in short:
+                        if isinstance(label, str) and is_french_label(label):
                             hits.append((child_pointer + '/' + column.replace('~', '~0').replace('/', '~1'), label))
                 walk(child, child_pointer)
         elif isinstance(value, list):
@@ -55,7 +61,7 @@ def presentation_candidates(document):
     for key in ('ui', 'forms'):
         if key in document: walk(document[key], '/' + key)
     for key in ('title', 'description'):
-        if isinstance(document.get(key), str) and document[key].strip().casefold() in short:
+        if isinstance(document.get(key), str) and is_french_label(document[key]):
             hits.append(('/' + key, document[key]))
     return hits
 

@@ -116,6 +116,17 @@ class LanguageAuditTest(unittest.TestCase):
             document['forms'][0]['fields'][0]['title'] = 'Purpose'
             document['ui']['layout'][1]['value'] = 'Relecture'
             self.assertIn('/ui/layout/1/value', run().stdout)
+            # The receipt's two unaccented examples are presentation text;
+            # technical keys and user-entered text stay outside this check.
+            document['forms'][0]['fields'][0]['title'] = 'Dossier'
+            document['ui']['layout'][1]['value'] = 'Lecture : non · Partage : non'
+            result = run()
+            self.assertIn('/forms/0/fields/0/title', result.stdout)
+            self.assertIn('/ui/layout/1/value', result.stdout)
+            document['forms'][0]['fields'][0]['title'] = 'Case'
+            document['ui']['layout'][1]['value'] = 'The lecture starts at noon'
+            document['initial_state']['user_text'] = 'Dossier'
+            self.assertEqual(run().returncode, 0)
 
     def test_check_reports_language_failure_without_python_traceback(self):
         with tempfile.TemporaryDirectory(prefix='language-check-') as directory:

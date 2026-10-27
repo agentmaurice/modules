@@ -138,7 +138,7 @@ def render():
                                 else 'M5 and M6 status for this version is not inferred.')})
     catalogue = {'schema_version': 1, 'modules': rows}
     pins = {'schema_version': 1, 'modules': rows}
-    inventory = {'schema_version': 1, 'description': 'Documentary inventory, not a runtime contract.',
+    inventory = {'schema_version': 2, 'description': 'Documentary inventory, not a runtime contract.',
         'discovery': 'top-level */module.yaml; no numerical cap',
         'exclusions': ['fixtures', 'cache', '_archive', 'worktrees', 'artifacts and private replays'],
         'modules': details}

@@ -36,7 +36,7 @@ def miniapp(form):
         events.append({'event_id':'select','trigger':'table.row_click','workflow':{'workflow_id':'cib-launch-read','input':{'jeu':'{{ event.payload.item.jeu }}','kind':'{{ event.payload.item.kind }}','id':'{{ event.payload.item.id }}','form_id':form}},'result_to_state':'selected'})
         layout += [{'type':'text','value':{'state':'selected.message'}},{'type':'text','value':{'state':'selected.permissions_summary'}},{'type':'text','value':{'state':'selected.record.objectif'}},{'type':'text','value':{'state':'selected.record.resultat_observe'}},{'type':'text','value':{'state':'selected.record.preuve_ref'}}]
     if form=='sharing':
-        layout += [{'type':'button','label':"Load existing members",'on_click':'people'},{'type':'table','columns':['user_id','display_name'],'rows':{'state':'people.people'},'on_row_click':'choose'}]
+        layout += [{'type':'button','label':"Load existing members",'on_click':'people'},{'type':'table','columns':['user_id','display_name'],'column_labels':{'user_id':'Identifier','display_name':'Member'},'rows':{'state':'people.people'},'on_row_click':'choose'}]
         base={'jeu':'{{ state.selected.record.jeu }}','kind':'{{ state.selected.record.kind }}','id':'{{ state.selected.record.id }}'}
         events += [{'event_id':'people','trigger':'action.click','workflow':{'workflow_id':'cib-launch-people','input':base},'result_to_state':'people'},{'event_id':'choose','trigger':'table.row_click','workflow':{'workflow_id':'cib-launch-people','input':{**base,'subject_user_id':'{{ event.payload.item.user_id }}'}},'result_to_state':'people'}]
     if form=='direction':

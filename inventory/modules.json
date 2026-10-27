@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "description": "Documentary inventory, not a runtime contract.",
   "discovery": "top-level */module.yaml; no numerical cap",
   "exclusions": [
@@ -1515,7 +1515,7 @@
           "marketing-launch/agents/main/miniapps/cib-launch-content-console.json": "d6dae7625e89326de5496c4f28bb4b3c9738d15345aed1269298ed57755b8a33",
           "marketing-launch/agents/main/miniapps/cib-launch-direction-console.json": "30b9615de81e2f246801530bcc9366eac9213261826b932f1ac90558fb18dc83",
           "marketing-launch/agents/main/miniapps/cib-launch-request-console.json": "64125190bfa73976debbf9cdc76bfe7bbd9b30032cfbed1e2ba0f7a21acf0964",
-          "marketing-launch/agents/main/miniapps/cib-launch-sharing-console.json": "92f7baf2c718ed2ea3ecd05bc2d7732576251e28b09d6feb9c9acca1b60ccb29",
+          "marketing-launch/agents/main/miniapps/cib-launch-sharing-console.json": "133e909c228988039347324957fa33ed3d654c1de4200ca17a7ec2309e069e71",
           "marketing-launch/agents/main/miniapps/cib-launch-support-console.json": "ffb4db9024054b05eb6114ea90ec110b51437f156c1ba9d73b8714096f4205c8"
         }
       },

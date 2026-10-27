@@ -6,6 +6,20 @@ The current package source is `github.com/agentmaurice/modules` at each Module d
 
 The historical baseline is GitHub `agentmaurice/company-in-a-box` at `dc935630764b24c819defd03cc487bddf8f87399`. The Company Memory 0.3.0 baseline comes from GitLab `mcpchatui/pilote-maurice` at `8cb35a14b825dcdae4515d46e3b4c5149c154901`; its previous 0.2.0 is in the historical GitHub commit. Version 0.3.0 removes `memory-resolve-candidate`, adds supersession workflows and changes the search contract. The composer reports the retired file without deleting it; indexed data and callers require a specific migration. Offline tests do not prove deployment or Viewer rendering.
 
+## Inventory schema compatibility
+
+`inventory/modules.json` is a documentary schema version 2. Its former v1
+fields `modules[].source.repository`, `.commit` and `.old_path` represented
+the historical source; their v2 locations are respectively
+`modules[].source.historical_baseline.repository`, `.commit` and `.old_path`.
+The v2 `source.current` contains the current repository, package path and
+manifest version. Resolve the exact current commit during import or release;
+neither the historical commit nor a generated HEAD value identifies current
+package bytes. Readers of the old fields must explicitly migrate to v2 rather
+than assume that the historical source describes the current package.
+`modules.json` and `templates/company-in-a-box/modules.json` retain schema
+version 1 and their existing shapes.
+
 Private replay scripts and test differences from branch AGENT-858 are not automatically included. Its module resources were compared with the historical library; future inclusion requires a separate review. Fixtures, caches, archives, worktrees, generated artifacts and probes are excluded from discovery. An M5 English source candidate is prepared; complete language review and One and Viewer qualification remain pending. M6 Go port and its runtime qualification remain separate and pending. The historical commits identify the baseline, not the bytes of the new versions.
 
 ## Path mapping
