@@ -2,53 +2,53 @@
   "$schema": "agentmaurice.module/v2",
   "schema_version": 2,
   "key": "cib-contenu",
-  "name": "Company-in-a-Box — Contenu",
-  "version": "0.2.4",
+  "name": "Company-in-a-Box — Content",
+  "version": "0.2.5",
   "provides": {
     "actions": [
       {
         "key": "save",
         "workflow_id": "contenu-save",
-        "workflow_version": "2"
+        "workflow_version": "3"
       },
       {
         "key": "share",
         "workflow_id": "contenu-share",
-        "workflow_version": "1"
+        "workflow_version": "2"
       },
       {
         "key": "review_completion",
         "workflow_id": "review_completion",
-        "workflow_version": "1"
+        "workflow_version": "2"
       }
     ],
     "queries": [
       {
         "key": "list",
         "workflow_id": "contenu-list",
-        "workflow_version": "2"
+        "workflow_version": "3"
       },
       {
         "key": "read",
         "workflow_id": "contenu-read",
-        "workflow_version": "2"
+        "workflow_version": "3"
       },
       {
         "key": "people",
         "workflow_id": "contenu-people",
-        "workflow_version": "1"
+        "workflow_version": "2"
       }
     ],
     "apps": [
       {
         "key": "console",
         "miniapp_id": "contenu-console",
-        "miniapp_version": "6"
+        "miniapp_version": "7"
       },
       {
         "key": "sharing-console",
         "miniapp_id": "contenu-sharing-console",
-        "miniapp_version": "1"
+        "miniapp_version": "2"
       }
     ]
   },

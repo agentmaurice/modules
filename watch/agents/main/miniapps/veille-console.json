@@ -3,9 +3,9 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "veille-console",
-  "title": "Veille — dossiers manuels",
-  "description": "Saisie, conservation et relecture internes. Aucun envoi ni modèle activé.",
-  "version": "6",
+  "title": "Watch — manual records",
+  "description": "Internal entry, storage and review. No sending or model is enabled.",
+  "version": "7",
   "ui": {
     "renderer": "component",
     "component": "company-in-a-box",
@@ -13,20 +13,20 @@
       "layout": [
         {
           "type": "text",
-          "value": "Mode manuel : données fournies par la personne, aucune recherche ni publication automatique."
+          "value": "Manual mode: user-provided data; no automatic research or publication."
         },
         {
           "type": "text",
-          "value": "Pour partager une fiche, ouvrez la console dédiée depuis la navigation."
+          "value": "To share a record, open the dedicated sharing console from navigation."
         },
         {
           "type": "button",
-          "label": "Actualiser les dossiers",
+          "label": "Refresh records",
           "on_click": "refresh"
         },
         {
           "type": "button",
-          "label": "Actualiser les membres",
+          "label": "Refresh members",
           "on_click": "people"
         },
         {
@@ -35,7 +35,7 @@
             "id"
           ],
           "column_labels": {
-            "id": "Dossier"
+            "id": "Record"
           },
           "rows": {
             "state": "listing.items"
@@ -44,11 +44,11 @@
         },
         {
           "type": "text",
-          "value": "Dossier sélectionné — pour le corriger, enregistrez à nouveau le même identifiant."
+          "value": "Selected record — save the same identifier again to make a correction."
         },
         {
           "type": "text",
-          "value": "Entreprise"
+          "value": "Company"
         },
         {
           "type": "text",
@@ -58,12 +58,12 @@
         },
         {
           "type": "text",
-          "value": "État"
+          "value": "Status"
         },
         {
           "type": "text",
           "value": {
-            "state": "selected.record.etat"
+            "state": "selected.display.status"
           }
         },
         {
@@ -78,7 +78,7 @@
         },
         {
           "type": "text",
-          "value": "Date de la source"
+          "value": "Source date"
         },
         {
           "type": "text",
@@ -88,7 +88,7 @@
         },
         {
           "type": "text",
-          "value": "Faits"
+          "value": "Facts"
         },
         {
           "type": "text",
@@ -98,7 +98,7 @@
         },
         {
           "type": "text",
-          "value": "Preuve"
+          "value": "Evidence"
         },
         {
           "type": "text",
@@ -108,27 +108,27 @@
         },
         {
           "type": "text",
-          "value": "Rôle proposé"
+          "value": "Proposed role"
         },
         {
           "type": "text",
           "value": {
-            "state": "selected.record.decision.routing.worker"
+            "state": "selected.display.worker"
           }
         },
         {
           "type": "text",
-          "value": "Revue des preuves"
+          "value": "Evidence review"
         },
         {
           "type": "text",
           "value": {
-            "state": "selected.record.decision.research.verdict"
+            "state": "selected.display.verdict"
           }
         },
         {
           "type": "text",
-          "value": "Révision"
+          "value": "Revision"
         },
         {
           "type": "text",
@@ -138,7 +138,7 @@
         },
         {
           "type": "text",
-          "value": "Propriétaire"
+          "value": "Owner"
         },
         {
           "type": "text",
@@ -158,7 +158,7 @@
         },
         {
           "type": "text",
-          "value": "Partages"
+          "value": "Shares"
         },
         {
           "type": "text",
@@ -168,11 +168,11 @@
         },
         {
           "type": "section",
-          "title": "Partage de la fiche sélectionnée",
+          "title": "Share the selected record",
           "children": [
             {
               "type": "text",
-              "value": "Fiche associée aux membres"
+              "value": "Record associated with members"
             },
             {
               "type": "text",
@@ -182,11 +182,11 @@
             },
             {
               "type": "text",
-              "value": "Rechargez les membres après chaque sélection de fiche."
+              "value": "Refresh members after selecting a record."
             },
             {
               "type": "text",
-              "value": "Membres partageables"
+              "value": "Members available for sharing"
             },
             {
               "type": "table",
@@ -196,7 +196,7 @@
               ],
               "column_labels": {
                 "user_id": "Identifiant",
-                "display_name": "Membre"
+                "display_name": "Member"
               },
               "rows": {
                 "state": "people.people"
@@ -205,7 +205,7 @@
             },
             {
               "type": "text",
-              "value": "Membre sélectionné"
+              "value": "Selected member"
             },
             {
               "type": "text",
@@ -215,7 +215,7 @@
             },
             {
               "type": "text",
-              "value": "Droit sélectionné"
+              "value": "Selected permission"
             },
             {
               "type": "text",
@@ -225,11 +225,11 @@
             },
             {
               "type": "text",
-              "value": "La confirmation de partage est distincte de la sauvegarde et revient à Non après opération."
+              "value": "Sharing confirmation is separate from saving and resets to No after the operation."
             },
             {
               "type": "text",
-              "value": "Partager une fiche ne donne pas accès au service."
+              "value": "Sharing a record does not grant access to the service."
             }
           ]
         }
@@ -318,8 +318,14 @@
       "owner_user_id": "",
       "permissions": {},
       "shares": [],
-      "permissions_summary": "Lecture : non · Modification : non · Partage : non",
-      "share_count": 0
+      "permissions_summary": "Read: no · Write: no · Share: no",
+      "share_count": 0,
+      "display": {
+        "status": "",
+        "worker": "",
+        "verdict": "",
+        "review": ""
+      }
     },
     "listing": {
       "items": []

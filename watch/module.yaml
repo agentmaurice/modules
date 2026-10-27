@@ -2,58 +2,58 @@
   "$schema": "agentmaurice.module/v2",
   "schema_version": 2,
   "key": "cib-veille",
-  "name": "Company-in-a-Box — Veille",
-  "version": "0.2.4",
+  "name": "Company-in-a-Box — Watch",
+  "version": "0.2.5",
   "provides": {
     "actions": [
       {
         "key": "save",
         "workflow_id": "veille-save",
-        "workflow_version": "2"
+        "workflow_version": "3"
       },
       {
         "key": "share",
         "workflow_id": "veille-share",
-        "workflow_version": "1"
+        "workflow_version": "2"
       },
       {
         "key": "route_worker",
         "workflow_id": "route_worker",
-        "workflow_version": "1"
+        "workflow_version": "2"
       },
       {
         "key": "check_research",
         "workflow_id": "check_research",
-        "workflow_version": "1"
+        "workflow_version": "2"
       }
     ],
     "queries": [
       {
         "key": "list",
         "workflow_id": "veille-list",
-        "workflow_version": "2"
+        "workflow_version": "3"
       },
       {
         "key": "read",
         "workflow_id": "veille-read",
-        "workflow_version": "2"
+        "workflow_version": "3"
       },
       {
         "key": "people",
         "workflow_id": "veille-people",
-        "workflow_version": "1"
+        "workflow_version": "2"
       }
     ],
     "apps": [
       {
         "key": "console",
         "miniapp_id": "veille-console",
-        "miniapp_version": "6"
+        "miniapp_version": "7"
       },
       {
         "key": "sharing-console",
         "miniapp_id": "veille-sharing-console",
-        "miniapp_version": "1"
+        "miniapp_version": "2"
       }
     ]
   },

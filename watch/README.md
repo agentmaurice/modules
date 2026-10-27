@@ -1,16 +1,18 @@
-# Veille manuelle
+# Manual watch
 
-Import explicite de sources et faits fournis, affectation manuelle et contrôle des champs/date (30 jours). Aucun accès web ni jugement de modèle. Le champ suffisant ne prouve pas la véracité des faits. Dossiers dans le stockage privé de l’Agent. Répertoire fixe, identifiant borné, confirmation explicite.
+Explicitly import supplied sources and facts, assign them manually and check
+fields and dates (30 days). There is no web access or model judgement. A
+sufficient field does not prove a fact is true. Cases are stored privately by
+the Agent, with a fixed directory, bounded identifier and explicit confirmation.
 
-## Contrat de partage des fiches
+## Record sharing contract
 
-Les MiniApps des rôles `veille`, `contenu` et `accompagnement` soumettent le
-formulaire de partage avec les champs fermés `share_dossier_id`,
-`share_expected_revision`, `share_subject_user_id`, `share_permission` et
-`share_confirmation_manuelle`, auxquels s’ajoute `selection_dossier_id` pour
-lier la sélection des membres à la fiche relue. Les valeurs de permission
-sont `read`, `write` et `none` (`none` retire l’accès). Les cinq champs
-`share_*` restent obligatoires et la confirmation revient à `non` après une
-opération réussie. Un appel natif au workflow `*-share` doit adapter ses
-paramètres canoniques vers ces champs formels ; le workflow ne lit pas les
-clés canoniques directement.
+The `veille`, `contenu` and `accompagnement` role MiniApps submit the sharing
+form with the closed fields `share_dossier_id`, `share_expected_revision`,
+`share_subject_user_id`, `share_permission` and `share_confirmation_manuelle`.
+`selection_dossier_id` binds the member selection to the record just read.
+Permission values are `read`, `write` and `none` (`none` removes access). The
+five `share_*` fields remain required and confirmation returns to `non` after
+success. A native call to the `*-share` Workflow must map its canonical
+parameters to these form fields; the Workflow does not read the canonical keys
+directly.

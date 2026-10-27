@@ -1,4 +1,6 @@
 import json
+import hashlib
+import subprocess
 from pathlib import Path
 
 
@@ -9,7 +11,7 @@ MODULES = {
     "contenu": "cib-contenu",
     "accompagnement": "cib-accompagnement",
 }
-MINIAPP_VERSIONS = {"veille": "6", "contenu": "6", "accompagnement": "7"}
+MINIAPP_VERSIONS = {"veille": "7", "contenu": "7", "accompagnement": "8"}
 
 
 def load(role, name):
@@ -45,7 +47,7 @@ def test_all_roles_use_acl_broker_for_crud():
         _, listing = load(role, "list")
         assert 'operation:"list"' in broker_action(listing, "list")["code"]
         manifest = json.loads((ROOT / DIRS[role] / "module.yaml").read_text())
-        assert manifest["version"] == "0.2.4"
+        assert manifest["version"] == "0.2.5"
 
 
 def test_share_and_people_use_closed_acl_contract():
@@ -116,7 +118,7 @@ def test_miniapp_share_transitions_are_separate_from_save():
         assert "share_permission" in mini["state_schema"]["properties"]
         assert mini["initial_state"]["share_confirmation_manuelle"] == "non"
         assert mini["initial_state"]["people"]["dossier_id"] == ""
-        assert "Rechargez les membres" in json.dumps(mini)
+        assert "Refresh members" in json.dumps(mini)
         assert "admin_recovery" not in json.dumps(mini)
 
 
@@ -139,13 +141,13 @@ def test_dedicated_sharing_miniapps_compile_one_share_form_and_keep_acl_events()
         assert {event["event_id"] for event in mini["events"]} == {
             "refresh", "select", "people", "select-person", "share"
         }
-        assert "console dédiée depuis la navigation" not in json.dumps(mini)
+        assert "dedicated sharing console from navigation" not in json.dumps(mini)
         share_path, share = load(role, "share")
         assert len(share["forms"]) == 1, share_path
         assert share["forms"][0]["id"] == f"{role}-share"
         assert share["forms"][0]["fields"]
         assert all(field["required"] for field in share["forms"][0]["fields"])
-        assert "Partager une fiche ne donne pas accès au service." in json.dumps(mini, ensure_ascii=False)
+        assert "Sharing a record does not grant access to the service." in json.dumps(mini, ensure_ascii=False)
 
 
 def test_native_selection_carries_revision_and_prefills_form():
@@ -185,9 +187,77 @@ def test_native_selection_carries_revision_and_prefills_form():
             assert 'contradiction===true?"oui":"non"' in read_code
 
 
+
+
+def test_language_upgrade_retains_previous_fingerprints_and_bumps_versions():
+    fixture = json.loads((ROOT / "tooling/roles/legacy-resource-hashes.json").read_text())
+    assert fixture["source_commit"] == "be204e3"
+    entries = fixture["resources"]
+    expected_paths = {str(path.relative_to(ROOT)) for directory in DIRS.values() for path in (ROOT / directory / "agents/main").rglob("*.json")}
+    expected_paths |= {f"{directory}/module.yaml" for directory in DIRS.values()}
+    assert set(entries) == expected_paths
+    for path, previous in entries.items():
+        current_bytes = (ROOT / path).read_bytes()
+        current = json.loads(current_bytes)
+        assert len(previous["sha256"]) == 64
+        assert hashlib.sha256(current_bytes).hexdigest() != previous["sha256"]
+        if path.endswith("module.yaml"):
+            assert previous["version"] == "0.2.4" and current["version"] == "0.2.5"
+        else:
+            assert int(current["version"]) == int(previous["version"]) + 1
+
+
+
+def test_resource_versions_and_options_remain_consistent():
+    for role, directory in DIRS.items():
+        base = ROOT / directory
+        resources = [json.loads(path.read_text()) for path in (base / "agents/main").rglob("*.json")]
+        versions = {item.get("workflow_id", item.get("miniapp_id")): item["version"] for item in resources}
+        manifest = json.loads((base / "module.yaml").read_text())
+        def check(value):
+            if isinstance(value, dict):
+                for kind in ("workflow", "miniapp"):
+                    identity = value.get(kind + "_id")
+                    version = value.get(kind + "_version")
+                    if identity in versions and version is not None:
+                        assert version == versions[identity], (identity, version, versions[identity])
+                for child in value.values():
+                    check(child)
+            elif isinstance(value, list):
+                for child in value:
+                    check(child)
+        check(manifest)
+        for item in resources:
+            check(item)
+        _, share = load(role, "share")
+        options = next(field["options"] for field in share["forms"][0]["fields"] if field["name"] == "share_confirmation_manuelle")
+        assert [(item["value"], item["label"]) for item in options] == [("non", "No"), ("oui", "Yes")]
+
+
+def test_read_display_labels_preserve_wire_data():
+    for role, namespace in MODULES.items():
+        _, spec = load(role, "read")
+        code = broker_action(spec, "read")["code"]
+        original = {"id": "case", "etat": "pret_a_revoir", "decision": {"routing": {"worker": "veille"}, "research": {"verdict": "sufficient"}, "decision": "human_review"}}
+        item = {"namespace": namespace, "key": "case", "revision": 1, "data": original, "permissions": {"can_read": True, "can_write": False, "can_manage": False}, "shares": []}
+        code = code.replace("import { callTool } from './tools/nats_bridge.ts';", "const callTool=async()=>({record:" + json.dumps(item) + "});")
+        code = code.replace("{{ json .target }}", '{"id":"case"}')
+        runner = "(async()=>{" + code + "})().then(x=>console.log(JSON.stringify(x))).catch(e=>{console.error(e);process.exit(1)})"
+        result = json.loads(subprocess.run(["node", "-e", runner], text=True, check=True, capture_output=True).stdout)
+        assert result["record"] == original
+        assert result["display"] == {"status": "Ready for review", "worker": "Watch", "verdict": "Sufficient", "review": "Human review"}
+        assert result["permissions_summary"] == "Read: yes · Write: no · Share: no"
+        for name in (f"{role}-console.json", f"{role}-sharing-console.json"):
+            mini = json.loads((ROOT / DIRS[role] / "agents/main/miniapps" / name).read_text())
+            assert "selected.display.status" in json.dumps(mini)
+
+
 if __name__ == "__main__":
     test_all_roles_use_acl_broker_for_crud()
     test_share_and_people_use_closed_acl_contract()
     test_miniapp_share_transitions_are_separate_from_save()
     test_dedicated_sharing_miniapps_compile_one_share_form_and_keep_acl_events()
     test_native_selection_carries_revision_and_prefills_form()
+    test_read_display_labels_preserve_wire_data()
+    test_language_upgrade_retains_previous_fingerprints_and_bumps_versions()
+    test_resource_versions_and_options_remain_consistent()
