@@ -17,10 +17,20 @@
       "workflows": 10,
       "miniapps": 6,
       "source": {
-        "repository": "gitlab.com/mcpchatui/pilote-maurice",
-        "commit": "8cb35a14b825dcdae4515d46e3b4c5149c154901",
-        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
-        "old_path": "solutions/company-memory/module"
+        "current": {
+          "repository": "github.com/agentmaurice/modules",
+          "package_path": "company-memory",
+          "version": "0.3.1",
+          "revision_resolution": "Resolve the exact commit at import or release; it is not embedded in this generated inventory."
+        },
+        "historical_baseline": {
+          "repository": "gitlab.com/mcpchatui/pilote-maurice",
+          "commit": "8cb35a14b825dcdae4515d46e3b4c5149c154901",
+          "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+          "old_path": "solutions/company-memory/module",
+          "version_basis": "0.3.0",
+          "role": "Historical source and pre-M5 version basis; not provenance of the current package bytes."
+        }
       },
       "generators_and_composers": [
         "tooling/company-memory/compose.py"
@@ -564,10 +574,10 @@
         "support-memory",
         "watch-memory"
       ],
-      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
-      "publication": "historical GitHub 0.2.0; 0.3.0 from GitLab source, local integration",
-      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+      "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
+      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
     },
     {
       "key": "cib-contenu",
@@ -576,10 +586,20 @@
       "workflows": 6,
       "miniapps": 2,
       "source": {
-        "repository": "github.com/agentmaurice/company-in-a-box",
-        "commit": "dc935630764b24c819defd03cc487bddf8f87399",
-        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
-        "old_path": "solutions/company-in-a-box/modules/contenu"
+        "current": {
+          "repository": "github.com/agentmaurice/modules",
+          "package_path": "content",
+          "version": "0.2.5",
+          "revision_resolution": "Resolve the exact commit at import or release; it is not embedded in this generated inventory."
+        },
+        "historical_baseline": {
+          "repository": "github.com/agentmaurice/company-in-a-box",
+          "commit": "dc935630764b24c819defd03cc487bddf8f87399",
+          "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+          "old_path": "solutions/company-in-a-box/modules/contenu",
+          "version_basis": "0.2.4",
+          "role": "Historical source and pre-M5 version basis; not provenance of the current package bytes."
+        }
       },
       "generators_and_composers": [
         "templates/company-in-a-box/compose.py"
@@ -772,10 +792,10 @@
         "content-memory",
         "daily-routine"
       ],
-      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
-      "publication": "present in historical GitHub source at specified commit",
-      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+      "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
+      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
     },
     {
       "key": "cib-contenu-memory",
@@ -784,10 +804,20 @@
       "workflows": 4,
       "miniapps": 4,
       "source": {
-        "repository": "github.com/agentmaurice/company-in-a-box",
-        "commit": "dc935630764b24c819defd03cc487bddf8f87399",
-        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
-        "old_path": "solutions/company-in-a-box/memory-integration/modules/contenu"
+        "current": {
+          "repository": "github.com/agentmaurice/modules",
+          "package_path": "content-memory",
+          "version": "0.2.1",
+          "revision_resolution": "Resolve the exact commit at import or release; it is not embedded in this generated inventory."
+        },
+        "historical_baseline": {
+          "repository": "github.com/agentmaurice/company-in-a-box",
+          "commit": "dc935630764b24c819defd03cc487bddf8f87399",
+          "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+          "old_path": "solutions/company-in-a-box/memory-integration/modules/contenu",
+          "version_basis": "0.2.0",
+          "role": "Historical source and pre-M5 version basis; not provenance of the current package bytes."
+        }
       },
       "generators_and_composers": [
         "tooling/memory-integration/compose.py"
@@ -995,10 +1025,10 @@
         "company-memory"
       ],
       "known_consumers": [],
-      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
-      "publication": "present in historical GitHub source at specified commit",
-      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+      "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
+      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
     },
     {
       "key": "cib-daily-routine",
@@ -1007,10 +1037,20 @@
       "workflows": 4,
       "miniapps": 3,
       "source": {
-        "repository": "github.com/agentmaurice/company-in-a-box",
-        "commit": "dc935630764b24c819defd03cc487bddf8f87399",
-        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
-        "old_path": "solutions/company-in-a-box/daily-routine/module"
+        "current": {
+          "repository": "github.com/agentmaurice/modules",
+          "package_path": "daily-routine",
+          "version": "0.1.1",
+          "revision_resolution": "Resolve the exact commit at import or release; it is not embedded in this generated inventory."
+        },
+        "historical_baseline": {
+          "repository": "github.com/agentmaurice/company-in-a-box",
+          "commit": "dc935630764b24c819defd03cc487bddf8f87399",
+          "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+          "old_path": "solutions/company-in-a-box/daily-routine/module",
+          "version_basis": "0.1.0",
+          "role": "Historical source and pre-M5 version basis; not provenance of the current package bytes."
+        }
       },
       "generators_and_composers": [
         "tooling/daily-routine/build.py",
@@ -1198,10 +1238,10 @@
         "company-memory"
       ],
       "known_consumers": [],
-      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
-      "publication": "present in historical GitHub source at specified commit",
-      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+      "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
+      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
     },
     {
       "key": "cib-enterprise-admin",
@@ -1210,10 +1250,20 @@
       "workflows": 7,
       "miniapps": 3,
       "source": {
-        "repository": "github.com/agentmaurice/company-in-a-box",
-        "commit": "dc935630764b24c819defd03cc487bddf8f87399",
-        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
-        "old_path": "solutions/company-in-a-box/enterprise-admin/module"
+        "current": {
+          "repository": "github.com/agentmaurice/modules",
+          "package_path": "enterprise-admin",
+          "version": "0.2.3",
+          "revision_resolution": "Resolve the exact commit at import or release; it is not embedded in this generated inventory."
+        },
+        "historical_baseline": {
+          "repository": "github.com/agentmaurice/company-in-a-box",
+          "commit": "dc935630764b24c819defd03cc487bddf8f87399",
+          "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+          "old_path": "solutions/company-in-a-box/enterprise-admin/module",
+          "version_basis": "0.2.2",
+          "role": "Historical source and pre-M5 version basis; not provenance of the current package bytes."
+        }
       },
       "generators_and_composers": [
         "tooling/enterprise-admin/build.py",
@@ -1399,10 +1449,10 @@
       "requires": {},
       "composition_dependencies": [],
       "known_consumers": [],
-      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
-      "publication": "present in historical GitHub source at specified commit",
-      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+      "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
+      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
     },
     {
       "key": "cib-marketing-launch",
@@ -1411,10 +1461,20 @@
       "workflows": 9,
       "miniapps": 6,
       "source": {
-        "repository": "github.com/agentmaurice/company-in-a-box",
-        "commit": "dc935630764b24c819defd03cc487bddf8f87399",
-        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
-        "old_path": "solutions/company-in-a-box/marketing-launch/module"
+        "current": {
+          "repository": "github.com/agentmaurice/modules",
+          "package_path": "marketing-launch",
+          "version": "0.1.1",
+          "revision_resolution": "Resolve the exact commit at import or release; it is not embedded in this generated inventory."
+        },
+        "historical_baseline": {
+          "repository": "github.com/agentmaurice/company-in-a-box",
+          "commit": "dc935630764b24c819defd03cc487bddf8f87399",
+          "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+          "old_path": "solutions/company-in-a-box/marketing-launch/module",
+          "version_basis": "0.1.0",
+          "role": "Historical source and pre-M5 version basis; not provenance of the current package bytes."
+        }
       },
       "generators_and_composers": [
         "tooling/marketing-launch/build.py",
@@ -1664,10 +1724,10 @@
       "requires": {},
       "composition_dependencies": [],
       "known_consumers": [],
-      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
-      "publication": "present in historical GitHub source at specified commit",
-      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+      "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
+      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
     },
     {
       "key": "cib-accompagnement",
@@ -1676,10 +1736,20 @@
       "workflows": 6,
       "miniapps": 2,
       "source": {
-        "repository": "github.com/agentmaurice/company-in-a-box",
-        "commit": "dc935630764b24c819defd03cc487bddf8f87399",
-        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
-        "old_path": "solutions/company-in-a-box/modules/accompagnement"
+        "current": {
+          "repository": "github.com/agentmaurice/modules",
+          "package_path": "support",
+          "version": "0.2.5",
+          "revision_resolution": "Resolve the exact commit at import or release; it is not embedded in this generated inventory."
+        },
+        "historical_baseline": {
+          "repository": "github.com/agentmaurice/company-in-a-box",
+          "commit": "dc935630764b24c819defd03cc487bddf8f87399",
+          "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+          "old_path": "solutions/company-in-a-box/modules/accompagnement",
+          "version_basis": "0.2.4",
+          "role": "Historical source and pre-M5 version basis; not provenance of the current package bytes."
+        }
       },
       "generators_and_composers": [
         "templates/company-in-a-box/compose.py"
@@ -1872,10 +1942,10 @@
         "daily-routine",
         "support-memory"
       ],
-      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
-      "publication": "present in historical GitHub source at specified commit",
-      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+      "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
+      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
     },
     {
       "key": "cib-accompagnement-memory",
@@ -1884,10 +1954,20 @@
       "workflows": 3,
       "miniapps": 3,
       "source": {
-        "repository": "github.com/agentmaurice/company-in-a-box",
-        "commit": "dc935630764b24c819defd03cc487bddf8f87399",
-        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
-        "old_path": "solutions/company-in-a-box/memory-integration/modules/accompagnement"
+        "current": {
+          "repository": "github.com/agentmaurice/modules",
+          "package_path": "support-memory",
+          "version": "0.2.1",
+          "revision_resolution": "Resolve the exact commit at import or release; it is not embedded in this generated inventory."
+        },
+        "historical_baseline": {
+          "repository": "github.com/agentmaurice/company-in-a-box",
+          "commit": "dc935630764b24c819defd03cc487bddf8f87399",
+          "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+          "old_path": "solutions/company-in-a-box/memory-integration/modules/accompagnement",
+          "version_basis": "0.2.0",
+          "role": "Historical source and pre-M5 version basis; not provenance of the current package bytes."
+        }
       },
       "generators_and_composers": [
         "tooling/memory-integration/compose.py"
@@ -2018,10 +2098,10 @@
         "company-memory"
       ],
       "known_consumers": [],
-      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
-      "publication": "present in historical GitHub source at specified commit",
-      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+      "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
+      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
     },
     {
       "key": "cib-veille",
@@ -2030,10 +2110,20 @@
       "workflows": 7,
       "miniapps": 2,
       "source": {
-        "repository": "github.com/agentmaurice/company-in-a-box",
-        "commit": "dc935630764b24c819defd03cc487bddf8f87399",
-        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
-        "old_path": "solutions/company-in-a-box/modules/veille"
+        "current": {
+          "repository": "github.com/agentmaurice/modules",
+          "package_path": "watch",
+          "version": "0.2.5",
+          "revision_resolution": "Resolve the exact commit at import or release; it is not embedded in this generated inventory."
+        },
+        "historical_baseline": {
+          "repository": "github.com/agentmaurice/company-in-a-box",
+          "commit": "dc935630764b24c819defd03cc487bddf8f87399",
+          "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+          "old_path": "solutions/company-in-a-box/modules/veille",
+          "version_basis": "0.2.4",
+          "role": "Historical source and pre-M5 version basis; not provenance of the current package bytes."
+        }
       },
       "generators_and_composers": [
         "templates/company-in-a-box/compose.py"
@@ -2251,10 +2341,10 @@
         "daily-routine",
         "watch-memory"
       ],
-      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
-      "publication": "present in historical GitHub source at specified commit",
-      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+      "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
+      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
     },
     {
       "key": "cib-veille-memory",
@@ -2263,10 +2353,20 @@
       "workflows": 3,
       "miniapps": 3,
       "source": {
-        "repository": "github.com/agentmaurice/company-in-a-box",
-        "commit": "dc935630764b24c819defd03cc487bddf8f87399",
-        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
-        "old_path": "solutions/company-in-a-box/memory-integration/modules/veille"
+        "current": {
+          "repository": "github.com/agentmaurice/modules",
+          "package_path": "watch-memory",
+          "version": "0.2.1",
+          "revision_resolution": "Resolve the exact commit at import or release; it is not embedded in this generated inventory."
+        },
+        "historical_baseline": {
+          "repository": "github.com/agentmaurice/company-in-a-box",
+          "commit": "dc935630764b24c819defd03cc487bddf8f87399",
+          "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+          "old_path": "solutions/company-in-a-box/memory-integration/modules/veille",
+          "version_basis": "0.2.0",
+          "role": "Historical source and pre-M5 version basis; not provenance of the current package bytes."
+        }
       },
       "generators_and_composers": [
         "tooling/memory-integration/compose.py"
@@ -2397,10 +2497,10 @@
         "company-memory"
       ],
       "known_consumers": [],
-      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
-      "publication": "present in historical GitHub source at specified commit",
-      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+      "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
+      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
     },
     {
       "key": "cib-work-dossiers",
@@ -2409,10 +2509,20 @@
       "workflows": 6,
       "miniapps": 2,
       "source": {
-        "repository": "github.com/agentmaurice/company-in-a-box",
-        "commit": "dc935630764b24c819defd03cc487bddf8f87399",
-        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
-        "old_path": "solutions/company-in-a-box/common-dossier/module"
+        "current": {
+          "repository": "github.com/agentmaurice/modules",
+          "package_path": "work-cases",
+          "version": "0.2.3",
+          "revision_resolution": "Resolve the exact commit at import or release; it is not embedded in this generated inventory."
+        },
+        "historical_baseline": {
+          "repository": "github.com/agentmaurice/company-in-a-box",
+          "commit": "dc935630764b24c819defd03cc487bddf8f87399",
+          "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+          "old_path": "solutions/company-in-a-box/common-dossier/module",
+          "version_basis": "0.2.2",
+          "role": "Historical source and pre-M5 version basis; not provenance of the current package bytes."
+        }
       },
       "generators_and_composers": [
         "tooling/work-cases/build.py",
@@ -2614,10 +2724,10 @@
       "requires": {},
       "composition_dependencies": [],
       "known_consumers": [],
-      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
-      "publication": "present in historical GitHub source at specified commit",
-      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+      "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
+      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
     }
   ]
 }

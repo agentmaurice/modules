@@ -51,7 +51,7 @@ The original library snapshot is commit
 Subsequent versions change those resources; generated builders are checked on
 temporary copies against the committed artifacts.
 
-Company Memory carries the separately versioned 0.3.0 source from commit
+The historical Company Memory 0.3.0 baseline comes from commit
 `8cb35a14b825dcdae4515d46e3b4c5149c154901` of the internal canonical pilot.
 The initial 0.3.0 import preserved its package resources exactly; later versions
 are separate revisions. The previous
