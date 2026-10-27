@@ -13,6 +13,11 @@ def compose(consumer):
         if spec.get('agent_alias')!=role or spec.get('schema_version')!=2:raise ValueError('invalid consumer Agent '+role)
         for required in [role+'-read','company-memory-query']:
             if not (root/'workflows'/(required+'.json')).is_file():raise ValueError('missing existing workflow '+required)
+        bridge_path=root/'workflows/company-memory-query.json'
+        try: memory_bridge=json.loads(bridge_path.read_text())
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:raise ValueError('invalid company-memory-query bridge for '+role) from exc
+        if not isinstance(memory_bridge,dict) or memory_bridge.get('workflow_id')!='company-memory-query' or memory_bridge.get('version')!='2':
+            raise ValueError('company-memory-query bridge must be workflow version 2 for '+role)
         source=ROOT.parents[1]/'daily-routine/agents/main'
         for path in sorted(source.rglob('*.json')):planned[root/path.relative_to(source)]=path.read_bytes()
         code = "import { callTool } from './tools/nats_bridge.ts';\n" + 'const x={{ json . }}; if(typeof x.dossier_id!=="string"||!/^[a-z0-9][a-z0-9-]{0,63}$/.test(x.dossier_id)) throw Error("invalid_dossier_id"); const value=await callTool("recipe--application_data_v1",{operation:"read",namespace:"cib-'+role+'",record_key:x.dossier_id}); return {data:{record:value.record.data}};'

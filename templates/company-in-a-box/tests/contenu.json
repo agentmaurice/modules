@@ -12,7 +12,7 @@
           "dossier_id": "acme-demo",
           "entreprise": "Acme",
           "sujet": "Product demo",
-          "faits": "Prospect entrant.",
+          "faits": "Inbound prospect.",
           "source_ref": "fixture:p0",
           "brouillon": "",
           "confirmation_manuelle": true
@@ -89,7 +89,7 @@
           "dossier_id": "acme-demo",
           "entreprise": "Acme",
           "sujet": "Product demo",
-          "faits": "Prospect entrant.",
+          "faits": "Inbound prospect.",
           "source_ref": "fixture:p0",
           "brouillon": "",
           "confirmation_manuelle": false

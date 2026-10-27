@@ -30,6 +30,76 @@ def candidates(text):
             yield number, line.strip()
 
 
+def presentation_candidates(document):
+    """Inspect only declared presentation fields, never option values or user data."""
+    if not isinstance(document, dict) or document.get('kind') not in {'workflow', 'miniapp'}:
+        return []
+    short = {'oui', 'non', 'objectif', 'relecture'}
+    hits = []
+
+    def walk(value, pointer):
+        if isinstance(value, dict):
+            for key, child in value.items():
+                child_pointer = pointer + '/' + key.replace('~', '~0').replace('/', '~1')
+                if isinstance(child, str) and (key in {'label', 'title', 'placeholder', 'help'} or
+                    (key == 'value' and value.get('type') == 'text')) and child.strip().casefold() in short:
+                    hits.append((child_pointer, child))
+                if key == 'column_labels' and isinstance(child, dict):
+                    for column, label in child.items():
+                        if isinstance(label, str) and label.strip().casefold() in short:
+                            hits.append((child_pointer + '/' + column.replace('~', '~0').replace('/', '~1'), label))
+                walk(child, child_pointer)
+        elif isinstance(value, list):
+            for i, child in enumerate(value): walk(child, pointer + '/' + str(i))
+
+    for key in ('ui', 'forms'):
+        if key in document: walk(document[key], '/' + key)
+    for key in ('title', 'description'):
+        if isinstance(document.get(key), str) and document[key].strip().casefold() in short:
+            hits.append(('/' + key, document[key]))
+    return hits
+
+
+def apply_code_fragments(source, name, entries):
+    """Mask only approved exact fragments in a decoded action's code, in memory."""
+    if not entries:
+        return source, set()
+    try:
+        document = json.loads(source)
+    except (json.JSONDecodeError, TypeError) as error:
+        raise ValueError(f'{name}: invalid JSON for code fragments: {error}') from error
+    groups = {}
+    for key, entry in entries.items():
+        groups.setdefault((entry['json_pointer'], entry['action_id']), []).append((key, entry))
+    seen = set()
+    for (pointer, action_id), group in groups.items():
+        match = re.fullmatch(r'/actions/(0|[1-9][0-9]*)/code', pointer)
+        if not match:
+            raise ValueError(f'{name}: invalid action code pointer {pointer}')
+        try:
+            action = document['actions'][int(match.group(1))]
+            original = action['code']
+            if action['id'] != action_id or not isinstance(original, str):
+                raise ValueError('action ID or code mismatch')
+        except (KeyError, IndexError, TypeError, ValueError) as error:
+            raise ValueError(f'{name}: stale code exception {pointer}: {error}') from error
+        fragments = [entry['fragment'] for _, entry in group]
+        if any(a != b and a in b for a in fragments for b in fragments):
+            raise ValueError(f'{name}: overlapping code fragments at {pointer}')
+        masked = original
+        for key, entry in group:
+            fragment = entry['fragment']
+            if original.count(fragment) != entry['expected_count']:
+                raise ValueError(f'{name}: stale code fragment at {pointer} for {action_id}')
+            masked = masked.replace(fragment, ' ' * len(fragment))
+            seen.add(key)
+        old_json = json.dumps(original, ensure_ascii=False)
+        if source.count(old_json) != 1:
+            raise ValueError(f'{name}: action code serialization is ambiguous at {pointer}')
+        source = source.replace(old_json, json.dumps(masked, ensure_ascii=False), 1)
+    return source, seen
+
+
 def source_paths():
     """Use Git's inventory only for this exact checkout; scan archives on disk."""
     try:
@@ -58,13 +128,26 @@ def main():
     args = parser.parse_args()
     exceptions = json.loads((ROOT / 'scripts/language_exceptions.json').read_text())
     allowed = {}
+    fragments = {}
     for entry in exceptions:
-        key = (entry['path'], entry['line_sha256'])
-        if key in allowed:
-            raise SystemExit(f'duplicate language exception: {key[0]} {key[1]}')
         if not entry.get('reason'):
-            raise SystemExit(f'language exception requires a reason: {key[0]}')
-        allowed[key] = entry['reason']
+            raise SystemExit(f"language exception requires a reason: {entry.get('path', '?')}")
+        if 'fragment' in entry:
+            fragment = entry['fragment']
+            if (not isinstance(fragment, str) or not fragment or len(fragment) > 200 or '\n' in fragment
+                    or not PATTERN.search(fragment) or not isinstance(entry.get('expected_count'), int)
+                    or isinstance(entry.get('expected_count'), bool) or entry['expected_count'] < 1
+                    or not isinstance(entry.get('action_id'), str) or not entry['action_id']):
+                raise SystemExit(f"invalid bounded code exception: {entry.get('path', '?')}")
+            key = ('fragment', entry['path'], entry.get('json_pointer'), entry['action_id'], fragment)
+            if key in fragments:
+                raise SystemExit(f'duplicate language exception: {entry["path"]}')
+            fragments[key] = entry
+        else:
+            key = ('line', entry['path'], entry['line_sha256'])
+            if key in allowed:
+                raise SystemExit(f'duplicate language exception: {entry["path"]} {entry["line_sha256"]}')
+            allowed[key] = entry['reason']
     paths, mode = source_paths()
     count = 0
     seen = set()
@@ -76,16 +159,32 @@ def main():
             source = (ROOT / path).read_text(encoding='utf-8')
         except (UnicodeError, FileNotFoundError, IsADirectoryError):
             continue
+        if name.endswith('.json'):
+            try:
+                document = json.loads(source)
+            except json.JSONDecodeError:
+                document = None  # The distribution checker reports malformed JSON.
+            for pointer, label in presentation_candidates(document):
+                print(f'{name}:{pointer}: display label {label}')
+                count += 1
+        scoped = {key: value for key, value in fragments.items() if value['path'] == name}
+        try:
+            source, applied = apply_code_fragments(source, name, scoped)
+        except ValueError as error:
+            raise SystemExit(str(error)) from error
+        seen.update(applied)
         for line, content in candidates(source):
-            key = (name, hashlib.sha256(content.encode('utf-8')).hexdigest())
+            key = ('line', name, hashlib.sha256(content.encode('utf-8')).hexdigest())
             if key in allowed:
+                if name.endswith('.json') and re.match(r'"code"\s*:', content):
+                    raise SystemExit(f'{name}:{line}: unbounded serialized code exception is forbidden')
                 seen.add(key)
                 continue
             print(f'{name}:{line}: {content}')
             count += 1
-    stale = set(allowed) - seen
-    for name, digest in sorted(stale):
-        print(f'{name}: stale exception {digest}')
+    stale = (set(allowed) | set(fragments)) - seen
+    for key in sorted(stale):
+        print(f'{key[1]}: stale exception {key[2]}')
     print(f'{count} candidate lines, {len(stale)} stale exceptions; scan={mode}; manual review is required.')
     if args.check and (count or stale):
         raise SystemExit(1)

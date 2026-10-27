@@ -67,6 +67,10 @@
                 "user_id",
                 "display_name"
               ],
+              "column_labels": {
+                "user_id": "Identifier",
+                "display_name": "Member"
+              },
               "rows": {
                 "state": "people.people"
               },

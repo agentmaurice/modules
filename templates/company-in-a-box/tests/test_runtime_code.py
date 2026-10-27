@@ -18,12 +18,12 @@ def _fixture(role):
         "source_ref": "source-node",
         "source_date": "2026-10-10",
         "date_revue": "2026-10-11",
-        "faits": "faits de test",
+        "faits": "synthetic facts",
         "preuve_ref": "preuve-node",
         "role_demande": "veille",
         "contradiction": "non",
         "confirmation_manuelle": "oui",
-        "sujet": "sujet de test",
+        "sujet": "synthetic subject",
         "brouillon": "test draft",
         "objectif": "test objective",
         "resultat_observe": "test result",
@@ -106,8 +106,8 @@ NODE_RUNNER = r'''
 const cases = JSON.parse(process.env.RUNTIME_CASES);
 const permissions = {can_read: true, can_write: true, can_manage: true};
 const dataFor = (key) => ({id: key, entreprise: "Fixture runtime", source_ref: "source-node",
-  source_date: "2026-10-10", date_revue: "2026-10-11", faits: "faits de test",
-  preuve_ref: "preuve-node", role_demande: "veille", sujet: "sujet de test",
+  source_date: "2026-10-10", date_revue: "2026-10-11", faits: "synthetic facts",
+  preuve_ref: "preuve-node", role_demande: "veille", sujet: "synthetic subject",
   brouillon: "test draft", objectif: "test objective", resultat_observe: "test result",
   blocage: "", prochaine_etape: "next step"});
 async function callTool(_name, args) {

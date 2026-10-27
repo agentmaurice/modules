@@ -26,6 +26,15 @@ class ModuleTest(unittest.TestCase):
     for forbidden in ("organization_id", "application_id", "caller_id", "create_account", "invite_email", "sign"):
       self.assertNotIn(forbidden, code)
 
+  def test_members_table_has_english_labels_and_preserves_wire_keys(self):
+    miniapp = json.loads(((ROOT.parents[1] / "enterprise-admin") / "agents/main/miniapps/cib-admin-records-console.json").read_text())
+    sections = miniapp["ui"]["configuration"]["layout"]
+    table = next(section["children"][0] for section in sections if section.get("title") == "Existing members — click to select")
+    self.assertEqual(table["columns"], ["user_id", "display_name"])
+    self.assertEqual(table["column_labels"], {"user_id": "Identifier", "display_name": "Member"})
+    self.assertEqual(table["rows"], {"state": "people.people"})
+    self.assertEqual(table["on_row_click"], "select-person")
+
   def test_form_has_manual_confirmation_and_required_management_fields(self):
     manage = json.loads(((ROOT.parents[1] / "enterprise-admin") / "agents/main/workflows/cib-admin-manage.json").read_text())
     names = {f["name"] for f in manage["forms"][0]["fields"]}

@@ -15,7 +15,7 @@ const WORKFLOW_IDS = [
 
 const campaignInput = {
   jeu: 'qualification', id: 'campagne-runtime-1',
-  objectif: 'Qualifier une demande d’essai', audience: 'makers',
+  objectif: 'Qualify a trial request', audience: 'makers',
   promesse: 'Verifiable first result', canal: 'contenu', responsable: 'contenu',
   echeance: '2026-11-15', critere_fin: 'Preuve relue par une personne',
   confirmation_manuelle: 'oui', expected_revision: 0,
@@ -28,14 +28,14 @@ const veille = {
 const contenu = {
   id: 'contenu-runtime-1', role: 'contenu', revision: 4,
   decision: { decision: 'accepted' }, review_scope: 'internal_draft_only',
-  source_ref: 'fixture:veille-runtime-1', brouillon: 'Brouillon interne',
+  source_ref: 'fixture:veille-runtime-1', brouillon: 'Internal draft',
   external_effect: false, preuve_ref: 'fixture:contenu-runtime-1',
 };
 const support = {
   id: 'accompagnement-runtime-1', role: 'accompagnement', revision: 2,
   objectif: 'Support onboarding', resultat_observe: 'Observed result',
   preuve_ref: 'fixture:result-runtime-1', blocage: '',
-  prochaine_etape: 'Relecture humaine', confirmation_manuelle: true,
+  prochaine_etape: 'Human review', confirmation_manuelle: true,
   external_effect: false,
 };
 

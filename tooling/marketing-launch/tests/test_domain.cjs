@@ -60,7 +60,7 @@ function contenuRecord(overrides = {}) {
     review_scope: 'internal_draft_only',
     external_effect: false,
     source_ref: 'fixture:veille-1',
-    brouillon: 'Brouillon interne',
+    brouillon: 'Internal draft',
     preuve_ref: 'fixture:contenu-1',
     ...overrides,
   };
@@ -74,7 +74,7 @@ function accompanimentRecord(overrides = {}) {
     resultat_observe: 'Observed and declared result',
     preuve_ref: 'fixture:result-1',
     blocage: '',
-    prochaine_etape: 'Relecture humaine',
+    prochaine_etape: 'Human review',
     external_effect: false,
     confirmation_manuelle: true,
     ...overrides,

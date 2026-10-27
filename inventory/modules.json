@@ -1295,7 +1295,7 @@
           "enterprise-admin/agents/main/workflows/cib-admin-record-share.json": "c285276a3f37c5a3723143d6f170bcf7efe66805428ca40ccabf58aa948c20e8",
           "enterprise-admin/agents/main/miniapps/cib-admin-console.json": "2b049ef01f7a24916df8235a4768e8ec7f27a01e9ab0b316d0f7c11158997ddc",
           "enterprise-admin/agents/main/miniapps/cib-admin-record-share-console.json": "297ad0bb06cdb42e80c57642c633db9e58825adabca54f3e5c70deecc5f1ec41",
-          "enterprise-admin/agents/main/miniapps/cib-admin-records-console.json": "7d6079fb1957844561203cb7200814b4d3bc9fcd8f85b9228f145de638a0ee34"
+          "enterprise-admin/agents/main/miniapps/cib-admin-records-console.json": "386cc3ffc59d6351779dacf574fda2167b900f8d92eb742ebe54c48c3e730aee"
         }
       },
       "workflow_actions": {

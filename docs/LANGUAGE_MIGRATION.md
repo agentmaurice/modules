@@ -70,9 +70,11 @@ must inspect every matrix row, display path and generated message, including
 form labels, summaries, empty states, errors and tables. A technical exception
 must identify the exact content and reason; a whole product file cannot be
 exempted merely because it contains stable identifiers. `--check` is a strict
-candidate gate. Individually reviewed technical exceptions are listed by path
-and exact line hash in `scripts/language_exceptions.json`; stale exceptions
-fail the gate. The presence of a green
+candidate gate. Individually reviewed technical exceptions are listed by path and exact line
+hash, or by bounded exact code fragment, action ID and JSON pointer, in
+`scripts/language_exceptions.json`. Missing, duplicated, overlapping or stale
+code fragments fail the gate. Short French presentation labels are checked
+separately from wire values and user data. The presence of a green
 heuristic alone does not establish complete English coverage.
 
 ## Capability and bridge version boundaries
@@ -123,7 +125,7 @@ proof pending**. Do not substitute a backend JSON response for visual evidence.
 | `cib-daily-routine` | `daily-time-console@2` — Time log | [daily-routine/agents/main/miniapps/daily-time-console.json](../daily-routine/agents/main/miniapps/daily-time-console.json)<br>`2559140d9758355ffb089f4b459f2ca496f3b5ac65784c1cc9d83e10209469c5` | `daily-time-save@2` | Configure surface |
 | `cib-enterprise-admin` | `cib-admin-console@3` — Company-in-a-Box administration | [enterprise-admin/agents/main/miniapps/cib-admin-console.json](../enterprise-admin/agents/main/miniapps/cib-admin-console.json)<br>`2b049ef01f7a24916df8235a4768e8ec7f27a01e9ab0b316d0f7c11158997ddc` | `cib-admin-overview@3`, `cib-admin-manage@3` | Configure surface |
 | `cib-enterprise-admin` | `cib-admin-record-share-console@2` — Administration — share a historical record | [enterprise-admin/agents/main/miniapps/cib-admin-record-share-console.json](../enterprise-admin/agents/main/miniapps/cib-admin-record-share-console.json)<br>`297ad0bb06cdb42e80c57642c633db9e58825adabca54f3e5c70deecc5f1ec41` | `cib-admin-record-share@2` | Configure surface |
-| `cib-enterprise-admin` | `cib-admin-records-console@2` — Administration — historical records | [enterprise-admin/agents/main/miniapps/cib-admin-records-console.json](../enterprise-admin/agents/main/miniapps/cib-admin-records-console.json)<br>`7d6079fb1957844561203cb7200814b4d3bc9fcd8f85b9228f145de638a0ee34` | `cib-admin-record-read@2`, `cib-admin-record-people@2`, `cib-admin-record-share@2` | Configure surface |
+| `cib-enterprise-admin` | `cib-admin-records-console@2` — Administration — historical records | [enterprise-admin/agents/main/miniapps/cib-admin-records-console.json](../enterprise-admin/agents/main/miniapps/cib-admin-records-console.json)<br>`386cc3ffc59d6351779dacf574fda2167b900f8d92eb742ebe54c48c3e730aee` | `cib-admin-record-read@2`, `cib-admin-record-people@2`, `cib-admin-record-share@2` | Configure surface |
 | `cib-marketing-launch` | `cib-launch-campaign-console@2` — Marketing — campaign | [marketing-launch/agents/main/miniapps/cib-launch-campaign-console.json](../marketing-launch/agents/main/miniapps/cib-launch-campaign-console.json)<br>`7d9bf1a302ae17b8f2851424e56ee3cfa6be6b77e99253aafc7ec46e534536ec` | `cib-launch-list@2`, `cib-launch-read@2`, `cib-launch-campaign-save@2` | Configure surface |
 | `cib-marketing-launch` | `cib-launch-content-console@2` — Marketing — link evidence and content | [marketing-launch/agents/main/miniapps/cib-launch-content-console.json](../marketing-launch/agents/main/miniapps/cib-launch-content-console.json)<br>`d6dae7625e89326de5496c4f28bb4b3c9738d15345aed1269298ed57755b8a33` | `cib-launch-list@2`, `cib-launch-read@2`, `cib-launch-content-link@2` | Configure surface |
 | `cib-marketing-launch` | `cib-launch-direction-console@2` — Management — launch and first results | [marketing-launch/agents/main/miniapps/cib-launch-direction-console.json](../marketing-launch/agents/main/miniapps/cib-launch-direction-console.json)<br>`30b9615de81e2f246801530bcc9366eac9213261826b932f1ac90558fb18dc83` | `cib-launch-summary@2` | Configure surface |

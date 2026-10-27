@@ -128,6 +128,10 @@ python3 tooling/enterprise-admin/compose.py --consumer-dir /path/to/consumer --o
 python3 tooling/marketing-launch/compose.py --consumer-dir /path/to/consumer --agent-alias veille
 ```
 
+Daily routine requires the memory integration composer first: every role must have a
+parseable `company-memory-query` bridge Workflow at native version `2`. This
+is independent of the memory capability contract version `1`.
+
 Unknown divergence is refused: preserve local changes and resolve the conflict
 before writing. No composer deploys for you. Review each Module guide, including
 memory limits.

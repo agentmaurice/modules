@@ -181,12 +181,226 @@
   },
   {
     "path": "daily-routine/agents/main/workflows/daily-report.json",
-    "line_sha256": "5654ed16cf78024e41561eb5a15b6fccbd203e92adfd9904a98fb6735c6f25c4",
-    "reason": "Stable machine codes embedded in generated code; displayed labels are English."
+    "json_pointer": "/actions/4/code",
+    "action_id": "summary",
+    "fragment": "exclusions.push(exclusion(row.comparaison_id, \"session_id_dupliqué\", [row]));",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-report.json",
+    "json_pointer": "/actions/4/code",
+    "action_id": "summary",
+    "fragment": "exclusions.push(exclusion(comparison, \"paire_ambiguë_ou_incomplète\", group));",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-report.json",
+    "json_pointer": "/actions/4/code",
+    "action_id": "summary",
+    "fragment": "exclusions.push(exclusion(comparison, \"qualité_non_validée\", group));",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-report.json",
+    "json_pointer": "/actions/4/code",
+    "action_id": "summary",
+    "fragment": "exclusions.push(exclusion(comparison, \"jeu_mélangé\", group));",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-report.json",
+    "json_pointer": "/actions/4/code",
+    "action_id": "summary",
+    "fragment": "exclusions.push(exclusion(comparison, \"référence_assisté_incomparable\", group));",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-report.json",
+    "json_pointer": "/actions/4/code",
+    "action_id": "summary",
+    "fragment": "exclusions.push(exclusion(comparison, \"référence_sans_temps\", group));",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-report.json",
+    "json_pointer": "/actions/4/code",
+    "action_id": "summary",
+    "fragment": "status: \"gain_mesuré\",",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-report.json",
+    "json_pointer": "/actions/4/code",
+    "action_id": "summary",
+    "fragment": "status: pairs.length ? \"gain_mesuré\" : \"gain_non_mesure\",",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-report.json",
+    "json_pointer": "/actions/4/code",
+    "action_id": "summary",
+    "fragment": "\"session_id_dupliqué\": \"Duplicate measurement ID\",",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-report.json",
+    "json_pointer": "/actions/4/code",
+    "action_id": "summary",
+    "fragment": "\"paire_ambiguë_ou_incomplète\": \"Ambiguous or incomplete pair\",",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-report.json",
+    "json_pointer": "/actions/4/code",
+    "action_id": "summary",
+    "fragment": "\"qualité_non_validée\": \"Quality not validated\",",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-report.json",
+    "json_pointer": "/actions/4/code",
+    "action_id": "summary",
+    "fragment": "\"jeu_mélangé\": \"Mixed data sets\",",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-report.json",
+    "json_pointer": "/actions/4/code",
+    "action_id": "summary",
+    "fragment": "\"référence_assisté_incomparable\": \"Baseline and assisted work are not comparable\",",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-report.json",
+    "json_pointer": "/actions/4/code",
+    "action_id": "summary",
+    "fragment": "\"référence_sans_temps\": \"Baseline has no recorded time\",",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
   },
   {
     "path": "daily-routine/agents/main/workflows/daily-time-save.json",
-    "line_sha256": "d3e9b3330c386e2902ba939b003225ae243fa3048fb5cc21bb2c6546d8fa85ca",
-    "reason": "Stable machine codes embedded in generated code; displayed labels are English."
+    "json_pointer": "/actions/0/code",
+    "action_id": "validate",
+    "fragment": "exclusions.push(exclusion(row.comparaison_id, \"session_id_dupliqué\", [row]));",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-time-save.json",
+    "json_pointer": "/actions/0/code",
+    "action_id": "validate",
+    "fragment": "exclusions.push(exclusion(comparison, \"paire_ambiguë_ou_incomplète\", group));",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-time-save.json",
+    "json_pointer": "/actions/0/code",
+    "action_id": "validate",
+    "fragment": "exclusions.push(exclusion(comparison, \"qualité_non_validée\", group));",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-time-save.json",
+    "json_pointer": "/actions/0/code",
+    "action_id": "validate",
+    "fragment": "exclusions.push(exclusion(comparison, \"jeu_mélangé\", group));",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-time-save.json",
+    "json_pointer": "/actions/0/code",
+    "action_id": "validate",
+    "fragment": "exclusions.push(exclusion(comparison, \"référence_assisté_incomparable\", group));",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-time-save.json",
+    "json_pointer": "/actions/0/code",
+    "action_id": "validate",
+    "fragment": "exclusions.push(exclusion(comparison, \"référence_sans_temps\", group));",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-time-save.json",
+    "json_pointer": "/actions/0/code",
+    "action_id": "validate",
+    "fragment": "status: \"gain_mesuré\",",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-time-save.json",
+    "json_pointer": "/actions/0/code",
+    "action_id": "validate",
+    "fragment": "status: pairs.length ? \"gain_mesuré\" : \"gain_non_mesure\",",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-time-save.json",
+    "json_pointer": "/actions/0/code",
+    "action_id": "validate",
+    "fragment": "\"session_id_dupliqué\": \"Duplicate measurement ID\",",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-time-save.json",
+    "json_pointer": "/actions/0/code",
+    "action_id": "validate",
+    "fragment": "\"paire_ambiguë_ou_incomplète\": \"Ambiguous or incomplete pair\",",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-time-save.json",
+    "json_pointer": "/actions/0/code",
+    "action_id": "validate",
+    "fragment": "\"qualité_non_validée\": \"Quality not validated\",",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-time-save.json",
+    "json_pointer": "/actions/0/code",
+    "action_id": "validate",
+    "fragment": "\"jeu_mélangé\": \"Mixed data sets\",",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-time-save.json",
+    "json_pointer": "/actions/0/code",
+    "action_id": "validate",
+    "fragment": "\"référence_assisté_incomparable\": \"Baseline and assisted work are not comparable\",",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-time-save.json",
+    "json_pointer": "/actions/0/code",
+    "action_id": "validate",
+    "fragment": "\"référence_sans_temps\": \"Baseline has no recorded time\",",
+    "expected_count": 1,
+    "reason": "Stable wire code or exact display-label mapping in generated action."
   }
 ]

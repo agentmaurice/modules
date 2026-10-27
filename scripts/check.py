@@ -50,6 +50,8 @@ def main():
    value=json.loads(resource.read_text())
    if value.get(kind+'_id')!=key or value.get('schema_version')!=2 or str(value.get('version'))!=str(ref[kind+'_version']):errors.append(f'{p}: invalid resource reference {key}')
  if errors:raise SystemExit('\n'.join(errors))
- subprocess.run([sys.executable, str(ROOT/'scripts/language_audit.py'), '--check'], cwd=ROOT, check=True)
+ audit = subprocess.run([sys.executable, str(ROOT/'scripts/language_audit.py'), '--check'], cwd=ROOT)
+ if audit.returncode:
+  raise SystemExit(f'language audit failed (exit {audit.returncode}); see diagnostics above')
  print(f'PASS: {count} text files, {len(index)} Modules, {workflows} Workflows, {apps} MiniApps ; links and distribution checks valid.')
 if __name__=='__main__':main()
