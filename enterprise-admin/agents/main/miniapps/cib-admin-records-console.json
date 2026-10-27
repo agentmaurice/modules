@@ -3,9 +3,9 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "cib-admin-records-console",
-  "version": "1",
-  "title": "Administration — fiches historiques",
-  "description": "Contrôle unitaire des métadonnées et partages ACL des fiches historiques. Les fiches restent privées par défaut.",
+  "version": "2",
+  "title": "Administration — historical records",
+  "description": "Inspect metadata and ACL sharing for individual historical records. Records remain private by default.",
   "ui": {
     "renderer": "component",
     "component": "company-in-a-box",
@@ -13,21 +13,21 @@
       "layout": [
         {
           "type": "text",
-          "value": "Saisissez une fiche à la fois. L’administrateur reste dépositaire ; aucun transfert ni partage en masse n’est disponible."
+          "value": "Enter one record at a time. The administrator remains the custodian; bulk transfer and sharing are unavailable."
         },
         {
           "type": "button",
-          "label": "Lire les métadonnées ACL",
+          "label": "Read ACL metadata",
           "on_click": "read"
         },
         {
           "type": "button",
-          "label": "Charger les membres existants",
+          "label": "Load existing members",
           "on_click": "people"
         },
         {
           "type": "section",
-          "title": "Métadonnées ACL",
+          "title": "ACL metadata",
           "children": [
             {
               "type": "text",
@@ -38,21 +38,28 @@
             {
               "type": "table",
               "columns": [
-                "namespace",
+                "namespace_label",
                 "record_key",
                 "revision",
                 "owner_user_id",
                 "body_included"
               ],
+              "column_labels": {
+                "namespace_label": "Record type",
+                "record_key": "Record key",
+                "revision": "Revision",
+                "owner_user_id": "Owner",
+                "body_included": "Body included"
+              },
               "rows": {
-                "state": "read.rows"
+                "state": "read.display_rows"
               }
             }
           ]
         },
         {
           "type": "section",
-          "title": "Membres existants — cliquer pour sélectionner",
+          "title": "Existing members — click to select",
           "children": [
             {
               "type": "table",
@@ -69,7 +76,7 @@
         },
         {
           "type": "section",
-          "title": "Partage unitaire",
+          "title": "Individual sharing",
           "children": [
             {
               "type": "text",
@@ -79,7 +86,7 @@
             },
             {
               "type": "text",
-              "value": "Pour partager ou retirer un accès, ouvrez la console dédiée cib-admin-record-share-console depuis la navigation et recopiez namespace, clé, révision et membre connus."
+              "value": "To share or remove access, open cib-admin-record-share-console from navigation and copy the known namespace, key, revision and member."
             },
             {
               "type": "text",
@@ -126,16 +133,17 @@
   },
   "initial_state": {
     "read": {
-      "message": "Aucune fiche lue.",
-      "rows": []
+      "message": "No record read.",
+      "rows": [],
+      "display_rows": []
     },
     "people": {
-      "message": "Aucun membre chargé.",
+      "message": "No members loaded.",
       "people": [],
       "selected_target": null
     },
     "share": {
-      "message": "Aucune action.",
+      "message": "No action.",
       "rows": []
     },
     "namespace": "cib-cases",

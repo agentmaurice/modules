@@ -3,57 +3,57 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "cib-admin-import-record",
-  "version": "1",
-  "title": "Administration — reprendre une fiche historique",
-  "description": "Reprise manuelle à chemin fixe. Le propriétaire initial est l’administrateur authentifié qui reprend le dossier ; aucun accès implicite des autres personnes.",
+  "version": "2",
+  "title": "Administration — import a historical record",
+  "description": "Manual import from a fixed path. The initial owner is the authenticated administrator who imports the record; no other person receives implicit access.",
   "forms": [
     {
       "id": "import",
-      "title": "Reprise administrative explicite",
+      "title": "Explicit administrative import",
       "fields": [
         {
           "name": "namespace",
           "type": "select",
-          "title": "Type de fiche",
+          "title": "Record type",
           "required": true,
           "options": [
             {
               "value": "cib-cases",
-              "label": "cases"
+              "label": "Cases"
             },
             {
               "value": "cib-veille",
-              "label": "veille"
+              "label": "Watch"
             },
             {
               "value": "cib-contenu",
-              "label": "contenu"
+              "label": "Content"
             },
             {
               "value": "cib-accompagnement",
-              "label": "accompagnement"
+              "label": "Support"
             }
           ]
         },
         {
           "name": "record_key",
           "type": "string",
-          "title": "Identifiant (jeu/identifiant pour les dossiers communs)",
+          "title": "Identifier (collection/identifier for shared cases)",
           "required": true
         },
         {
           "name": "confirmation_manuelle",
           "type": "select",
-          "title": "Reprendre cette fiche, en conserver le fichier original et en devenir le dépositaire",
+          "title": "Import this record, preserve its original file and become its custodian",
           "required": true,
           "options": [
             {
               "value": "non",
-              "label": "Non"
+              "label": "No"
             },
             {
               "value": "oui",
-              "label": "Oui"
+              "label": "Yes"
             }
           ]
         }

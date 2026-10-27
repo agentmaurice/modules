@@ -3,8 +3,8 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "cib-admin-overview",
-  "version": "2",
-  "title": "Administration — état",
+  "version": "3",
+  "title": "Administration — overview",
   "actions": [
     {
       "id": "read",
@@ -14,13 +14,15 @@
           "recipe--company_admin_v1"
         ]
       },
-      "code": "import { callTool } from './tools/nats_bridge.ts';\nconst directory = await callTool(\"recipe--company_admin_v1\", {operation:\"directory_snapshot\"});\nconst application_people = await callTool(\"recipe--company_admin_v1\", {operation:\"application_people_list\"});\nconst approval_mandates = await callTool(\"recipe--company_admin_v1\", {operation:\"approval_mandates_list\"});\nreturn {people: directory.people || [], grants: directory.grants || [], application_people: application_people.people || [], approval_mandates: (approval_mandates.items || []).map(item => ({mandate_id: item.mandate?.mandate_id || item.mandate_id || \"\", status: item.status || \"\"})), mandate_count: approval_mandates.count || 0, message:\"État administratif lu ; aucune mutation.\"};",
+      "code": "import { callTool } from './tools/nats_bridge.ts';\nconst directory = await callTool(\"recipe--company_admin_v1\", {operation:\"directory_snapshot\"});\nconst application_people = await callTool(\"recipe--company_admin_v1\", {operation:\"application_people_list\"});\nconst approval_mandates = await callTool(\"recipe--company_admin_v1\", {operation:\"approval_mandates_list\"});\nconst roles={cib_admin:\"Administration\",cib_marketing:\"Marketing\",cib_service_client:\"Customer service\",cib_direction:\"Management\",cib_dossiers:\"Shared cases\"};\nconst grants=directory.grants || [];\nconst mandates=(approval_mandates.items || []).map(item => ({mandate_id:item.mandate?.mandate_id || item.mandate_id || \"\", status:item.status || \"\"}));\nconst grants_display=grants.map(item=>({...item,role_label:roles[item.role_key] || item.role_key || \"\"}));\nconst approval_mandates_display=mandates.map(item=>({...item,status_label:({active:\"Active\",revoked:\"Revoked\",expired:\"Expired\",pending:\"Pending\"})[item.status] || item.status}));\nreturn {people: directory.people || [], grants, grants_display, application_people: application_people.people || [], approval_mandates: mandates, approval_mandates_display, mandate_count: approval_mandates.count || 0, message:\"Administrative overview read; no changes made.\"};",
       "output_key": "result"
     }
   ],
   "output": {
     "people": "{{ result.people }}",
     "grants": "{{ result.grants }}",
+    "grants_display": "{{ result.grants_display }}",
+    "approval_mandates_display": "{{ result.approval_mandates_display }}",
     "application_people": "{{ result.application_people }}",
     "approval_mandates": "{{ result.approval_mandates }}",
     "mandate_count": "{{ result.mandate_count }}",

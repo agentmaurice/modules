@@ -3,9 +3,9 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "cib-admin-record-share-console",
-  "version": "1",
-  "title": "Administration — partager une fiche historique",
-  "description": "Partage ACL unitaire à partir des métadonnées déjà lues ; aucune lecture du corps métier, aucun transfert ni partage en masse.",
+  "version": "2",
+  "title": "Administration — share a historical record",
+  "description": "Share one record using metadata already read; no business record body is read and no bulk transfer or sharing is performed.",
   "ui": {
     "renderer": "component",
     "component": "company-in-a-box",
@@ -13,11 +13,11 @@
       "layout": [
         {
           "type": "text",
-          "value": "Copiez depuis la console des fiches historiques les quatre informations connues : namespace, clé de fiche, révision et identifiant du membre. N’inscrivez aucun secret. Une seule fiche et un seul membre sont traités à la fois ; l’administrateur reste dépositaire."
+          "value": "Copy the four known fields from the historical records console: namespace, record key, revision and member identifier. Do not enter secrets. One record and one member are handled at a time; the administrator remains the custodian."
         },
         {
           "type": "text",
-          "value": "Ouvrez le formulaire « Administration — partager une fiche historique » dans les interactions disponibles, puis confirmez le partage ou le retrait."
+          "value": "Open the “Administration — share a historical record” form in the available interactions, then confirm sharing or removal."
         },
         {
           "type": "text",
@@ -62,7 +62,7 @@
     "permission": "read",
     "confirmation_manuelle": "non",
     "result": {
-      "message": "Aucune action."
+      "message": "No action."
     }
   },
   "events": [

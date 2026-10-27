@@ -2,63 +2,63 @@
   "$schema": "agentmaurice.module/v2",
   "schema_version": 2,
   "key": "cib-enterprise-admin",
-  "name": "Company-in-a-Box — administration entreprise",
-  "version": "0.2.2",
+  "name": "Company-in-a-Box — enterprise administration",
+  "version": "0.2.3",
   "provides": {
     "actions": [
       {
         "key": "manage",
         "workflow_id": "cib-admin-manage",
-        "workflow_version": "2"
+        "workflow_version": "3"
       },
       {
         "key": "import-record",
         "workflow_id": "cib-admin-import-record",
-        "workflow_version": "1"
+        "workflow_version": "2"
       },
       {
         "key": "record-share",
         "workflow_id": "cib-admin-record-share",
-        "workflow_version": "1"
+        "workflow_version": "2"
       }
     ],
     "queries": [
       {
         "key": "overview",
         "workflow_id": "cib-admin-overview",
-        "workflow_version": "2"
+        "workflow_version": "3"
       },
       {
         "key": "approval-check",
         "workflow_id": "cib-admin-approval-check",
-        "workflow_version": "1"
+        "workflow_version": "2"
       },
       {
         "key": "record-read",
         "workflow_id": "cib-admin-record-read",
-        "workflow_version": "1"
+        "workflow_version": "2"
       },
       {
         "key": "record-people",
         "workflow_id": "cib-admin-record-people",
-        "workflow_version": "1"
+        "workflow_version": "2"
       }
     ],
     "apps": [
       {
         "key": "admin-console",
         "miniapp_id": "cib-admin-console",
-        "miniapp_version": "2"
+        "miniapp_version": "3"
       },
       {
         "key": "records-console",
         "miniapp_id": "cib-admin-records-console",
-        "miniapp_version": "1"
+        "miniapp_version": "2"
       },
       {
         "key": "record-share-console",
         "miniapp_id": "cib-admin-record-share-console",
-        "miniapp_version": "1"
+        "miniapp_version": "2"
       }
     ]
   },

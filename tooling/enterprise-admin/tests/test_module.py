@@ -17,7 +17,7 @@ class ModuleTest(unittest.TestCase):
   def test_generated_contract_and_bounded_tools(self):
     build.build()
     manifest = json.loads(((ROOT.parents[1] / "enterprise-admin") / "module.yaml").read_text())
-    self.assertEqual(manifest["version"], "0.2.2")
+    self.assertEqual(manifest["version"], "0.2.3")
     self.assertEqual({x["workflow_id"] for x in manifest["provides"]["actions"] + manifest["provides"]["queries"]}, {"cib-admin-manage", "cib-admin-overview", "cib-admin-approval-check", "cib-admin-import-record", "cib-admin-record-read", "cib-admin-record-people", "cib-admin-record-share"})
     manage = json.loads(((ROOT.parents[1] / "enterprise-admin") / "agents/main/workflows/cib-admin-manage.json").read_text())
     code = manage["actions"][0]["code"]
@@ -114,6 +114,36 @@ main().then(() => {{
       self.assertEqual(len(planned), 10)
       self.assertEqual(compose.digest(target), compose.LEGACY_021_HASHES["module/agents/main/miniapps/cib-admin-records-console.json"])
 
+  def test_compose_accepts_exact_022_and_rejects_modified_copy(self):
+    old = (ROOT / "tests/fixtures/admin-records-0.2.2.json").read_bytes()
+    self.assertEqual(hashlib.sha256(old).hexdigest(), compose.LEGACY_022_HASHES["module/agents/main/miniapps/cib-admin-records-console.json"])
+    with tempfile.TemporaryDirectory() as directory:
+      consumer = Path(directory)
+      spec_path = consumer / "agents/veille/agent-spec.json"
+      spec_path.parent.mkdir(parents=True)
+      spec_path.write_text(json.dumps({"schema_version":2,"agent_alias":"veille","agent_id":"abcdefghijklmnopqrst"}))
+      target = consumer / "agents/veille/miniapps/cib-admin-records-console.json"
+      target.parent.mkdir(parents=True); target.write_bytes(old)
+      self.assertEqual(len(compose.compose(consumer)),10)
+      target.write_bytes(old + b" ")
+      with self.assertRaises(ValueError): compose.compose(consumer)
+
+  def test_overview_display_projection_preserves_native_values(self):
+    overview = json.loads(((ROOT.parents[1] / "enterprise-admin") / "agents/main/workflows/cib-admin-overview.json").read_text())
+    code = overview["actions"][0]["code"].replace("import { callTool } from './tools/nats_bridge.ts';", "")
+    script = """async function callTool(_, args) {
+      if (args.operation === 'directory_snapshot') return {people: [], grants: [{person_id:'p',role_key:'cib_service_client'}]};
+      if (args.operation === 'application_people_list') return {people: []};
+      return {items:[{mandate_id:'m',status:'revoked'}],count:1};
+    }
+    async function main() {""" + code + """}
+    main().then(v=>console.log(JSON.stringify(v))).catch(e=>{console.error(e);process.exit(1)});"""
+    value=json.loads(subprocess.run(["node","-e",script],text=True,capture_output=True,check=True).stdout)
+    self.assertEqual(value["grants"][0]["role_key"],"cib_service_client")
+    self.assertEqual(value["grants_display"][0]["role_label"],"Customer service")
+    self.assertEqual(value["approval_mandates"][0]["status"],"revoked")
+    self.assertEqual(value["approval_mandates_display"][0]["status_label"],"Revoked")
+
   def test_confirmation_defaults_to_non(self):
     miniapp = json.loads(((ROOT.parents[1] / "enterprise-admin") / "agents/main/miniapps/cib-admin-console.json").read_text())
     self.assertEqual(miniapp["initial_state"]["confirmation_manuelle"], "false")
@@ -140,13 +170,13 @@ main().then(() => {{
     self.assertNotIn("forms", people)
     manifest = json.loads(((ROOT.parents[1] / "enterprise-admin") / "module.yaml").read_text())
     self.assertEqual(set(manifest["provides"]["apps"][1].keys()), {"key", "miniapp_id", "miniapp_version"})
-    self.assertEqual(manifest["provides"]["apps"][2], {"key": "record-share-console", "miniapp_id": "cib-admin-record-share-console", "miniapp_version": "1"})
+    self.assertEqual(manifest["provides"]["apps"][2], {"key": "record-share-console", "miniapp_id": "cib-admin-record-share-console", "miniapp_version": "2"})
 
   def test_records_console_resets_confirmation_and_has_no_bulk_event(self):
     miniapp = json.loads(((ROOT.parents[1] / "enterprise-admin") / "agents/main/miniapps/cib-admin-records-console.json").read_text())
     self.assertEqual(miniapp["initial_state"]["confirmation_manuelle"], "non")
     self.assertEqual({event["event_id"] for event in miniapp["events"]}, {"read", "people", "select-person", "share"})
-    self.assertNotIn("bulk", json.dumps(miniapp).lower())
+    self.assertFalse(any("bulk" in event["event_id"].lower() for event in miniapp["events"]))
     events = {event["event_id"]: event for event in miniapp["events"]}
     self.assertEqual(events["read"]["trigger"], "form.submit")
     self.assertEqual(events["read"]["workflow"]["workflow_id"], "cib-admin-record-read")
@@ -156,13 +186,13 @@ main().then(() => {{
     self.assertEqual(events["share"]["workflow"]["input"]["expected_revision"], "{{ state.read.revision }}")
     self.assertEqual(events["share"]["workflow"]["input"]["subject_user_id"], "{{ state.people.selected_target.user_id }}")
     ui = json.dumps(miniapp["ui"], ensure_ascii=False)
-    self.assertNotIn("Partager / retirer l’accès", ui)
-    self.assertIn("console dédiée cib-admin-record-share-console", ui)
+    self.assertNotIn("Share / remove access", ui)
+    self.assertIn("open cib-admin-record-share-console", ui)
 
   def test_dedicated_share_console_has_one_form_submit_and_root_inputs(self):
     miniapp = json.loads(((ROOT.parents[1] / "enterprise-admin") / "agents/main/miniapps/cib-admin-record-share-console.json").read_text())
     self.assertEqual(miniapp["miniapp_id"], "cib-admin-record-share-console")
-    self.assertEqual(miniapp["version"], "1")
+    self.assertEqual(miniapp["version"], "2")
     self.assertNotIn("forms", miniapp)
     self.assertEqual(len(miniapp["events"]), 1)
     event = miniapp["events"][0]
@@ -173,16 +203,16 @@ main().then(() => {{
     layout = miniapp["ui"]["configuration"]["layout"]
     click_events = {e["event_id"] for e in miniapp["events"] if e["trigger"] == "action.click"}
     self.assertTrue(all(item.get("on_click") in click_events for item in layout if item.get("type") == "button"))
-    self.assertIn("interactions disponibles", json.dumps(layout, ensure_ascii=False))
+    self.assertIn("available interactions", json.dumps(layout, ensure_ascii=False))
     self.assertEqual(event["workflow"], {"workflow_id": "cib-admin-record-share", "input": {
       "namespace": "{{ state.namespace }}", "record_key": "{{ state.record_key }}", "expected_revision": "{{ state.expected_revision }}",
       "subject_user_id": "{{ state.subject_user_id }}", "permission": "{{ state.permission }}", "confirmation_manuelle": "{{ state.confirmation_manuelle }}",
     }})
     self.assertEqual(set(miniapp["state_schema"]["properties"]), {"namespace", "record_key", "expected_revision", "subject_user_id", "permission", "confirmation_manuelle", "result"})
     guide = json.dumps(miniapp["ui"])
-    self.assertIn("Copiez depuis la console", guide)
-    self.assertIn("aucun secret", guide)
-    self.assertNotIn("bulk", guide.lower())
+    self.assertIn("Copy the four known fields", guide)
+    self.assertIn("Do not enter secrets", guide)
+    self.assertIn("one record and one member", guide.lower())
 
   def test_generated_js_enforces_native_call_contract_and_transitions(self):
     paths = {name: (ROOT.parents[1] / "enterprise-admin") / "agents/main/workflows" / f"cib-admin-record-{name}.json" for name in ("read", "people", "share")}
