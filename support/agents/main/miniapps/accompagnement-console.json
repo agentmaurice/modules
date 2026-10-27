@@ -185,7 +185,7 @@
                 "display_name"
               ],
               "column_labels": {
-                "user_id": "Identifiant",
+                "user_id": "Identifier",
                 "display_name": "Member"
               },
               "rows": {

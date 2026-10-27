@@ -234,6 +234,31 @@ def test_resource_versions_and_options_remain_consistent():
         assert [(item["value"], item["label"]) for item in options] == [("non", "No"), ("oui", "Yes")]
 
 
+
+def test_role_miniapp_table_headers_and_wire_columns():
+    for role, directory in DIRS.items():
+        for filename in (f"{role}-console.json", f"{role}-sharing-console.json"):
+            mini = json.loads((ROOT / directory / "agents/main/miniapps" / filename).read_text())
+            tables = []
+            def visit(value):
+                if isinstance(value, dict):
+                    if value.get("type") == "table":
+                        tables.append(value)
+                    for child in value.values():
+                        visit(child)
+                elif isinstance(value, list):
+                    for child in value:
+                        visit(child)
+            visit(mini["ui"])
+            assert len(tables) == 2, (filename, tables)
+            assert tables[0]["columns"] == ["id"]
+            assert tables[0]["column_labels"] == {"id": "Record"}
+            assert tables[1]["columns"] == ["user_id", "display_name"]
+            assert tables[1]["column_labels"] == {"user_id": "Identifier", "display_name": "Member"}
+            assert tables[1]["rows"] == {"state": "people.people"}
+            assert tables[1]["on_row_click"] == "select-person"
+
+
 def test_read_display_labels_preserve_wire_data():
     for role, namespace in MODULES.items():
         _, spec = load(role, "read")
@@ -261,3 +286,4 @@ if __name__ == "__main__":
     test_read_display_labels_preserve_wire_data()
     test_language_upgrade_retains_previous_fingerprints_and_bumps_versions()
     test_resource_versions_and_options_remain_consistent()
+    test_role_miniapp_table_headers_and_wire_columns()
