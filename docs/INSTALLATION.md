@@ -5,8 +5,8 @@
 Cloner le dépôt privé avec un compte autorisé :
 
 ```sh
-git clone https://github.com/agentmaurice/company-in-a-box.git
-cd company-in-a-box
+git clone https://github.com/agentmaurice/modules.git
+cd modules
 git rev-parse HEAD
 ```
 
@@ -119,17 +119,17 @@ relire le résultat puis relancer avec `--write` pour composer les fichiers.
 
 ```sh
 # Les trois rôles
-python3 solutions/company-in-a-box/template/compose.py --consumer-dir /chemin/consommateur
+python3 templates/company-in-a-box/compose.py --consumer-dir /chemin/consommateur
 # Mémoire autonome
-python3 solutions/company-memory/compose.py --consumer-dir /chemin/consommateur --agent-alias memory
+python3 tooling/company-memory/compose.py --consumer-dir /chemin/consommateur --agent-alias memory
 # Liaison des rôles à la mémoire, après composition des quatre Agents
-python3 solutions/company-in-a-box/memory-integration/compose.py --consumer-dir /chemin/consommateur
+python3 tooling/memory-integration/compose.py --consumer-dir /chemin/consommateur
 # Routine quotidienne, après les liaisons mémoire
-python3 solutions/company-in-a-box/daily-routine/compose.py --consumer-dir /chemin/consommateur
+python3 tooling/daily-routine/compose.py --consumer-dir /chemin/consommateur
 # Services optionnels sur l’Agent Veille existant
-python3 solutions/company-in-a-box/common-dossier/compose.py --consumer-dir /chemin/consommateur --owner-alias veille
-python3 solutions/company-in-a-box/enterprise-admin/compose.py --consumer-dir /chemin/consommateur --owner-alias veille
-python3 solutions/company-in-a-box/marketing-launch/compose.py --consumer-dir /chemin/consommateur --agent-alias veille
+python3 tooling/work-cases/compose.py --consumer-dir /chemin/consommateur --owner-alias veille
+python3 tooling/enterprise-admin/compose.py --consumer-dir /chemin/consommateur --owner-alias veille
+python3 tooling/marketing-launch/compose.py --consumer-dir /chemin/consommateur --agent-alias veille
 ```
 
 Une divergence inconnue provoque un refus ; conserver les modifications locales

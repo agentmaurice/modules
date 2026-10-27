@@ -1,0 +1,154 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "memory-query",
+  "version": "7",
+  "title": "Lire une proposition mémoire validée",
+  "forms": [
+    {
+      "id": "submit",
+      "title": "Saisie manuelle",
+      "fields": [
+        {
+          "name": "proposal_id",
+          "type": "string",
+          "required": true,
+          "title": "Proposition"
+        }
+      ],
+      "actions_on_submit": [
+        "query-validate",
+        "query-read-proposal",
+        "query-parse-proposal",
+        "query-read-source",
+        "read-review",
+        "read-successors",
+        "query-list-files",
+        "find-marker",
+        "read-marker",
+        "query-answer"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "query-validate",
+      "type": "code_execution",
+      "code": "if (typeof proposal_id !== \"string\" || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(proposal_id)) throw new Error(\"invalid_slug\");\nreturn {proposal_id};",
+      "context": {
+        "proposal_id": "{{ proposal_id }}"
+      },
+      "output_key": "query"
+    },
+    {
+      "id": "query-read-proposal",
+      "type": "tool_call",
+      "tool": "read_file",
+      "params": {
+        "path": "/company-memory/proposal-{{ query.proposal_id }}.json"
+      },
+      "output_key": "proposal_file"
+    },
+    {
+      "id": "query-parse-proposal",
+      "type": "code_execution",
+      "code": "const p0 = proposal_file;\nlet p;\ntry { p = typeof p0 === \"string\" ? JSON.parse(p0) : JSON.parse(p0.content || JSON.stringify(p0)); } catch (e) { throw new Error(\"proposal_invalid\"); }\nif (p.proposal_id !== query.proposal_id || typeof p.source_id !== \"string\" || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(p.source_id) || p.status !== \"proposed\") throw new Error(\"proposal_corrupt_or_mismatch\");\nreturn p;",
+      "context": {
+        "proposal_file": "{{ proposal_file }}",
+        "query": "{{ query }}"
+      },
+      "output_key": "proposal"
+    },
+    {
+      "id": "query-read-source",
+      "type": "tool_call",
+      "tool": "read_file",
+      "params": {
+        "path": "/company-memory/source-{{ proposal.source_id }}.json"
+      },
+      "output_key": "source_file"
+    },
+    {
+      "id": "read-review",
+      "type": "tool_call",
+      "tool": "read_file",
+      "params": {
+        "path": "/company-memory/review-{{ query.proposal_id }}.json"
+      },
+      "output_key": "review_file"
+    },
+    {
+      "id": "read-successors",
+      "type": "tool_call",
+      "tool": "memory.query",
+      "params": {
+        "tenant_id": "company-memory",
+        "sql": "SELECT external_id FROM v_entities WHERE entity_type = 'company_memory_revision' AND status = 'validated' AND json_extract_string(attributes, '$.previous_revision') = ? ORDER BY external_id",
+        "params": {
+          "revision": "{{ query.proposal_id }}"
+        },
+        "maxRows": 3,
+        "timeoutMs": 10000
+      },
+      "output_key": "successors"
+    },
+    {
+      "id": "query-list-files",
+      "type": "tool_call",
+      "tool": "list_files",
+      "params": {
+        "path": "/company-memory"
+      },
+      "output_key": "files"
+    },
+    {
+      "id": "find-marker",
+      "type": "code_execution",
+      "code": "if (!Array.isArray(files)) throw new Error(\"storage_listing_unavailable\");\nconst p = \"/company-memory/superseded-\" + proposal.proposal_id + \".json\";\nreturn files.some(f => f && f.path === p) ? [{path: p}] : [];",
+      "context": {
+        "files": "{{ files }}",
+        "proposal": "{{ proposal }}"
+      },
+      "output_key": "marker_items"
+    },
+    {
+      "id": "read-marker",
+      "type": "for_each",
+      "items": "{{ marker_items }}",
+      "item_key": "marker",
+      "max_items": 1,
+      "on_empty": "continue",
+      "workflow_id": "memory-read-supersession",
+      "output_key": "markers"
+    },
+    {
+      "id": "query-answer",
+      "type": "code_execution",
+      "code": "const p = proposal;\nconst s = JSON.parse(source_file.content);\nconst r = JSON.parse(review_file.content);\nconst checked_at = new Date().toISOString();\n// Memory répond rows=null quand aucune ligne ne correspond : c'est un résultat vide (observé en direct et\n// dans un appel enfant, où queryStats n'est pas toujours présent). Une erreur d'outil fait échouer l'étape.\nconst successorRows = successors && Array.isArray(successors.rows) ? successors.rows\n  : (successors && successors.rows === null ? [] : null);\nif (successorRows === null) throw new Error(\"successor_lookup_unavailable\");\nconst markerSuccessors = (Array.isArray(markers) ? markers : []).map(m => {\n  let d;\n  try { d = JSON.parse(m.text); } catch (e) { throw new Error(\"supersession_marker_invalid\"); }\n  if (!d || d.superseded !== p.proposal_id || typeof d.successor !== \"string\" || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(d.successor)) throw new Error(\"supersession_marker_invalid\");\n  return d.successor;\n});\nconst successor_ids = [...new Set([...successorRows.map(x => x[0]), ...markerSuccessors].filter(x => typeof x === \"string\" && x !== p.proposal_id))].sort();\nconst base = {citations: [], answer: \"\", status: \"\", warning: \"exact_revision_not_current_page\", checked_at, proposal_id: p.proposal_id, expires_at: p.review_due, previous_revision: p.previous_revision || \"\", title: p.title || \"\", source_date: s.date || \"\", reviewed_at: r.reviewed_at || \"\", superseded_by: \"\", successor_ids};\nif (r.proposal_id !== p.proposal_id || r.source_id !== p.source_id || r.evidence_quote !== p.evidence_quote || ![\"validated\", \"refused\", \"disputed\"].includes(r.decision)) return {...base, status: \"review_invalid\"};\nif (r.decision !== \"validated\") return {...base, status: r.decision};\nif (typeof p.review_due !== \"string\" || Number.isNaN(Date.parse(p.review_due))) return {...base, status: \"review_date_invalid\"};\nif (s.source_id !== p.source_id || typeof s.content !== \"string\" || typeof p.evidence_quote !== \"string\" || !p.evidence_quote.trim() || !s.content.includes(p.evidence_quote) || typeof s.ref !== \"string\" || !s.ref.trim()) return {...base, status: \"evidence_changed\"};\nif (successor_ids.length > 1) return {...base, status: \"successor_conflict\", warning: \"successor_conflict_manual_review\", successor_ids};\nif (successor_ids.length === 1) return {...base, answer: p.content, citations: [s.ref], status: \"superseded\", warning: \"superseded_by_newer_revision\", superseded_by: successor_ids[0], successor_ids};\nif (Date.parse(p.review_due) <= Date.now()) return {...base, status: \"expired\"};\nreturn {...base, answer: p.content, citations: [s.ref], status: \"validated\"};",
+      "context": {
+        "proposal": "{{ proposal }}",
+        "source_file": "{{ source_file }}",
+        "review_file": "{{ review_file }}",
+        "successors": "{{ successors }}",
+        "markers": "{{ markers }}"
+      },
+      "output_key": "result"
+    }
+  ],
+  "output": {
+    "answer": "{{ result.answer }}",
+    "citations": "{{ result.citations }}",
+    "status": "{{ result.status }}",
+    "proposal_id": "{{ result.proposal_id }}",
+    "warning": "{{ result.warning }}",
+    "checked_at": "{{ result.checked_at }}",
+    "expires_at": "{{ result.expires_at }}",
+    "title": "{{ result.title }}",
+    "source_date": "{{ result.source_date }}",
+    "reviewed_at": "{{ result.reviewed_at }}",
+    "previous_revision": "{{ result.previous_revision }}",
+    "superseded_by": "{{ result.superseded_by }}",
+    "successor_ids": "{{ result.successor_ids }}"
+  }
+}

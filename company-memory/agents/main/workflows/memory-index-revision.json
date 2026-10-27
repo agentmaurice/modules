@@ -1,0 +1,180 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "memory-index-revision",
+  "version": "8",
+  "title": "Indexer une révision validée dans Memory et Brain",
+  "forms": [
+    {
+      "id": "submit",
+      "title": "Saisie manuelle",
+      "fields": [
+        {
+          "name": "proposal_id",
+          "title": "Révision",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "confirmation_manuelle",
+          "title": "Confirmer l’indexation interne",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "label": "Oui",
+              "value": "oui"
+            },
+            {
+              "label": "Non",
+              "value": "non"
+            }
+          ]
+        }
+      ],
+      "actions_on_submit": [
+        "index-validate",
+        "revalidate-revision",
+        "prepare",
+        "store-memory",
+        "read-back",
+        "check-copy",
+        "index-brain",
+        "finish"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "index-validate",
+      "type": "code_execution",
+      "code": "if (typeof proposal_id !== \"string\" || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(proposal_id)) throw new Error(\"invalid_slug\");\nif (confirmation_manuelle !== \"oui\") throw new Error(\"manual_confirmation_required\");\nreturn {proposal_id};",
+      "context": {
+        "proposal_id": "{{ proposal_id }}",
+        "confirmation_manuelle": "{{ confirmation_manuelle }}"
+      },
+      "output_key": "request"
+    },
+    {
+      "id": "revalidate-revision",
+      "type": "workflow_call",
+      "workflow_id": "memory-query",
+      "workflow_version": "7",
+      "execution": "sync",
+      "timeout_ms": 60000,
+      "input": {
+        "proposal_id": "{{ request.proposal_id }}"
+      },
+      "output_key": "revision"
+    },
+    {
+      "id": "prepare",
+      "type": "code_execution",
+      "code": "const r = revision.data;\nif (!r || r.status !== \"validated\" || r.proposal_id !== request.proposal_id || typeof r.answer !== \"string\" || !Array.isArray(r.citations) || !r.citations.length || typeof r.citations[0] !== \"string\" || !r.citations[0].trim()) throw new Error(\"validated_revision_required\");\nreturn {proposal_id: r.proposal_id, answer: r.answer, citations: r.citations, source_ref: r.citations[0], expires_at: r.expires_at, checked_at: r.checked_at, previous_revision: r.previous_revision || \"\", title: typeof r.title === \"string\" ? r.title : \"\", source_date: typeof r.source_date === \"string\" ? r.source_date : \"\", reviewed_at: typeof r.reviewed_at === \"string\" ? r.reviewed_at : \"\", document_uri: \"company-memory://revisions/\" + r.proposal_id};",
+      "context": {
+        "revision": "{{ revision }}",
+        "request": "{{ request }}"
+      },
+      "output_key": "record"
+    },
+    {
+      "id": "store-memory",
+      "type": "tool_call",
+      "tool": "memory.entities.upsert",
+      "params": {
+        "tenant_id": "company-memory",
+        "entityType": "company_memory_revision",
+        "items": [
+          {
+            "externalId": "{{ record.proposal_id }}",
+            "name": "{{ record.answer }}",
+            "status": "validated",
+            "attributes": {
+              "citations": "{{ json .record.citations }}",
+              "source_ref": "{{ record.source_ref }}",
+              "expires_at": "{{ record.expires_at }}",
+              "document_uri": "{{ record.document_uri }}",
+              "previous_revision": "{{ record.previous_revision }}",
+              "title": "{{ record.title }}",
+              "source_date": "{{ record.source_date }}",
+              "reviewed_at": "{{ record.reviewed_at }}"
+            }
+          }
+        ],
+        "source": {
+          "system": "company-memory-module",
+          "timestamp": "{{ record.checked_at }}"
+        },
+        "writer": {
+          "appId": "company-memory",
+          "actorId": "memory-index-revision",
+          "actorType": "system"
+        }
+      },
+      "output_key": "stored"
+    },
+    {
+      "id": "read-back",
+      "type": "tool_call",
+      "tool": "memory.query",
+      "params": {
+        "tenant_id": "company-memory",
+        "sql": "SELECT external_id, name, json_extract_string(attributes, '$.previous_revision') FROM v_entities WHERE entity_type = 'company_memory_revision' AND external_id = ?",
+        "params": {
+          "revision": "{{ record.proposal_id }}"
+        },
+        "maxRows": 2,
+        "timeoutMs": 10000
+      },
+      "output_key": "rows"
+    },
+    {
+      "id": "check-copy",
+      "type": "code_execution",
+      "code": "if (!Array.isArray(rows.rows) || rows.rows.length !== 1 || rows.rows[0][0] !== record.proposal_id || rows.rows[0][1] !== record.answer || (rows.rows[0][2] ?? \"\") !== (record.previous_revision || \"\")) throw new Error(\"memory_readback_mismatch\");\nreturn true;",
+      "context": {
+        "record": "{{ record }}",
+        "rows": "{{ rows }}"
+      },
+      "output_key": "memory_persisted"
+    },
+    {
+      "id": "index-brain",
+      "type": "tool_call",
+      "tool": "brain.document.upsert",
+      "params": {
+        "tenant_id": "company-memory",
+        "source_uri": "company-memory://revisions",
+        "document_uri": "{{ record.document_uri }}",
+        "content": "{{ record.answer }}",
+        "content_type": "text/plain",
+        "metadata": {
+          "proposal_id": "{{ record.proposal_id }}",
+          "citations": "{{ record.citations }}",
+          "expires_at": "{{ record.expires_at }}"
+        },
+        "wait_for_job": true
+      },
+      "output_key": "indexed"
+    },
+    {
+      "id": "finish",
+      "type": "code_execution",
+      "code": "if (indexed.status !== \"completed\") throw new Error(\"brain_index_not_completed\");\nreturn \"indexed\";",
+      "context": {
+        "indexed": "{{ indexed }}"
+      },
+      "output_key": "status"
+    }
+  ],
+  "output": {
+    "status": "{{ status }}",
+    "proposal_id": "{{ record.proposal_id }}",
+    "document_uri": "{{ record.document_uri }}",
+    "citations": "{{ record.citations }}",
+    "warning": "exact_revision_not_current_page",
+    "memory_persisted": "{{ memory_persisted }}",
+    "brain_indexed": true
+  }
+}

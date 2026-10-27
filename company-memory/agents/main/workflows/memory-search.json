@@ -1,0 +1,115 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "memory-search",
+  "version": "9",
+  "title": "Rechercher des révisions sourcées",
+  "forms": [
+    {
+      "id": "submit",
+      "title": "Saisie manuelle",
+      "fields": [
+        {
+          "name": "query",
+          "title": "Mots-clés",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "actions_on_submit": [
+        "search-validate",
+        "search",
+        "candidates",
+        "build-revision-query",
+        "read-revisions",
+        "list-markers",
+        "search-answer"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "search-validate",
+      "type": "code_execution",
+      "code": "if (typeof query !== \"string\" || !query.trim() || query.length > 256) throw new Error(\"invalid_query\");\nreturn {query: query.trim()};",
+      "context": {
+        "query": "{{ query }}"
+      },
+      "output_key": "request"
+    },
+    {
+      "id": "search",
+      "type": "tool_call",
+      "tool": "brain.keyword",
+      "params": {
+        "tenant_id": "company-memory",
+        "query": "{{ request.query }}",
+        "max_results": 10,
+        "response_format": "concise"
+      },
+      "output_key": "search"
+    },
+    {
+      "id": "candidates",
+      "type": "code_execution",
+      "code": "// Seul endroit qui lit la réponse Brain (brain.keyword, response_format \"concise\", AGENT-1049) :\n// URI du passage, match_type (\"exact_identifier\" quand la requête est un identifiant) et score.\n// Une réponse en forme détaillée (document.file_path, image Brain antérieure à la forme concise)\n// échoue explicitement : aucun repli silencieux, aucun résultat vide déguisé.\nconst URI_PATTERN = /^company-memory:\\/\\/revisions\\/([a-z0-9][a-z0-9_-]{0,63})$/;\nconst isObject = (hit) => !!hit && typeof hit === \"object\";\nconst brainUri = (hit) => (isObject(hit) && typeof hit.uri === \"string\" ? hit.uri : null);\nlet hits = search.results;\nif (hits === null && search.total_results === 0) hits = [];\nif (!Array.isArray(hits)) throw new Error(\"invalid_brain_response\");\nif (hits.some(hit => isObject(hit) && brainUri(hit) === null && hit.document)) throw new Error(\"brain_concise_unsupported\");\nif (hits.length > 0 && hits.every(hit => brainUri(hit) === null)) throw new Error(\"invalid_brain_response\");\nconst byId = new Map();\nfor (const hit of hits) {\n  const uri = brainUri(hit);\n  const m = uri === null ? null : URI_PATTERN.exec(uri);\n  if (!m) continue;\n  const entry = byId.get(m[1]) || {proposal_id: m[1], match_type: \"other\", score: 0};\n  if (hit.match_type === \"exact_identifier\") entry.match_type = \"exact_identifier\";\n  if (typeof hit.score === \"number\" && hit.score > entry.score) entry.score = hit.score;\n  byId.set(m[1], entry);\n}\nreturn [...byId.values()].slice(0, 10);",
+      "context": {
+        "search": "{{ search }}"
+      },
+      "output_key": "candidates"
+    },
+    {
+      "id": "build-revision-query",
+      "type": "code_execution",
+      "code": "// Une seule requête Memory pour tous les candidats : les révisions validées dont l'identifiant est un candidat\n// (texte, citations, échéance, titre, dates) et celles dont previous_revision est un candidat (successeurs).\n// Les identifiants sont inlinés entre quotes : chacun est revérifié contre le slug, rien d'autre n'entre dans le SQL.\nconst SLUG = /^[a-z0-9][a-z0-9_-]{0,63}$/;\nif (candidates !== null && !Array.isArray(candidates)) throw new Error(\"invalid_candidates\");\nconst ids = (candidates || []).map(c => (c && typeof c === \"object\" ? c.proposal_id : c));\nif (ids.length > 10) throw new Error(\"too_many_candidates\");\nfor (const id of ids) if (typeof id !== \"string\" || !SLUG.test(id)) throw new Error(\"invalid_candidate_id\");\n// Sans candidat : le moteur n'a pas d'étape conditionnelle (une decision passerait par un Workflow enfant), la\n// requête est donc une requête qui ne renvoie rien, sans clause previous_revision. Toutes les révisions sans\n// prédécesseur ont previous_revision = \"\" : une liste contenant '' les renverrait toutes (cap maxRows, truncated).\nif (ids.length === 0) {\n  return {ids, sql: \"SELECT external_id, name, status, attributes FROM v_entities\"\n    + \" WHERE entity_type = 'company_memory_revision' AND external_id IN ('')\"};\n}\n// Garde-fou : la liste des clauses IN ne contient jamais la chaîne vide (les slugs font au moins un caractère).\nif (ids.some(id => id.length === 0)) throw new Error(\"empty_candidate_id\");\nconst list = ids.map(id => \"'\" + id + \"'\").join(\", \");\nconst sql = \"SELECT external_id, name, status, attributes FROM v_entities\"\n  + \" WHERE entity_type = 'company_memory_revision' AND status = 'validated'\"\n  + \" AND (external_id IN (\" + list + \") OR json_extract_string(attributes, '$.previous_revision') IN (\" + list + \"))\";\nreturn {ids, sql};",
+      "context": {
+        "candidates": "{{ candidates }}"
+      },
+      "output_key": "revision_query"
+    },
+    {
+      "id": "read-revisions",
+      "type": "tool_call",
+      "tool": "memory.query",
+      "params": {
+        "tenant_id": "company-memory",
+        "sql": "{{ revision_query.sql }}",
+        "maxRows": 60,
+        "timeoutMs": 10000
+      },
+      "output_key": "memory_rows"
+    },
+    {
+      "id": "list-markers",
+      "type": "tool_call",
+      "tool": "list_files",
+      "params": {
+        "path": "/company-memory"
+      },
+      "output_key": "files"
+    },
+    {
+      "id": "search-answer",
+      "type": "code_execution",
+      "code": "// Revalidation sans sous-Workflow : une requête Memory (révisions validées des candidats et de leurs successeurs)\n// et un listage de /company-memory (marqueurs natifs superseded-ID.json). Un candidat sans ligne Memory validée\n// est exclu ; un candidat remplacé (successeur validé dans Memory ou marqueur natif) est exclu ; une échéance\n// dépassée ou illisible est exclue, comme dans memory-query. Les exclus sont comptés dans suppressed_count.\nconst SLUG = /^[a-z0-9][a-z0-9_-]{0,63}$/;\nif (candidates !== null && !Array.isArray(candidates)) throw new Error(\"invalid_candidates\");\n// Sans candidat Brain : réponse vide, quelle que soit la réponse Memory (requête vide de build-revision-query).\nif (!candidates || candidates.length === 0) {\n  return {results: [], summary: \"Aucune révision validée trouvée.\", candidate_count: 0, suppressed_count: 0,\n    excerpt_budget_chars: 10 * 2 * (400 + 2 * 4)};\n}\n// Memory répond rows=null quand aucune ligne ne correspond : résultat vide. Toute autre forme est une panne.\nif (!memory_rows || typeof memory_rows !== \"object\") throw new Error(\"memory_lookup_unavailable\");\nconst rows = Array.isArray(memory_rows.rows) ? memory_rows.rows : (memory_rows.rows === null ? [] : null);\nif (rows === null) throw new Error(\"memory_lookup_unavailable\");\nif (memory_rows.truncated === true) throw new Error(\"memory_rows_truncated\");\nif (!Array.isArray(files)) throw new Error(\"storage_listing_unavailable\");\n// attributes arrive en objet ou en chaîne JSON selon le moteur de Memory : les deux sont acceptés.\nconst attributesOf = (value) => {\n  let v = value;\n  for (let i = 0; i < 2 && typeof v === \"string\"; i++) {\n    if (!v.trim()) return {};\n    try { v = JSON.parse(v); } catch (e) { throw new Error(\"memory_attributes_invalid\"); }\n  }\n  if (v === null || v === undefined) return {};\n  if (typeof v !== \"object\" || Array.isArray(v)) throw new Error(\"memory_attributes_invalid\");\n  return v;\n};\nconst text = (v) => (typeof v === \"string\" ? v : \"\");\nconst stored = new Map();\nconst successorsOf = new Map();\nfor (const row of rows) {\n  // Lignes positionnelles : external_id, name, status, attributes (ordre du SELECT).\n  const cells = Array.isArray(row) ? row\n    : (row && typeof row === \"object\" ? [row.external_id, row.name, row.status, row.attributes] : null);\n  if (!cells || typeof cells[0] !== \"string\" || !SLUG.test(cells[0])) throw new Error(\"memory_row_invalid\");\n  if (cells[2] !== \"validated\") continue;\n  const attrs = attributesOf(cells[3]);\n  stored.set(cells[0], {name: cells[1], attrs});\n  const previous = text(attrs.previous_revision);\n  if (previous && previous !== cells[0]) {\n    if (!successorsOf.has(previous)) successorsOf.set(previous, new Set());\n    successorsOf.get(previous).add(cells[0]);\n  }\n}\nconst paths = new Set(files.map(f => (f && typeof f.path === \"string\" ? f.path : \"\")));\n// Référence de source : attribut source_ref, sinon première citation. citations arrive en tableau, en chaîne JSON\n// de tableau, ou en chaîne rendue à la Go « [ref] » (révisions indexées avant le rendu json) : une seule citation,\n// l'intérieur des crochets tel quel (une référence peut contenir des espaces, elle n'est jamais découpée).\nconst firstCitation = (value) => {\n  if (Array.isArray(value)) return value.find(x => typeof x === \"string\" && x.trim()) || \"\";\n  if (typeof value !== \"string\") return \"\";\n  const s = value.trim();\n  if (!(s.startsWith(\"[\") && s.endsWith(\"]\"))) return s;\n  try {\n    const parsed = JSON.parse(s);\n    if (Array.isArray(parsed)) return parsed.find(x => typeof x === \"string\" && x.trim()) || \"\";\n  } catch (e) { /* forme Go : pas du JSON */ }\n  return s.slice(1, -1).trim();\n};\n// Titre des révisions indexées avant l'attribut title : fragment de la référence entre « # » et le dernier « @ »,\n// sinon l'identifiant.\nconst derivedTitle = (ref, id) => {\n  const hash = ref.indexOf(\"#\");\n  if (hash < 0) return id;\n  const fragment = ref.slice(hash + 1);\n  const at = fragment.lastIndexOf(\"@\");\n  return (at < 0 ? fragment : fragment.slice(0, at)).trim() || id;\n};\nconst now = Date.now();\nconst all = (candidates || []).map(c => {\n  const id = c && typeof c === \"object\" ? c.proposal_id : c;\n  if (typeof id !== \"string\" || !SLUG.test(id)) throw new Error(\"invalid_candidate_id\");\n  const base = {proposal_id: id, match_type: c.match_type === \"exact_identifier\" ? \"exact_identifier\" : \"other\",\n    score: typeof c.score === \"number\" ? c.score : 0};\n  const entry = stored.get(id);\n  if (!entry) return {...base, status: \"not_indexed\"};\n  const successors = [...(successorsOf.get(id) || [])].sort();\n  if (successors.length || paths.has(\"/company-memory/superseded-\" + id + \".json\")) {\n    return {...base, status: \"superseded\", superseded_by: successors.length === 1 ? successors[0] : \"\"};\n  }\n  const a = entry.attrs;\n  const expires_at = text(a.expires_at);\n  const due = Date.parse(expires_at);\n  if (Number.isNaN(due) || due <= now) return {...base, status: \"expired\"};\n  const source_ref = text(a.source_ref).trim() || firstCitation(a.citations);\n  return {...base, status: \"validated\", answer: text(entry.name), citations: source_ref ? [source_ref] : [], expires_at,\n    title: text(a.title) || derivedTitle(source_ref, id),\n    source_date: text(a.source_date), reviewed_at: text(a.reviewed_at), superseded_by: \"\"};\n});\n// Extraits : jusqu'à deux fenêtres de WINDOW caractères, choisies par couverture des termes de la requête\n// (mots de plus de deux lettres, accents et casse ignorés), non chevauchantes, dans l'ordre du texte.\n// Repli : le début du texte. Borne par réponse : 10 résultats x 2 fenêtres x (WINDOW + 2 x CUT).\nconst WINDOW = 400, CUT = 4, MAX_WINDOWS = 2;\nconst BUDGET = 10 * MAX_WINDOWS * (WINDOW + 2 * CUT);\nconst norm = (text) => String(text).normalize(\"NFD\").replace(/\\p{M}/gu, \"\").toLowerCase();\nconst queryTerms = new Set((norm(query).match(/[\\p{L}\\p{N}]+/gu) || []).filter(t => [...t].length > 2));\nconst occurrences = (flat) => {\n  const found = [];\n  for (const m of flat.matchAll(/[\\p{L}\\p{N}]+/gu)) {\n    const t = norm(m[0]);\n    if (queryTerms.has(t)) found.push({pos: m.index, term: t});\n  }\n  return found;\n};\nconst windowsOf = (flat) => {\n  const occ = occurrences(flat);\n  if (occ.length === 0) return [{start: 0, end: Math.min(WINDOW, flat.length)}];\n  const starts = [...new Set([0, ...occ.map(o => Math.max(0, o.pos - 60))])].sort((a, b) => a - b);\n  const covered = (s) => new Set(occ.filter(o => o.pos >= s && o.pos < s + WINDOW).map(o => o.term));\n  let first = null;\n  for (const s of starts) {\n    const c = covered(s);\n    if (c.size && (!first || c.size > first.cov.size)) first = {s, cov: c};\n  }\n  const picks = [first];\n  let second = null;\n  for (const s of starts) {\n    if (s < first.s + WINDOW && s + WINDOW > first.s) continue;\n    const gain = [...covered(s)].filter(t => !first.cov.has(t)).length;\n    if (gain > 0 && (!second || gain > second.gain)) second = {s, gain};\n  }\n  if (second && MAX_WINDOWS > 1) picks.push(second);\n  return picks.sort((a, b) => a.s - b.s).map(p => ({start: p.s, end: Math.min(flat.length, p.s + WINDOW)}));\n};\nconst clean = (value) => String(value === undefined || value === null ? \"\" : value).replace(/\\s+/g, \" \").trim();\nconst cut = (value, max) => [...clean(value)].slice(0, max).join(\"\");\nconst excerptsOf = (text) => {\n  const flat = String(text || \"\").replace(/\\s+/g, \" \").trim();\n  if (!flat) return [];\n  return windowsOf(flat).map(w => (w.start > 0 ? \"[…] \" : \"\") + flat.slice(w.start, w.end) + (w.end < flat.length ? \" […]\" : \"\"));\n};\nconst timeOf = (x) => {\n  const t = Date.parse(x.source_date || x.reviewed_at || \"\");\n  return Number.isNaN(t) ? 0 : t;\n};\nconst valid = all.filter(x => x.status === \"validated\");\n// Identifiants exacts d'abord, par date décroissante (une correction récente précède la section corrigée) ;\n// ensuite les autres, par score décroissant.\nconst exact = valid.filter(x => x.match_type === \"exact_identifier\")\n  .sort((a, b) => timeOf(b) - timeOf(a) || a.proposal_id.localeCompare(b.proposal_id));\nconst others = valid.filter(x => x.match_type !== \"exact_identifier\")\n  .sort((a, b) => (b.score || 0) - (a.score || 0) || a.proposal_id.localeCompare(b.proposal_id));\nconst results = [...exact, ...others].map(x => {\n  const sourced = x.source_date ? {date: x.source_date, date_kind: \"source\"}\n    : (x.reviewed_at ? {date: x.reviewed_at, date_kind: \"revue\"} : {date: \"\", date_kind: \"inconnue\"});\n  return {\n    proposal_id: x.proposal_id,\n    title: cut(x.title, 200),\n    date: clean(sourced.date),\n    date_kind: sourced.date_kind,\n    source_ref: cut((x.citations && x.citations[0]) || \"\", 300),\n    match_type: x.match_type === \"exact_identifier\" ? \"exact_identifier\" : \"other\",\n    review_due: clean(x.expires_at),\n    ...(x.superseded_by ? {superseded_by: clean(x.superseded_by)} : {}),\n    excerpts: excerptsOf(x.answer),\n  };\n});\nconst line = (r) => clean([r.proposal_id, r.date_kind + \" \" + r.date, r.title, r.source_ref]\n  .concat(r.superseded_by ? [\"remplacée par \" + r.superseded_by] : [])\n  .concat([r.excerpts.join(\" \")]).join(\" | \"));\nconst summary = results.map(line).join(\"\\n\") || \"Aucune révision validée trouvée.\";\nreturn {results, summary, candidate_count: all.length, suppressed_count: all.length - results.length, excerpt_budget_chars: BUDGET};",
+      "context": {
+        "candidates": "{{ candidates }}",
+        "memory_rows": "{{ memory_rows }}",
+        "files": "{{ files }}",
+        "query": "{{ request.query }}"
+      },
+      "output_key": "result"
+    }
+  ],
+  "output": {
+    "status": "revalidated_revisions",
+    "search_mode": "bm25",
+    "results": "{{ result.results }}",
+    "summary": "{{ result.summary }}",
+    "candidate_count": "{{ result.candidate_count }}",
+    "suppressed_count": "{{ result.suppressed_count }}",
+    "warning": "bounded_search_excerpts_full_text_via_memory_query",
+    "excerpt_budget_chars": "{{ result.excerpt_budget_chars }}"
+  }
+}

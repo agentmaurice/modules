@@ -1,0 +1,89 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "memory-inspect",
+  "version": "4",
+  "title": "Inspecter une proposition et sa preuve",
+  "forms": [
+    {
+      "id": "submit",
+      "title": "Charger une proposition",
+      "fields": [
+        {
+          "name": "proposal_id",
+          "type": "string",
+          "required": true,
+          "title": "Proposition"
+        }
+      ],
+      "actions_on_submit": [
+        "inspect-validate",
+        "inspect-read-proposal",
+        "inspect-parse-proposal",
+        "inspect-read-source",
+        "inspect"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "inspect-validate",
+      "type": "code_execution",
+      "code": "if (typeof proposal_id !== \"string\" || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(proposal_id)) throw new Error(\"invalid_slug\");\nreturn {proposal_id};",
+      "context": {
+        "proposal_id": "{{ proposal_id }}"
+      },
+      "output_key": "query"
+    },
+    {
+      "id": "inspect-read-proposal",
+      "type": "tool_call",
+      "tool": "read_file",
+      "params": {
+        "path": "/company-memory/proposal-{{ query.proposal_id }}.json"
+      },
+      "output_key": "proposal_file"
+    },
+    {
+      "id": "inspect-parse-proposal",
+      "type": "code_execution",
+      "code": "const p0 = proposal_file;\nlet p;\ntry { p = typeof p0 === \"string\" ? JSON.parse(p0) : JSON.parse(p0.content || JSON.stringify(p0)); } catch (e) { throw new Error(\"proposal_invalid\"); }\nif (p.proposal_id !== query.proposal_id || typeof p.source_id !== \"string\" || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(p.source_id) || p.status !== \"proposed\") throw new Error(\"proposal_corrupt_or_mismatch\");\nreturn p;",
+      "context": {
+        "proposal_file": "{{ proposal_file }}",
+        "query": "{{ query }}"
+      },
+      "output_key": "proposal"
+    },
+    {
+      "id": "inspect-read-source",
+      "type": "tool_call",
+      "tool": "read_file",
+      "params": {
+        "path": "/company-memory/source-{{ proposal.source_id }}.json"
+      },
+      "output_key": "source_file"
+    },
+    {
+      "id": "inspect",
+      "type": "code_execution",
+      "code": "const p = proposal;\nconst s = typeof source_file === \"string\" ? JSON.parse(source_file) : JSON.parse(source_file.content || JSON.stringify(source_file));\nif (s.source_id !== p.source_id || !s.content.includes(p.evidence_quote)) throw new Error(\"evidence_or_source_mismatch\");\nreturn {proposal_id: p.proposal_id, title: p.title, content: p.content, evidence_quote: p.evidence_quote, source_id: p.source_id, source_ref: s.ref, source_content: s.content, review_due: p.review_due, status: p.status};",
+      "context": {
+        "proposal": "{{ proposal }}",
+        "source_file": "{{ source_file }}"
+      },
+      "output_key": "inspection"
+    }
+  ],
+  "output": {
+    "proposal_id": "{{ inspection.proposal_id }}",
+    "title": "{{ inspection.title }}",
+    "content": "{{ inspection.content }}",
+    "evidence_quote": "{{ inspection.evidence_quote }}",
+    "source_id": "{{ inspection.source_id }}",
+    "source_ref": "{{ inspection.source_ref }}",
+    "source_content": "{{ inspection.source_content }}",
+    "review_due": "{{ inspection.review_due }}",
+    "status": "{{ inspection.status }}"
+  }
+}

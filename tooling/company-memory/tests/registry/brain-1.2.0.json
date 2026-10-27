@@ -1,0 +1,32 @@
+{
+  "name": "brain",
+  "description": "Company Memory — pilote manuel",
+  "version": "1.2.0",
+  "image": "rg.fr-par.scw.cloud/agent-maurice/brain/brain-sidecar@sha256:fbdf0122fb6c4c043940588441c9df2af7a019ce97cdff4268fa468d7f2f848b",
+  "sidecar_compatible": true,
+  "source": "builtin",
+  "tools": [
+    {
+      "name": "brain.health",
+      "description": "brain.health"
+    },
+    {
+      "name": "brain.document.upsert",
+      "description": "brain.document.upsert"
+    },
+    {
+      "name": "brain.keyword",
+      "description": "brain.keyword"
+    },
+    {
+      "name": "brain.index.status",
+      "description": "brain.index.status"
+    }
+  ],
+  "tags": [
+    "company-memory"
+  ],
+  "metadata": {
+    "qualification": "published image v1.2.0 pinned by digest (AGENT-1050, pipeline vert)"
+  }
+}

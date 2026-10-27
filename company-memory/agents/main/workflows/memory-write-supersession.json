@@ -1,0 +1,48 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "memory-write-supersession",
+  "version": "2",
+  "title": "Écrire le marqueur de remplacement d'une révision",
+  "actions": [
+    {
+      "id": "write-marker",
+      "type": "tool_call",
+      "tool": "write_file",
+      "params": {
+        "path": "{{ marker.path }}",
+        "content": "{{ marker.content }}",
+        "overwrite": false
+      },
+      "output_key": "saved"
+    }
+  ],
+  "output": {
+    "path": "{{ saved.path }}",
+    "status": "superseded_marked"
+  },
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "marker"
+    ],
+    "properties": {
+      "marker": {
+        "type": "object",
+        "required": [
+          "path",
+          "content"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

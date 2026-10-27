@@ -1,0 +1,41 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "memory-read-supersession",
+  "version": "1",
+  "title": "Lire le marqueur de remplacement d'une révision",
+  "actions": [
+    {
+      "id": "read",
+      "type": "tool_call",
+      "tool": "read_file",
+      "params": {
+        "path": "{{ marker.path }}"
+      },
+      "output_key": "file"
+    }
+  ],
+  "output": {
+    "text": "{{ file.content }}"
+  },
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "marker"
+    ],
+    "properties": {
+      "marker": {
+        "type": "object",
+        "required": [
+          "path"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

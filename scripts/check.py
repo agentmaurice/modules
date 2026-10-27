@@ -34,8 +34,8 @@ def main():
     if target.startswith(('http:','https:','mailto:','#')):continue
     path=target.split('#')[0].strip('<>')
     if path and not (p.parent/path).exists():errors.append(f'{rel}: lien local absent {path}')
- index=json.loads((ROOT/'modules.json').read_text())['modules'];manifests=list((ROOT/'solutions').rglob('module.yaml'))
- if len(index)!=11 or len(manifests)!=len(index):errors.append('inventaire des 11 Modules incomplet')
+ index=json.loads((ROOT/'modules.json').read_text())['modules'];manifests=list(ROOT.glob('*/module.yaml'))
+ if {str(p.relative_to(ROOT)) for p in manifests}!={entry['manifest'] for entry in index}:errors.append('inventaire des Modules incomplet ou divergent')
  workflows=apps=0;keys=set()
  for entry in index:
   p=ROOT/entry['manifest'];mod=json.loads(p.read_text());base=p.parent/'agents/main'

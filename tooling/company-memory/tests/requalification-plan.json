@@ -1,0 +1,303 @@
+{
+  "plan_id": "company-memory-0.3.0-requalification",
+  "module": {
+    "key": "company-memory",
+    "version": "0.3.0"
+  },
+  "ticket": "AGENT-1050",
+  "status": "source_reconciled_runtime_requalification_required",
+  "status_note": "This repository includes local composition commands and a documentary runtime qualification plan. Private replay tools are not distributed. No runtime qualification is performed by repository reorganization.",
+  "preconditions": [
+    "Image Brain corrigée AGENT-1049 publiée par le pipeline GitLab de son dépôt, digest épinglé dans l'Agent consommateur. Aucun docker build ou push local.",
+    "Image Memory 1.0.16 et brain-sidecar épinglés par digest, comme pour 0.2.0 (valeurs à reprendre du consommateur, non recopiées ici).",
+    "An isolated One is prepared by the owning session through the canonical sandbox procedure; this library has no dev-stack.sh and its CI starts no runtime.",
+    "Deux Agents integration_test distincts (A et B) avec stockage filesystem, chacun avec ses sidecars et volumes Memory et Brain.",
+    "Consommateur de qualification avec les fichiers 0.2.0 retirés selon la procédure de mise à jour décidée (voir README, section Migration), puis composition 0.3.0.",
+    "Les rejeux écrivent dans les deux Agents de test : aucune mémoire contenant des données métier."
+  ],
+  "decisions_needed": [
+    "Procédure de mise à jour d'un consommateur 0.2.0 vers 0.3.0 : compose.py refuse d'écraser des fichiers différents ; choisir entre suppression explicite des copies dans un changement relu et un mode de mise à jour du composeur (hors périmètre du worker).",
+    "Forme exacte de la réponse brain.keyword en response_format concise (nom du champ URI, identifiant de passage, score, extrait) à confirmer avec AGENT-1049 avant de retirer le repli détaillé.",
+    "Comportement de l'image Brain qui ignore response_format : échec attendu ; un résultat vide silencieux bloque la requalification."
+  ],
+  "commands_not_executed": [
+    {
+      "id": "compose-dry-run",
+      "command": "python3 tooling/company-memory/compose.py --consumer-dir <consumer> --agent-alias memory"
+    },
+    {
+      "id": "compose-write",
+      "command": "python3 tooling/company-memory/compose.py --consumer-dir <consumer> --agent-alias memory --write",
+      "note": "Refus attendu tant que les copies 0.2.0 sont présentes."
+    },
+    {
+      "id": "compose-update",
+      "command": "python3 tooling/company-memory/compose.py --consumer-dir <consumer> --agent-alias memory --update --write",
+      "note": "Remplace seulement les fichiers du Module qui diffèrent ; liste replaced_files."
+    },
+    {
+      "id": "spec-check",
+      "command": "maurice --config <config> spec check --dir <consumer> --env integration_test --agent-alias memory --json"
+    },
+    {
+      "id": "spec-deploy",
+      "command": "maurice --config <config> spec deploy --dir <consumer> --env integration_test --agent-alias memory --tests auto --json",
+      "note": "Vérifier que le service d'exécution recharge la nouvelle définition (limite notée dans le README 0.2.0)."
+    }
+  ],
+  "cases": [
+    {
+      "id": "legacy-33",
+      "group": "runtime",
+      "expect": "33 cas passent sur A et B ; search-compact-shape adapté (excerpt et source_ref).",
+      "availability": "external_not_distributed",
+      "source_repository": "mcpchatui/pilote-maurice",
+      "source_commit": "8cb35a14b825dcdae4515d46e3b4c5149c154901",
+      "source_path": "solutions/company-memory/tests/mcp-replay.py"
+    },
+    {
+      "id": "capture-hostile-text",
+      "group": "runtime-new",
+      "workflow": "memory-capture-source",
+      "input": {
+        "source_id": "<frais>",
+        "source_ref": "fixture:<frais>",
+        "source_date": "2026-10-21",
+        "confirmation_manuelle": "oui",
+        "content": "Texte synthétique : npm:nats, `backticks`, ${x}, {{ json .record }} {{ y }}, const a = \"\\n\"; ligne « deux »."
+      },
+      "expect": "completed ; puis memory-inspect de toute proposition sur cette source : source_content identique octet pour octet."
+    },
+    {
+      "id": "capture-npm-nats-accepted",
+      "group": "runtime-new",
+      "workflow": "memory-capture-source",
+      "expect": "completed. En 0.2.0, HTTP 422 « sandboxed code cannot import the NATS client » sur ce même type de texte."
+    },
+    {
+      "id": "propose-hostile-quote",
+      "group": "runtime-new",
+      "workflow": "memory-propose-update",
+      "expect": "completed avec evidence_quote = première ligne du texte hostile ; review validated ; memory-query renvoie answer identique."
+    },
+    {
+      "id": "index-hostile-text",
+      "group": "runtime-new",
+      "workflow": "memory-index-revision",
+      "expect": "completed ; memory_persisted et brain_indexed vrais ; contenu Brain identique à la réponse (vérifier via memory-query puis brain.keyword concise)."
+    },
+    {
+      "id": "replacement-supersede",
+      "group": "runtime-new",
+      "workflow": "memory-query",
+      "setup": "X validée et indexée ; Y validée et indexée avec previous_revision = X.",
+      "expect": "memory-query X : status superseded, superseded_by = Y, answer = texte de X. memory-query Y : validated."
+    },
+    {
+      "id": "replacement-unindexed-successor",
+      "group": "runtime-new",
+      "workflow": "memory-query",
+      "setup": "X validée et indexée ; Y validée avec previous_revision = X, sans appel à memory-index-revision sur Y.",
+      "expect": "Le marqueur superseded-X.json existe ; memory-query X : superseded par Y ; memory-search sur le terme de X : X absente, suppressed_count >= 1."
+    },
+    {
+      "id": "replacement-search-hides-X",
+      "group": "runtime-new",
+      "workflow": "memory-search",
+      "expect": "Requête sur le contenu commun : X absente de results, suppressed_count >= 1, Y présente."
+    },
+    {
+      "id": "replacement-index-X-refused",
+      "group": "runtime-new",
+      "workflow": "memory-index-revision",
+      "expect": "failed (validated_revision_required) : une révision remplacée ne se réindexe pas."
+    },
+    {
+      "id": "second-replacement-refused",
+      "group": "runtime-new",
+      "workflow": "memory-query",
+      "setup": "X validée et indexée ; Y1 validée et indexée avec previous_revision = X (marqueur natif écrit) ; Y2 avec previous_revision = X.",
+      "expect": "La revue de Y2 échoue avec successor_conflict et n'écrit ni revue ni marqueur ; memory-query X : superseded par Y1 ; memory-search : X absente."
+    },
+    {
+      "id": "search-compact",
+      "group": "runtime-new",
+      "workflow": "memory-search",
+      "setup": "Révision validée dont le texte fait plus de 1 000 caractères, avec le terme de la requête au milieu.",
+      "expect": "results[].excerpts : liste de un ou deux extraits, chacun de 408 caractères au plus (400 + deux marqueurs) ; clés exactes proposal_id, title, date, date_kind, source_ref, review_due, excerpts (superseded_by seulement si présent) ; pas de answer ni citations ; une ligne de summary par résultat ; excerpt_budget_chars = 8160 ; taille de sortie consignée (référence locale : 1 932 octets pour l'exemple type, 3 777 octets en 0.2.0 sur un exemple voisin)."
+    },
+    {
+      "id": "search-excerpt-middle-term",
+      "group": "runtime-new",
+      "workflow": "memory-search",
+      "setup": "Révision validée d'un long texte où un terme rare de la requête est au milieu, loin du début.",
+      "expect": "Un extrait contient le terme (accents et casse ignorés) ; le début seul ne le contenait pas."
+    },
+    {
+      "id": "search-order-exact-identifier",
+      "group": "runtime-new",
+      "workflow": "memory-search",
+      "setup": "Requête = identifiant (ex. AGENT-530) ; une correction récente et une section plus ancienne qui portent cet identifiant ; un passage sans identifiant à score élevé.",
+      "expect": "Ordre : la correction (date la plus récente) puis la section ancienne, puis le passage à score élevé. Le champ match_type est transmis par Brain en forme concise (à confirmer, décision 2)."
+    },
+    {
+      "id": "compose-update",
+      "group": "composition",
+      "command": "compose-update",
+      "setup": "Consommateur avec les copies 0.2.0 des Workflows et MiniApps.",
+      "expect": "Sans --update : refus, rien écrit. Avec --update (dry-run) : would_replace_files listant les fichiers différents. Avec --update --write : replaced_files, fichiers égaux aux octets du Module, aucun autre fichier supprimé."
+    },
+    {
+      "id": "brain-concise-shape",
+      "group": "runtime-new",
+      "tool": "brain.keyword",
+      "input": {
+        "tenant_id": "company-memory",
+        "query": "<terme>",
+        "max_results": 10,
+        "response_format": "concise"
+      },
+      "expect": "Chaque résultat porte l'URI, l'identifiant de passage, le score et un extrait borné. Noms de champs à confirmer (décision 2)."
+    },
+    {
+      "id": "brain-image-without-concise",
+      "group": "runtime-new",
+      "workflow": "memory-search",
+      "setup": "Image Brain ne supportant pas response_format.",
+      "expect": "failed avec brain_concise_unsupported (forme détaillée) ou erreur explicite du sidecar sur le paramètre ; un completed avec zéro résultat est un défaut bloquant."
+    },
+    {
+      "id": "migration-reindex",
+      "group": "runtime-new",
+      "workflow": "memory-index-revision",
+      "setup": "X et Y indexées en 0.2.0 (sans previous_revision dans Memory).",
+      "expect": "Avant rejeu : memory-query X reste validated (écart connu). Après memory-index-revision sur Y : memory-query X superseded."
+    },
+    {
+      "id": "tenant-explicit",
+      "group": "runtime-new",
+      "workflow": "memory-search",
+      "expect": "Les appels Brain et Memory du module portent tenant_id company-memory ; une absence donnerait zéro résultat silencieux côté plateforme."
+    },
+    {
+      "id": "isolation-cross-agent",
+      "group": "runtime-new",
+      "workflow": "memory-query",
+      "setup": "Révision remplacée sur A consultée depuis B.",
+      "expect": "failed ; aucune révision de A visible depuis B, y compris superseded."
+    },
+    {
+      "id": "viewer-superseded",
+      "group": "viewer",
+      "miniapp": "memory-query-console",
+      "expect": "Affichage de « Remplacée par » suivi de l'identifiant de Y. Vérification UI à faire dans le navigateur, hors de ce plan."
+    },
+    {
+      "id": "compose-refuses-0.2.0-copies",
+      "group": "composition",
+      "command": "compose-write",
+      "expect": "Refus sans écriture partielle tant que les copies 0.2.0 sont présentes."
+    },
+    {
+      "id": "row-normalization",
+      "group": "runtime-new",
+      "workflow": "memory-search",
+      "setup": "Révision validée dont le titre contient un retour à la ligne et dont la référence de source en contient un.",
+      "expect": "Une seule ligne de summary pour cette révision ; title et source_ref sans retour à la ligne ; title borné à 200 caractères, source_ref à 300."
+    },
+    {
+      "id": "search-single-memory-query",
+      "group": "runtime-new",
+      "workflow": "memory-search",
+      "setup": "Dix révisions validées et indexées qui répondent au même terme.",
+      "expect": "Trace d'exécution : un appel brain.keyword, un appel memory.query (maxRows 60), un appel list_files, aucun workflow_call ni for_each. Durée murale consignée (référence avant changement : 7 à 9 s pour 80 ms de moteur)."
+    },
+    {
+      "id": "search-attributes-format",
+      "group": "runtime-new",
+      "workflow": "memory-search",
+      "expect": "Observé sur l'Agent C (copie de memory.duckdb, index v7) : attributes en chaîne JSON, citations en chaîne Go « [référence] ». Après index v8 : citations en chaîne JSON de tableau et source_ref présent. Les trois formes de citations sont lues ; source_ref non vide dans les résultats."
+    },
+    {
+      "id": "search-legacy-attributes",
+      "group": "runtime-new",
+      "workflow": "memory-search",
+      "setup": "Révision indexée avant l'ajout de title, source_date et reviewed_at dans attributes.",
+      "expect": "Résultat servi ; source_ref tiré de citations (tableau, chaîne JSON ou chaîne Go) ; title dérivé de cette référence (fragment entre « # » et le dernier « @ », sinon l'identifiant) ; date vide et date_kind « inconnue » si source_date et reviewed_at manquent. Après rejeu de memory-index-revision : title, date de la source et source_ref."
+    },
+    {
+      "id": "search-expired-memory-row",
+      "group": "runtime-new",
+      "workflow": "memory-search",
+      "setup": "Révision indexée dont l'échéance (attributes.expires_at) est dépassée.",
+      "expect": "Exclue des résultats et comptée dans suppressed_count, comme memory-query qui la renvoie expired."
+    },
+    {
+      "id": "unique-action-ids",
+      "group": "runtime-new",
+      "workflow": "memory-index-revision",
+      "expect": "Les identifiants d'action sont uniques dans le module (revalidate-revision, search-answer, query-answer…) ; l'indexation puis la recherche s'enchaînent sans résolution d'action dans une autre définition (AGENT-1054)."
+    },
+    {
+      "id": "compose-retired-resolve-candidate",
+      "group": "composition",
+      "command": "compose-update",
+      "setup": "Consommateur qui contient encore workflows/memory-resolve-candidate.json.",
+      "expect": "compose.py signale retired_files_present sans rien supprimer ; le fichier est retiré à la main avant spec check, sinon il épingle memory-query 6 qui n'est plus livré."
+    },
+    {
+      "id": "search-no-candidate",
+      "group": "runtime-new",
+      "workflow": "memory-search",
+      "setup": "Base indexée (plus de 60 révisions sans prédécesseur) ; requête sans aucun résultat Brain.",
+      "expect": "completed, results vide, candidate_count 0, suppressed_count 0. La trace de read-revisions montre la requête external_id IN ('') sans clause previous_revision, rows null. Défaut corrigé : memory_rows_truncated sur 5 recherches sur 135 en campagne (v8)."
+    },
+    {
+      "id": "review-write-order",
+      "group": "runtime-new",
+      "workflow": "memory-review-update",
+      "setup": "X validée et indexée ; Y proposée avec previous_revision = X.",
+      "expect": "Trace : review-write précède write-supersession. Une revue de Y qui échoue n'écrit aucun marqueur et X reste servie ; un marqueur qui échoue après la revue laisse review-Y.json validée, l'exécution failed, X servie jusqu'à l'indexation de Y puis remplacée (relecture adverse codex)."
+    }
+  ],
+  "offline_checks_already_run": [
+    "python3 -m unittest discover -s solutions/company-memory/tests -p 'test_*.py' : 61 tests verts au moment de la rédaction (55 dans test_module_offline.py, 6 dans test_compose.py)",
+    "maurice module validate et maurice module test sur module.yaml 0.3.0 : passés",
+    "Validateur Agent Spec V2 sur les Workflows (dont les deux enfants internes), MiniApps et plan de test"
+  ],
+  "exit_criteria": [
+    "Tous les cas runtime-new passent sur A, et sur B pour les cas d'isolation et de remplacement.",
+    "Le legacy-33 passe sur A et sur B avec les assertions compactes.",
+    "Aucun ticket ou fichier de preuve ne contient de secret ; les sorties restent hors dépôt."
+  ],
+  "not_covered": [
+    "Installation via Module Catalog et publication publique.",
+    "Recherche sémantique, ingestion automatique, synthèse LLM.",
+    "Expiration temporelle d'une successeur (dépend de l'horloge ; à traiter par un cas daté).",
+    "Résolution atomique d'une modification concurrente ; le modèle reste single-writer.",
+    "Cloisonnement entre deux entreprises sur un sidecar partagé."
+  ],
+  "execution_scope": "Local composition uses this repository; runtime qualification requires an authorized external checkout and an isolated One.",
+  "external_commands_not_distributed": [
+    {
+      "id": "replay-legacy",
+      "command": "python3 solutions/company-memory/tests/mcp-replay.py --cli <maurice> --config <config> --consumer-dir <consumer> --agent <agent-A> --output-dir <dossier hors dépôt>",
+      "note": "33 cas historiques, assertions adaptées au format compact. A relancer sur A puis sur B.",
+      "availability": "external_not_distributed",
+      "source_repository": "mcpchatui/pilote-maurice",
+      "source_commit": "8cb35a14b825dcdae4515d46e3b4c5149c154901",
+      "source_path": "solutions/company-memory/tests/mcp-replay.py",
+      "execution_note": "Historical command for the authorized canonical checkout only; unavailable in this library. Private credentials, data and output remain outside this repository."
+    },
+    {
+      "id": "replay-search",
+      "command": "python3 solutions/company-memory/tests/search-replay.py --cli <maurice> --config <config> --consumer-dir <consumer> --agent <agent-A> --output-dir <dossier hors dépôt>",
+      "note": "memory-search sans sous-Workflow : révision indexée par memory-index-revision, document Brain forgé ensuite ; texte servi depuis la copie Memory ; candidat Brain sans ligne Memory exclu (completed, suppressed_count).",
+      "availability": "external_not_distributed",
+      "source_repository": "mcpchatui/pilote-maurice",
+      "source_commit": "8cb35a14b825dcdae4515d46e3b4c5149c154901",
+      "source_path": "solutions/company-memory/tests/search-replay.py",
+      "execution_note": "Historical command for the authorized canonical checkout only; unavailable in this library. Private credentials, data and output remain outside this repository."
+    }
+  ]
+}

@@ -1,0 +1,195 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "memory-review-update",
+  "version": "6",
+  "title": "Revoir manuellement une proposition",
+  "forms": [
+    {
+      "id": "submit",
+      "title": "Saisie manuelle",
+      "fields": [
+        {
+          "name": "proposal_id",
+          "type": "string",
+          "required": true,
+          "title": "Proposition"
+        },
+        {
+          "name": "decision",
+          "type": "select",
+          "required": true,
+          "title": "Décision",
+          "options": [
+            {
+              "value": "validated",
+              "label": "Validée"
+            },
+            {
+              "value": "refused",
+              "label": "Refusée"
+            },
+            {
+              "value": "disputed",
+              "label": "Contestée"
+            }
+          ]
+        },
+        {
+          "name": "review_note",
+          "type": "text",
+          "required": false,
+          "title": "Note de revue"
+        },
+        {
+          "name": "confirmation_manuelle",
+          "type": "select",
+          "required": true,
+          "title": "Confirmer la décision",
+          "options": [
+            {
+              "value": "non",
+              "label": "Non"
+            },
+            {
+              "value": "oui",
+              "label": "Oui"
+            }
+          ]
+        }
+      ],
+      "actions_on_submit": [
+        "review-validate",
+        "review-read-proposal",
+        "review-parse-proposal",
+        "review-read-source",
+        "review-check-evidence",
+        "review-list-files",
+        "review-check-absent",
+        "assemble",
+        "plan-supersession",
+        "review-write",
+        "write-supersession"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "review-validate",
+      "type": "code_execution",
+      "code": "if (typeof proposal_id !== \"string\" || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(proposal_id)) throw new Error(\"invalid_slug\");\nif (review_note != null && (typeof review_note !== \"string\" || review_note.length > 4000)) throw new Error(\"invalid_review_note\");\nif (confirmation_manuelle !== \"oui\") throw new Error(\"manual_confirmation_required\");\nif (![\"validated\", \"refused\", \"disputed\"].includes(decision)) throw new Error(\"invalid_decision\");\nreturn {proposal_id, decision, review_note: review_note || \"\", confirmation_manuelle: true, review_id: proposal_id + \"-review\"};",
+      "context": {
+        "proposal_id": "{{ proposal_id }}",
+        "decision": "{{ decision }}",
+        "review_note": "{{ default \"\" .review_note }}",
+        "confirmation_manuelle": "{{ confirmation_manuelle }}"
+      },
+      "output_key": "review"
+    },
+    {
+      "id": "review-read-proposal",
+      "type": "tool_call",
+      "tool": "read_file",
+      "params": {
+        "path": "/company-memory/proposal-{{ review.proposal_id }}.json"
+      },
+      "output_key": "proposal_file"
+    },
+    {
+      "id": "review-parse-proposal",
+      "type": "code_execution",
+      "code": "const p0 = proposal_file;\nlet p;\ntry { p = typeof p0 === \"string\" ? JSON.parse(p0) : JSON.parse(p0.content || JSON.stringify(p0)); } catch (e) { throw new Error(\"proposal_invalid\"); }\nif (p.proposal_id !== review.proposal_id || typeof p.source_id !== \"string\" || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(p.source_id) || p.status !== \"proposed\") throw new Error(\"proposal_corrupt_or_mismatch\");\nreturn p;",
+      "context": {
+        "proposal_file": "{{ proposal_file }}",
+        "review": "{{ review }}"
+      },
+      "output_key": "proposal"
+    },
+    {
+      "id": "review-read-source",
+      "type": "tool_call",
+      "tool": "read_file",
+      "params": {
+        "path": "/company-memory/source-{{ proposal.source_id }}.json"
+      },
+      "output_key": "source_file"
+    },
+    {
+      "id": "review-check-evidence",
+      "type": "code_execution",
+      "code": "const s0 = source_file;\nconst s = typeof s0 === \"string\" ? JSON.parse(s0) : JSON.parse(s0.content || JSON.stringify(s0));\nif (s.source_id !== proposal.source_id || typeof s.content !== \"string\" || !s.content.includes(proposal.evidence_quote)) throw new Error(\"evidence_or_source_mismatch\");\nreturn {evidence_quote: proposal.evidence_quote, source_id: proposal.source_id};",
+      "context": {
+        "proposal": "{{ proposal }}",
+        "source_file": "{{ source_file }}"
+      },
+      "output_key": "evidence"
+    },
+    {
+      "id": "review-list-files",
+      "type": "tool_call",
+      "tool": "list_files",
+      "params": {
+        "path": "/company-memory"
+      },
+      "output_key": "files"
+    },
+    {
+      "id": "review-check-absent",
+      "type": "code_execution",
+      "code": "if (!Array.isArray(files)) throw new Error(\"storage_listing_unavailable\");\nconst p = \"/company-memory/review-\" + review.proposal_id + \".json\";\nif (files.some(f => f && f.path === p)) throw new Error(\"final_review_already_exists\");\n// Une révision déjà remplacée ne peut pas l'être une seconde fois : le marqueur natif est la source.\nconst previous = proposal.previous_revision;\nif (review.decision === \"validated\" && previous && files.some(f => f && f.path === \"/company-memory/superseded-\" + previous + \".json\")) throw new Error(\"successor_conflict\");\nreturn {path: p};",
+      "context": {
+        "files": "{{ files }}",
+        "review": "{{ review }}",
+        "proposal": "{{ proposal }}"
+      },
+      "output_key": "target"
+    },
+    {
+      "id": "assemble",
+      "type": "code_execution",
+      "code": "return {review_id: review.review_id, review_note: review.review_note, proposal_id: review.proposal_id, decision: review.decision, confirmation_manuelle: true, reviewed_at: new Date().toISOString(), evidence_quote: evidence.evidence_quote, source_id: evidence.source_id};",
+      "context": {
+        "review": "{{ review }}",
+        "evidence": "{{ evidence }}"
+      },
+      "output_key": "record"
+    },
+    {
+      "id": "plan-supersession",
+      "type": "code_execution",
+      "code": "const previous = proposal.previous_revision;\nif (review.decision !== \"validated\" || !previous) return [];\nreturn [{path: \"/company-memory/superseded-\" + previous + \".json\", content: JSON.stringify({superseded: previous, successor: proposal.proposal_id, reviewed_at: new Date().toISOString()})}];",
+      "context": {
+        "review": "{{ review }}",
+        "proposal": "{{ proposal }}"
+      },
+      "output_key": "supersession"
+    },
+    {
+      "id": "review-write",
+      "type": "tool_call",
+      "tool": "write_file",
+      "params": {
+        "path": "{{ target.path }}",
+        "content": "{{ json .record }}",
+        "overwrite": false
+      },
+      "output_key": "saved"
+    },
+    {
+      "id": "write-supersession",
+      "type": "for_each",
+      "items": "{{ supersession }}",
+      "item_key": "marker",
+      "max_items": 1,
+      "on_empty": "continue",
+      "workflow_id": "memory-write-supersession",
+      "output_key": "supersession_written"
+    }
+  ],
+  "output": {
+    "review": "{{ record }}",
+    "path": "{{ saved.path }}",
+    "status": "reviewed"
+  }
+}

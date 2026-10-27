@@ -1,0 +1,34 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "memory-health",
+  "version": "3",
+  "title": "Inventaire borné du stockage mémoire",
+  "actions": [
+    {
+      "id": "list",
+      "type": "tool_call",
+      "tool": "list_files",
+      "params": {
+        "path": "/company-memory"
+      },
+      "output_key": "files"
+    },
+    {
+      "id": "health",
+      "type": "code_execution",
+      "code": "if (!Array.isArray(files) || files.length > 100) throw new Error(\"health_inventory_limit\");\nreturn {status: \"inventory_only_not_validation\", coverage: \"bounded_file_inventory\", count: files.length, files: files.map(f => ({path: f.path, size: f.size}))};",
+      "context": {
+        "files": "{{ files }}"
+      },
+      "output_key": "health"
+    }
+  ],
+  "output": {
+    "status": "{{ health.status }}",
+    "coverage": "{{ health.coverage }}",
+    "count": "{{ health.count }}",
+    "files": "{{ health.files }}"
+  }
+}
