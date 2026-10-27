@@ -1,4 +1,4 @@
-"""Offline checks for Company Memory 0.3.0.
+"""Offline checks for Company Memory 0.3.1.
 
 Three layers, none of them calls a One, Memory or Brain:
 
@@ -54,17 +54,17 @@ INLINE = re.compile(r"\{\{\s*(json\s+)?\.?([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z0-9
 SLUG_RE = r"^[a-z0-9][a-z0-9_-]{0,63}$"
 TENANT = "company-memory"
 EXCERPT_MAX = 300
-WINDOW_MAX = 400 + 8  # fenêtre de 400 caractères plus deux marqueurs
+WINDOW_MAX = 400 + 8  # 400-character window plus two markers
 IDENTIFIER_QUERY = re.compile(r"^[A-Z]+-\d+$")
-# Seule requête Memory de memory-search : candidats et successeurs, identifiants inlinés (slugs entre quotes).
+# Single Memory query: candidates and successors, with validated slugs inlined.
 SEARCH_SQL = re.compile(
     r"^SELECT external_id, name, status, attributes FROM v_entities"
     r" WHERE entity_type = 'company_memory_revision' AND status = 'validated'"
     r" AND \(external_id IN \((?P<ids>[^)]*)\)"
     r" OR json_extract_string\(attributes, '\$\.previous_revision'\) IN \((?P<prev>[^)]*)\)\)$"
 )
-SQL_ID_LIST = re.compile(r"^'[a-z0-9][a-z0-9_-]*'(?:, '[a-z0-9][a-z0-9_-]*')*$")  # jamais ''
-# Sans candidat : requête qui ne renvoie rien, sans clause previous_revision.
+SQL_ID_LIST = re.compile(r"^'[a-z0-9][a-z0-9_-]*'(?:, '[a-z0-9][a-z0-9_-]*')*$")  # never ''
+# No candidates: empty query without a previous_revision clause.
 EMPTY_SEARCH_SQL = ("SELECT external_id, name, status, attributes FROM v_entities"
                     " WHERE entity_type = 'company_memory_revision' AND external_id IN ('')")
 FILLER = "Phrase de remplissage sans intérêt pour la requête. "
@@ -186,7 +186,7 @@ class Store:
         self.memory = {}
         self.brain = []
         self.calls = []
-        self.attributes_as_string = False  # Memory peut renvoyer la colonne JSON attributes en chaîne
+        self.attributes_as_string = False  # Memory may return JSON attributes as a string
 
 
     def call(self, tool, params):
@@ -258,7 +258,7 @@ class Store:
         bound = list(params.get("params", {}).values())
         if sql == EMPTY_SEARCH_SQL:
             if params.get("maxRows") != 60 or params.get("timeoutMs") != 10000 or bound:
-                raise StepError("bornes de la requête de recherche")
+                raise StepError("search query limits")
             return [[ext, e["name"], e["status"], e["attributes"]] for ext, e in sorted(self.memory.items())
                     if e["entity_type"] == "company_memory_revision" and ext == ""]
         search = SEARCH_SQL.match(sql)
@@ -266,7 +266,7 @@ class Store:
             if search.group("ids") != search.group("prev") or not SQL_ID_LIST.match(search.group("ids")):
                 raise StepError("liste d'identifiants SQL non conforme")
             if params.get("maxRows") != 60 or params.get("timeoutMs") != 10000 or bound:
-                raise StepError("bornes de la requête de recherche")
+                raise StepError("search query limits")
             ids = set(re.findall(r"'([^']*)'", search.group("ids")))
             rows = []
             for ext in sorted(self.memory):
@@ -343,13 +343,13 @@ class Engine:
                 outputs.append(child["data"])
             state[action["output_key"]] = outputs
         else:
-            raise StepError("type d'action non simulé: " + kind)
+            raise StepError("unsimulated action type: " + kind)
 
 
 WORKFLOWS_CACHE = workflows()
 
 
-@unittest.skipUnless(NODE, "node absent : exécution des étapes code_execution non disponible")
+@unittest.skipUnless(NODE, "node absent: code_execution steps unavailable")
 class CodeStepTest(unittest.TestCase):
     """Behaviour of single code steps, data only ever reaching them through context."""
 
@@ -406,7 +406,7 @@ class CodeStepTest(unittest.TestCase):
                     "total_results": 1}
         result = run_node(step["code"], {"search": detailed})
         self.assertFalse(result["ok"])
-        self.assertIn("brain_concise_unsupported", result["error"])  # forme détaillée : pas de repli silencieux
+        self.assertIn("brain_concise_unsupported", result["error"])  # detailed form: no silent fallback
         empty = run_node(step["code"], {"search": {"results": None, "total_results": 0}})
         self.assertEqual(empty["result"], [])
 
@@ -471,9 +471,9 @@ class CodeStepTest(unittest.TestCase):
         for empty in ([], None):
             sql = run_node(code, {"candidates": empty})["result"]["sql"]
             self.assertEqual(sql, EMPTY_SEARCH_SQL)
-            # previous_revision vaut "" pour toute révision sans prédécesseur : la clause renverrait tout.
+            # Every revision without a predecessor has previous_revision "": this clause would return all.
             self.assertNotIn("previous_revision", sql)
-        self.assertNotIn("''", result["result"]["sql"])  # la liste des IN ne contient jamais la chaîne vide
+        self.assertNotIn("''", result["result"]["sql"])  # the IN list never contains an empty string
         self.assertIn('if (ids.some(id => id.length === 0)) throw new Error("empty_candidate_id");', code)
         for bad in ("rev'); DROP TABLE x; --", "Rev-A", "-rev", "a" * 65, "", None, 7):
             refused = run_node(code, {"candidates": [{"proposal_id": "rev-a"}, {"proposal_id": bad}]})
@@ -503,7 +503,7 @@ class CodeStepTest(unittest.TestCase):
         unlisted = self.run_answer(dict(self.search_context([self.revision("rev-a", "x")], "x"), files=None))
         self.assertIn("storage_listing_unavailable", unlisted["error"])
         no_candidate = self.run_answer({"candidates": [], "memory_rows": {"rows": None}, "files": [], "query": "x"})
-        self.assertEqual(no_candidate["result"]["summary"], "Aucune révision validée trouvée.")
+        self.assertEqual(no_candidate["result"]["summary"], "No validated revisions found.")
 
     def test_answer_without_candidate_is_empty_whatever_memory_returned(self):
         reference = self.search_value([self.revision("rev-a", "Texte.")], "texte")["excerpt_budget_chars"]
@@ -514,7 +514,7 @@ class CodeStepTest(unittest.TestCase):
                 result = self.run_answer({"candidates": candidates, "memory_rows": memory_rows, "files": [],
                                           "query": "absent"})
                 self.assertTrue(result["ok"], result)
-                self.assertEqual(result["result"], {"results": [], "summary": "Aucune révision validée trouvée.",
+                self.assertEqual(result["result"], {"results": [], "summary": "No validated revisions found.",
                                                     "candidate_count": 0, "suppressed_count": 0,
                                                     "excerpt_budget_chars": reference})
 
@@ -541,7 +541,7 @@ class CodeStepTest(unittest.TestCase):
                                        self.revision("rev-c", "Règle C."), self.revision("rev-self", "Règle S.",
                                                                                        previous_revision="rev-self")],
                                       "règle")
-        # rev-a remplacée par une ligne Memory validée (successeur hors candidats) ; rev-b par un marqueur natif.
+        # rev-a is replaced by a validated Memory row; rev-b by a native marker.
         context["memory_rows"]["rows"].append(["rev-a2", "Règle A révisée.", "validated",
                                                {"previous_revision": "rev-a", "expires_at": "2099-01-01"}])
         context["files"].append({"path": "/company-memory/superseded-rev-b.json"})
@@ -566,7 +566,7 @@ class CodeStepTest(unittest.TestCase):
         forms = {
             "array": [ref, "autre:ref"],
             "json": json.dumps([ref, "autre:ref"], indent=2),
-            "go": "[" + ref + "]",  # rendu Go d'un tableau à une citation ; la référence contient des espaces
+            "go": "[" + ref + "]",  # Go rendering of a single citation array; the reference contains spaces
             "go-padded": "  [" + ref + "]  ",
         }
         for name, citations in forms.items():
@@ -585,13 +585,13 @@ class CodeStepTest(unittest.TestCase):
                                                citations="[wiki/b.md#Section B@9]", title="")],
                                 "texte")["results"][0]
         self.assertEqual(row["source_ref"], "wiki/a.md#Section A@1f2e@abc")
-        self.assertEqual(row["title"], "Section A@1f2e")  # fragment jusqu'au dernier « @ »
+        self.assertEqual(row["title"], "Section A@1f2e")  # fragment up to the last @
         blank = self.search_value([self.revision("rev-b", "Texte.", source_ref="  ", citations=["fixture:c"])],
                                   "texte")["results"][0]
         self.assertEqual(blank["source_ref"], "fixture:c")
         titled = self.search_value([self.revision("rev-t", "Texte.", source_ref="wiki/a.md#Section@1")],
                                    "texte")["results"][0]
-        self.assertEqual(titled["title"], "Titre rev-t")  # l'attribut title prime sur le titre dérivé
+        self.assertEqual(titled["title"], "Titre rev-t")  # the title attribute takes precedence over the derived title
 
     def test_answer_derives_title_and_unknown_date_for_rows_indexed_before_the_new_attributes(self):
         legacy = lambda pid, citation: {"status": "validated", "proposal_id": pid, "answer": "Texte hérité.",
@@ -606,7 +606,7 @@ class CodeStepTest(unittest.TestCase):
                                   "rev-plain": "rev-plain", "rev-empty": "rev-empty"})
         for row in value["results"]:
             self.assertEqual((row["date"], row["date_kind"]), ("", "inconnue"))
-            self.assertIn("inconnue ", value["summary"])
+            self.assertIn("unknown ", value["summary"])
 
     def test_compact_rows_carry_identifier_date_title_source_and_bounded_excerpts(self):
         value = self.search_value([
@@ -658,7 +658,7 @@ class CodeStepTest(unittest.TestCase):
         text = (FILLER * 40)[:1500] + " La dérogation écrite du fondateur est requise. " + (FILLER * 40)[:1500]
         excerpts = self.search_value([self.revision("rev-mid", text)], "Derogation")["results"][0]["excerpts"]
         self.assertTrue(any("dérogation" in e for e in excerpts), excerpts)
-        self.assertNotIn("dérogation", text[:EXCERPT_MAX])  # un simple début de texte aurait manqué le terme
+        self.assertNotIn("dérogation", text[:EXCERPT_MAX])  # a beginning-only excerpt would miss the term
         self.assertTrue(excerpts[0].startswith("[…] "))
         for excerpt in excerpts:
             self.assertLessEqual(len(excerpt), WINDOW_MAX)
@@ -678,7 +678,7 @@ class CodeStepTest(unittest.TestCase):
         self.assertEqual(excerpts, [flat[:400] + " […]"])
 
     def test_exact_identifier_first_by_date_then_other_by_score(self):
-        # Une correction récente précède la section qu'elle corrige.
+        # A recent correction precedes the section it corrects.
         value = self.search_value([
             self.revision("rev-other-high", "AGENT-530 mentionné ici.", match_type="other", score=9.0),
             self.revision("rev-exact-old", "Entrée AGENT-530 initiale.", match_type="exact_identifier",
@@ -754,12 +754,12 @@ class CodeStepTest(unittest.TestCase):
         empty_null = run_node(step["code"], dict(context([]), successors={"rows": None, "queryStats": {"rowCount": 0}}))
         self.assertEqual(empty_null["result"]["status"], "validated")
         no_stats = run_node(step["code"], dict(context([]), successors={"rows": None}))
-        self.assertEqual(no_stats["result"]["status"], "validated")  # appel enfant : queryStats absent
+        self.assertEqual(no_stats["result"]["status"], "validated")  # child call: queryStats absent
         bad_missing = run_node(step["code"], dict(context([]), successors={"columns": []}))
         self.assertFalse(bad_missing["ok"])
 
 
-@unittest.skipUnless(NODE, "node absent : moteur de Workflows simulé non disponible")
+@unittest.skipUnless(NODE, "node absent: simulated Workflow engine unavailable")
 class ChainTest(unittest.TestCase):
     """Runs the shipped Workflows end to end against in-memory fakes."""
 
@@ -860,7 +860,7 @@ class ChainTest(unittest.TestCase):
             "proposal_id": "rev-fork-b", "decision": "validated", "review_note": "revue synthétique",
             "confirmation_manuelle": "oui"})
         self.assertEqual(refused["state"], "failed")
-        self.assertEqual(refused["error"], "successor_conflict")  # refus explicite, avant toute écriture
+        self.assertEqual(refused["error"], "successor_conflict")  # explicit refusal before any write
         self.assertNotIn("rev-fork-b", self.store.memory)
         self.assertNotIn("/company-memory/review-rev-fork-b.json", self.store.files)
         replaced = self.query("rev-base")
@@ -869,7 +869,7 @@ class ChainTest(unittest.TestCase):
         found = self.search("conflit")
         self.assertEqual([r["proposal_id"] for r in found["results"]], ["rev-fork-a"])
         self.assertEqual(found["suppressed_count"], 1)
-        # Un successeur connu seulement de Memory, en plus du marqueur natif, reste un conflit.
+        # A Memory-only successor in addition to the native marker remains a conflict.
         self.store.memory["rev-fork-b"] = {"entity_type": "company_memory_revision", "name": "x",
                                            "status": "validated", "attributes": {"previous_revision": "rev-base"}}
         conflict = self.query("rev-base")
@@ -888,7 +888,7 @@ class ChainTest(unittest.TestCase):
         self.capture("src-v", "Plafond synthétique révisé non indexé.")
         revised = "Plafond synthétique révisé non indexé."
         self.propose("rev-y", "src-v", revised, revised, previous="rev-x")
-        self.review("rev-y")  # validée, jamais indexée : seul le marqueur natif la relie à X
+        self.review("rev-y")  # validated, never indexed: only the native marker links it to X
         self.assertNotIn("rev-y", self.store.memory)
         self.assertEqual(self.query("rev-x")["status"], "superseded")
         self.assertEqual(self.query("rev-x")["superseded_by"], "rev-y")
@@ -902,7 +902,7 @@ class ChainTest(unittest.TestCase):
 
         def failing(tool, params):
             if tool == "write_file" and params["path"] == path:
-                raise StepError("échec d'écriture simulé")
+                raise StepError("simulated write failure")
             return original(tool, params)
 
         self.store.call = failing
@@ -918,7 +918,7 @@ class ChainTest(unittest.TestCase):
         return prefix + "-x", prefix + "-y"
 
     def test_failed_review_write_leaves_no_marker_and_the_predecessor_served(self):
-        # Relecture adverse : un marqueur sans revue validée masquait X sur un remplacement jamais validé.
+        # Adversarial review: a marker without a validated review hid X for an unvalidated replacement.
         x, y = self.replaced_pair("rw")
         original = self.fail_writes_to("/company-memory/review-%s.json" % y)
         self.review(y, expected="failed")
@@ -927,7 +927,7 @@ class ChainTest(unittest.TestCase):
         self.assertNotIn("/company-memory/review-%s.json" % y, self.store.files)
         self.assertEqual(self.query(x)["status"], "validated")
         self.assertEqual([r["proposal_id"] for r in self.search("plafond")["results"]], [x])
-        self.review(y)  # la revue peut être rejouée : rien de final n'a été écrit
+        self.review(y)  # review can be retried: nothing final was written
         self.assertEqual(self.query(x)["superseded_by"], y)
 
     def test_failed_marker_write_keeps_the_validated_review_and_replaces_at_indexing(self):
@@ -939,7 +939,7 @@ class ChainTest(unittest.TestCase):
         self.assertEqual(review["decision"], "validated")
         self.assertNotIn("/company-memory/superseded-%s.json" % x, self.store.files)
         self.assertEqual(self.query(y)["status"], "validated")
-        self.assertEqual(self.query(x)["status"], "validated")  # côté conservateur : X servie tant que Y n'est pas indexée
+        self.assertEqual(self.query(x)["status"], "validated")  # conservative side: X remains served until Y is indexed
         self.assertEqual([r["proposal_id"] for r in self.search("plafond")["results"]], [x])
         self.index(y)
         self.assertEqual(self.query(x)["superseded_by"], y)
@@ -1010,7 +1010,7 @@ class ChainTest(unittest.TestCase):
         self.assertEqual((attrs["title"], attrs["source_date"], attrs["source_ref"]),
                          ("Titre rev-t", "2026-10-10", "fixture:src-t"))
         self.assertTrue(attrs["reviewed_at"])
-        self.assertEqual(json.loads(attrs["citations"]), ["fixture:src-t"])  # chaîne JSON, pas « [fixture:src-t] »
+        self.assertEqual(json.loads(attrs["citations"]), ["fixture:src-t"])  # JSON string, not [fixture:src-t]
         for as_string in (False, True):
             self.store.attributes_as_string = as_string
             row = self.search("synthétiques")["results"][0]
@@ -1019,7 +1019,7 @@ class ChainTest(unittest.TestCase):
             self.assertEqual(row["excerpts"], [quote])
 
     def test_tool_parameters_render_a_lone_array_as_go_text(self):
-        # Fidélité du faux moteur : c'est ce rendu qui a produit « [ref] » dans Memory avant le rendu json.
+        # Fake engine fidelity: this rendering produced [ref] in Memory before JSON rendering.
         state = {"record": {"citations": ["a b", "c"], "n": 60.0}}
         self.assertEqual(render({"x": "{{ record.citations }}"}, state, preserve_types=False), {"x": "[a b c]"})
         self.assertEqual(render({"x": "{{ record.citations }}"}, state), {"x": ["a b", "c"]})
@@ -1037,7 +1037,7 @@ class ChainTest(unittest.TestCase):
         attrs = self.store.memory["rev-g"]["attributes"]
         for key in ("source_ref", "title"):
             del attrs[key]
-        attrs["citations"] = "[" + ref + "]"  # forme observée sur l'Agent C (index v7)
+        attrs["citations"] = "[" + ref + "]"  # shape observed on Agent C (index v7)
         for as_string in (False, True):
             self.store.attributes_as_string = as_string
             row = self.search("rendue")["results"][0]
@@ -1056,8 +1056,8 @@ class ChainTest(unittest.TestCase):
         self.assertEqual((row["title"], row["date"], row["date_kind"]), ("rev-l", "", "inconnue"))
 
     def test_search_without_brain_candidate_answers_empty_even_with_many_revisions(self):
-        # Campagne : 607 révisions sans prédécesseur (previous_revision = ""), aucun candidat Brain ; l'ancienne
-        # requête IN ('') renvoyait tout, Memory coupait à 60 lignes et la recherche échouait (memory_rows_truncated).
+        # Campaign: 607 revisions without predecessors (previous_revision = ""), no Brain candidates; the old
+        # IN ('') query returned all, Memory truncated at 60 rows and search failed (memory_rows_truncated).
         for i in range(61):
             self.store.memory["rev-bulk-%02d" % i] = {
                 "entity_type": "company_memory_revision", "name": "Texte %d." % i, "status": "validated",
@@ -1065,7 +1065,7 @@ class ChainTest(unittest.TestCase):
         self.store.calls = []
         found = self.search("introuvable")
         self.assertEqual((found["results"], found["candidate_count"], found["suppressed_count"]), ([], 0, 0))
-        self.assertEqual(found["summary"], "Aucune révision validée trouvée.")
+        self.assertEqual(found["summary"], "No validated revisions found.")
         self.assertEqual(self.store.calls, ["brain.keyword", "memory.query", "list_files"])
 
     def test_brain_hit_without_memory_row_is_suppressed_not_failed(self):
@@ -1115,7 +1115,7 @@ class ChainTest(unittest.TestCase):
 class ContractTest(unittest.TestCase):
     def test_module_manifest_matches_shipped_versions(self):
         manifest = load_json(MODULE / "module.yaml")
-        self.assertEqual(manifest["version"], "0.3.0")
+        self.assertEqual(manifest["version"], "0.3.1")
         for group in ("actions", "queries"):
             for entry in manifest["provides"][group]:
                 doc = WORKFLOWS_CACHE[entry["workflow_id"]]
@@ -1123,7 +1123,19 @@ class ContractTest(unittest.TestCase):
         for entry in manifest["provides"]["apps"]:
             app = load_json(MINIAPPS / (entry["miniapp_id"] + ".json"))
             self.assertEqual(entry["miniapp_version"], app["version"], entry)
-        self.assertEqual(WORKFLOWS_CACHE["memory-search"]["version"], "9")
+        self.assertEqual(WORKFLOWS_CACHE["memory-search"]["version"], "10")
+
+    def test_confirmation_options_keep_wire_values_and_english_labels(self):
+        for name in ("memory-capture-source", "memory-propose-update", "memory-review-update", "memory-index-revision"):
+            fields = WORKFLOWS_CACHE[name]["forms"][0]["fields"]
+            confirmation = next(f for f in fields if f["name"] == "confirmation_manuelle")
+            self.assertEqual({o["value"]: o["label"] for o in confirmation["options"]}, {"oui": "Yes", "non": "No"})
+
+    def test_search_summary_uses_english_labels_without_changing_wire_values(self):
+        code = action("memory-search", "search-answer")["code"]
+        self.assertIn('date_kind: "revue"', code)
+        self.assertIn('date_kind: "inconnue"', code)
+        self.assertIn('revue: "review", inconnue: "unknown"', code)
 
     def test_revalidation_calls_pin_the_new_query_version(self):
         calls = [(name, a) for name, doc in WORKFLOWS_CACHE.items() for a in doc["actions"]
@@ -1134,7 +1146,7 @@ class ContractTest(unittest.TestCase):
             self.assertEqual(call["workflow_version"], WORKFLOWS_CACHE["memory-query"]["version"])
 
     def test_action_ids_are_unique_across_the_module(self):
-        # Un même identifiant dans deux Workflows peut être résolu dans la mauvaise définition (AGENT-1054).
+        # A shared ID across Workflows may resolve in the wrong definition (AGENT-1054).
         seen = {}
         for name, doc in WORKFLOWS_CACHE.items():
             ids = [a["id"] for a in doc["actions"]]
@@ -1166,13 +1178,13 @@ class ContractTest(unittest.TestCase):
         ids = [a["id"] for a in doc["actions"]]
         self.assertEqual(ids[-2:], ["review-write", "write-supersession"])
         self.assertEqual(doc["forms"][0]["actions_on_submit"][-2:], ["review-write", "write-supersession"])
-        self.assertLess(ids.index("review-check-absent"), ids.index("review-write"))  # conflit refusé avant toute écriture
+        self.assertLess(ids.index("review-check-absent"), ids.index("review-write"))  # conflict rejected before any write
 
     def test_index_revision_stores_title_dates_source_ref_and_json_citations(self):
         attrs = action("memory-index-revision", "store-memory")["params"]["items"][0]["attributes"]
         for key in ("title", "source_date", "reviewed_at", "source_ref"):
             self.assertEqual(attrs[key], "{{ record.%s }}" % key)
-        # Un tableau seul dans un paramètre d'outil serait rendu « [a b] » (ResolveTemplateMap) : rendu json explicite.
+        # An array-only tool parameter renders as [a b] (ResolveTemplateMap): use explicit JSON.
         self.assertEqual(attrs["citations"], "{{ json .record.citations }}")
 
     def test_code_steps_hold_no_runtime_data_and_no_nats_text(self):
@@ -1197,10 +1209,10 @@ class ContractTest(unittest.TestCase):
         for name, doc in WORKFLOWS_CACHE.items():
             for step in code_steps(doc):
                 self.assertIn("context", step, f"{name}/{step['id']}")
-            expected = {"memory-capture-source": "4", "memory-propose-update": "4", "memory-inspect": "4",
-                        "memory-search": "9", "memory-query": "7", "memory-review-update": "6",
-                        "memory-index-revision": "8", "memory-read-supersession": "1",
-                        "memory-write-supersession": "2", "memory-health": "3"}[name]
+            expected = {"memory-capture-source": "5", "memory-propose-update": "5", "memory-inspect": "5",
+                        "memory-search": "10", "memory-query": "8", "memory-review-update": "7",
+                        "memory-index-revision": "9", "memory-read-supersession": "2",
+                        "memory-write-supersession": "3", "memory-health": "4"}[name]
             self.assertEqual(doc["version"], expected, name)
 
     def test_brain_request_asks_for_concise_format_once(self):
@@ -1221,9 +1233,9 @@ class ContractTest(unittest.TestCase):
         app = load_json(MINIAPPS / "memory-query-console.json")
         values = [item.get("value") for item in app["ui"]["configuration"]["layout"]]
         self.assertIn({"state": "result.superseded_by"}, values)
-        self.assertEqual(app["version"], "4")
+        self.assertEqual(app["version"], "5")
 
-    @unittest.skipUnless(HAS_JSONSCHEMA and VALIDATOR.exists(), "jsonschema ou validateur Agent Spec V2 absent")
+    @unittest.skipUnless(HAS_JSONSCHEMA and VALIDATOR.exists(), "jsonschema or Agent Spec V2 validator unavailable")
     def test_shipped_json_is_valid_agent_spec_v2(self):
         spec = importlib.util.spec_from_file_location("agent_spec_validator", VALIDATOR)
         validator = importlib.util.module_from_spec(spec)

@@ -1,173 +1,89 @@
-# Company Memory 0.3.0 — mémoire manuelle, révisions remplacées, recherche compacte
+# Company Memory 0.3.1 — manual memory, supersession and compact search
 
-Source: GitLab pilote-maurice commit `8cb35a14b825dcdae4515d46e3b4c5149c154901`; historical 0.2.0: GitHub library commit `dc935630764b24c819defd03cc487bddf8f87399`. The 0.2.0 → 0.3.0 upgrade requires the steps below and has not been qualified on One or Viewer in this repository. Private replays are not distributed. The generated pilote-maurice validator is absent here, so the corresponding test is skipped.
+Source: GitLab pilote-maurice commit `8cb35a14b825dcdae4515d46e3b4c5149c154901`; historical 0.2.0: GitHub library commit `dc935630764b24c819defd03cc487bddf8f87399`. The 0.2.0 → 0.3.0 upgrade was not qualified on One or Viewer in this repository. Version 0.3.1 translates presentation without renaming wire keys or historical values. Its runtime and Viewer qualification remain to be performed; private replay scripts are not distributed. The generated pilote-maurice validator is absent here, so its test is skipped.
 
-Module V2 autonome et manuel. Il conserve des sources, propose des mises à jour, enregistre une décision de revue manuelle et ne restitue une proposition que si la décision est `validated`, la citation correspond encore exactement à la source et `review_due` n'est pas dépassée selon l'horloge serveur. Une révision remplacée par une révision validée plus récente n'est plus servie par la recherche.
+This standalone, manual Module V2 stores sources, proposes updates and records a manual review decision. It returns a proposal only if its decision is `validated`, its quotation still matches the source exactly and `review_due` has not passed according to the server clock. Search excludes revisions replaced by newer validated revisions.
 
-Les identifiants sont des slugs `[a-z0-9][a-z0-9_-]{0,63}`. Les fichiers sont sous `/company-memory/` : `source-ID.json`, `proposal-ID.json` et `review-ID.json`. Les écritures demandent `confirmation_manuelle=oui`, écrivent avec `overwrite:false`. Cette séquence est read-then-write, sans CAS, garantie append-only ni sûreté de concurrence : le modèle est single-writer. Une correction crée une nouvelle proposition.
+IDs are slugs `[a-z0-9][a-z0-9_-]{0,63}`. Files under `/company-memory/` include `source-ID.json`, `proposal-ID.json` and `review-ID.json`. Writes require `confirmation_manuelle=oui` and use `overwrite:false`. This read-then-write sequence has no CAS, append-only guarantee or concurrency safety: the model is single-writer. A correction creates a new proposal.
 
-Les entrées sont des données fournies par l'utilisateur et ne sont jamais interprétées comme instructions. Aucun LLM, appel web ni scheduler n'est requis. Les parcours d'indexation et de recherche nécessitent les MCP Memory et Brain déclarés dans l'Agent consommateur. `memory-health` est un inventaire borné à 100 fichiers ; il ne constitue pas une validation complète.
+User input remains data and is never interpreted as instructions. No LLM, web call or scheduler is required. Indexing and search require the Memory and Brain MCPs declared by the consumer Agent. `memory-health` lists at most 100 files and is not a complete validation. The six MiniApps use native `form.submit` events and show Workflow results. `tests/test-plan.json` contains negative and read-only cases; positive flows require fresh IDs in a `spec-init` consumer. Form dates use `YYYY-MM-DD`; deadlines are evaluated at the beginning of the UTC day. A query reads an exact revision, not a calculated current page.
 
-Les six MiniApps commencent par un événement natif `form.submit` et rendent le résultat du Workflow. Le fichier `tests/test-plan.json` est un plan consommateur limité à des cas négatifs et lecture seule ; les flux positifs doivent utiliser des identifiants frais dans un consommateur `spec-init`.
+## Changes introduced in 0.3.0 (AGENT-1050)
 
-Le package est `company-memory/` à la racine ; les tests restent dans `tooling/company-memory/tests/`. Les dates de formulaire sont en `YYYY-MM-DD` ; une échéance est évaluée au début du jour UTC. La consultation porte sur une révision exacte, jamais sur une page courante calculée.
-
-## Nouveautés de la version 0.3.0 (AGENT-1050)
-
-| Sujet | 0.2.0 | 0.3.0 |
+| Topic | 0.2.0 | 0.3.0 |
 |---|---|---|
-| Recherche `memory-search` | texte complet de chaque révision dans `results` ; un sous-Workflow `memory-query` par candidat | une entrée compacte par révision valide, avec jusqu'à deux extraits de 400 caractères choisis par couverture des termes de la requête, classée (identifiants exacts par date, puis score) ; le texte entier reste dans `memory-query` ; un appel Brain, une requête Memory et un listage, sans sous-Workflow |
-| Révision remplacée | servie comme validée tant que `review_due` n'est pas dépassée | `memory-query` renvoie `superseded` avec `superseded_by` ; la recherche ne la sert plus |
-| Données capturées | interpolées dans le source JS (`{{ json .record }}`), refusées si elles contiennent `npm:nats` | transmises par `context` (liaisons `const` du sandbox), jamais dans `code` ; le texte est relu à l'identique |
-| Brain | `brain.keyword` sans paramètre de format | `brain.keyword` avec `response_format: "concise"` ; dépendance à l'image Brain corrigée (AGENT-1049) |
-| Identifiants d'action | `validate`, `write`, `revalidate`… répétés d'un Workflow à l'autre | uniques dans tout le module (préfixe du Workflow : `capture-validate`, `query-answer`, `revalidate-revision`…), vérifié par un test hors ligne ; un identifiant partagé pouvait être résolu dans la mauvaise définition (AGENT-1054) |
-| Versions | module 0.2.0, Workflows en version 2 | module 0.3.0 ; `memory-search` 9, `memory-query` 7, `memory-index-revision` 8, `memory-review-update` 6, `memory-capture-source` 4, `memory-propose-update` 4, `memory-inspect` 4, `memory-health` 3, `memory-write-supersession` 2, `memory-read-supersession` 1 ; `memory-resolve-candidate` retiré ; MiniApp `memory-query-console` en version 4 |
+| `memory-search` | Full text in `results`; one `memory-query` child per candidate | Compact result per valid revision with up to two 400-character, query-coverage excerpts; exact identifiers first by date, then score. Full text remains in `memory-query`. One Brain call, one Memory query and one listing; no child Workflow. |
+| Superseded revision | Served as validated until `review_due` | `memory-query` returns `superseded` and `superseded_by`; search excludes it. |
+| Captured data | Interpolated into JS (`{{ json .record }}`), rejecting text containing `npm:nats` | Passed via `context` as sandbox `const` bindings, never interpolated into `code`; text is read back unchanged. |
+| Brain | `brain.keyword` without format | `response_format: "concise"`; requires the corrected Brain image (AGENT-1049). |
+| Action IDs | Names such as `validate`, `write` and `revalidate` repeated across Workflows | IDs are unique across the Module (e.g. `capture-validate`, `query-answer`, `revalidate-revision`), checked offline; shared IDs could resolve against the wrong definition (AGENT-1054). |
+| Versions | Module 0.2.0, Workflows version 2 | Module 0.3.0: search 9, query 7, index 8, review 6, capture 4, propose 4, inspect 4, health 3, write-supersession 2, read-supersession 1; `memory-resolve-candidate` retired; query MiniApp 4. |
 
-### Données transmises par `context`
+In 0.3.1 the respective Workflow versions are 10, 8, 9, 7, 5, 5, 5, 4, 3 and 2. MiniApps capture, propose and review are version 4; query is 5; index and search are 3. The manifest pins these versions. Historical IDs, fields, enums and native files remain readable; consumers must update their explicit pins.
 
-Chatserver évalue `context` avant le sandbox (`internal/recipes/mcp_executor.go`, branche `code_execution`) : une expression seule `{{ nom }}` garde le type de la valeur, une expression `{{ default "" .nom }}` donne `""` pour une clé absente. Le sandbox écrit le contexte en JSON (`context.json`, `internal/business/core/sandbox_service.go`) et lie chaque clé en `const` dans le module généré (`generateUserModule`). Le contrôle statique `natsClientImport` (`internal/business/core/sandbox_host_channel.go`) ne lit que `code` : un texte capturé qui contient `npm:nats`, des backticks, `${...}`, `{{ }}` ou du JavaScript passe donc sans être interprété.
+### `context` and code steps
 
-Le comportement de la résolution a été vérifié sur le résolveur de chatserver (`template_utils.go`) : type conservé, texte restitué à l'identique, clé requise absente = échec fermé, `default` pour l'optionnel.
+Chatserver evaluates `context` before the sandbox (`internal/recipes/mcp_executor.go`, `code_execution`). A single `{{ nom }}` expression preserves the value type; `{{ default "" .nom }}` yields an empty string for a missing key. The sandbox writes `context.json` (`internal/business/core/sandbox_service.go`) and binds each key as `const` in `generateUserModule`. `natsClientImport` (`internal/business/core/sandbox_host_channel.go`) scans only `code`: captured `npm:nats`, backticks, `${...}`, `{{ }}` or JavaScript are data. The chatserver resolver (`template_utils.go`) was checked for type preservation, exact text, fail-closed missing required keys and optional `default`.
 
-Les huit Workflows qui portent des étapes `code_execution`, toutes alimentées par `context` :
+The eight code-bearing Workflows and steps are:
 
-| Workflow | Version | Étapes `code_execution` |
-|---|---|---|
-| `memory-capture-source` | 4 | `capture-validate` |
-| `memory-propose-update` | 4 | `propose-validate`, `propose-check-evidence`, `propose-check-absent` |
-| `memory-review-update` | 6 | `review-validate`, `review-parse-proposal`, `review-check-evidence`, `review-check-absent`, `assemble`, `plan-supersession` |
-| `memory-inspect` | 4 | `inspect-validate`, `inspect-parse-proposal`, `inspect` |
-| `memory-query` | 7 | `query-validate`, `query-parse-proposal`, `find-marker`, `query-answer` |
-| `memory-search` | 9 | `search-validate`, `candidates`, `build-revision-query`, `search-answer` |
-| `memory-index-revision` | 8 | `index-validate`, `prepare`, `check-copy`, `finish` |
-| `memory-health` | 3 | `health` |
+| Workflow | 0.3.1 version | `code_execution` steps |
+|---|---:|---|
+| `memory-capture-source` | 5 | `capture-validate` |
+| `memory-propose-update` | 5 | `propose-validate`, `propose-check-evidence`, `propose-check-absent` |
+| `memory-review-update` | 7 | `review-validate`, `review-parse-proposal`, `review-check-evidence`, `review-check-absent`, `assemble`, `plan-supersession` |
+| `memory-inspect` | 5 | `inspect-validate`, `inspect-parse-proposal`, `inspect` |
+| `memory-query` | 8 | `query-validate`, `query-parse-proposal`, `find-marker`, `query-answer` |
+| `memory-search` | 10 | `search-validate`, `candidates`, `build-revision-query`, `search-answer` |
+| `memory-index-revision` | 9 | `index-validate`, `prepare`, `check-copy`, `finish` |
+| `memory-health` | 4 | `health` |
 
-## Workflows et MiniApps
+Capture stores source text, reference and ISO date after confirmation; propose records a revision, exact quotation, deadline and optional `previous_revision`; review records `validated`, `refused` or `disputed`; inspect reads the proposal and evidence; query reads an exact revision and its supersession; search returns bounded BM25 excerpts; index writes a validated revision to Memory then Brain; health lists native files. The six MiniApps have no independent business logic; the query console labels the successor “Superseded by”.
 
-| Workflow | Rôle |
-|---|---|
-| `memory-capture-source` | capture une source (texte, référence, date ISO) après confirmation |
-| `memory-propose-update` | propose une révision, sa citation exacte et son échéance ; `previous_revision` optionnel |
-| `memory-review-update` | enregistre une décision finale `validated`, `refused` ou `disputed` |
-| `memory-inspect` | relit une proposition, sa source et la preuve avant décision |
-| `memory-query` | consulte une révision exacte, avec statut, citation et lien de remplacement |
-| `memory-search` | recherche BM25 bornée (dix résultats Brain), revalidation des candidats sur la copie Memory et les marqueurs natifs, réponse compacte avec extraits par couverture des termes |
-| `memory-index-revision` | indexe une révision validée dans Memory puis dans Brain |
-| `memory-health` | inventaire borné des fichiers `/company-memory` |
+## Search output and compatibility
 
-Les MiniApps (`memory-capture`, `memory-propose`, `memory-review`, `memory-query-console`, `memory-index-console`, `memory-search-console`) n'ont pas de logique propre ; `memory-query-console` affiche désormais « Remplacée par ».
+`memory-search` returns `status: revalidated_revisions`, `search_mode: bm25`, `results`, `summary`, `candidate_count`, `suppressed_count`, `excerpt_budget_chars` and `warning: bounded_search_excerpts_full_text_via_memory_query`. Each result includes `proposal_id`, `title`, `date`, `date_kind`, `source_ref`, `review_due`, `match_type` (`exact_identifier` or `other`), `excerpts`, and optionally `superseded_by`. Structured historical `date_kind` values `source`, `revue` and `inconnue` are unchanged; the human-readable summary renders the latter two as “review” and “unknown”. Title is limited to 200 characters, source reference to 300, and whitespace is normalized to one space. Summary contains one line per revision, even with newlines in inputs.
 
-## Formats de sortie
+The path is one `brain.keyword` call (at most ten results), one `memory.query` over `v_entities` (`maxRows` 60) for validated candidates and their successors, and one listing of `/company-memory` markers. IDs are slug-validated before being inlined in SQL. With no Brain candidates, the engine sends the empty `external_id IN ('')` query without a `previous_revision` clause and returns zero candidates and suppressed results; otherwise an empty predecessor could select all rows without predecessors. `rows: null` means no rows. Errors, unexpected shapes or `truncated: true` fail closed. Candidates missing a validated row, superseded, expired or with unreadable expiry are excluded and counted in `suppressed_count`.
 
-### `memory-search`
+Text comes from `name`, deadline from `expires_at`, title and dates from `title`, `source_date` and `reviewed_at`; `source_ref` is written by index since 0.3.0. For older rows it falls back to the first citation, whether an array, JSON array string or Go-rendered `[reference]` string; its interior is never split on spaces. Chatserver `ResolveTemplateMap` renders an array-only parameter as Go text, so indexing writes `{{ json .record.citations }}`. For older rows without title, the title is the source-reference fragment between `#` and the final `@`, or the ID; date is empty and `date_kind` is `inconnue`. Reindexing restores title and dates.
 
-```json
-{
-  "status": "revalidated_revisions",
-  "search_mode": "bm25",
-  "results": [
-    {
-      "proposal_id": "rev-plafond-six",
-      "title": "Plafond de chantiers simultanés",
-      "date": "2026-10-21",
-      "date_kind": "source",
-      "source_ref": "company-memory-source:decision-2026-10-21",
-      "review_due": "2099-01-01T00:00:00.000Z",
-      "excerpts": [
-        "Le plafond de chantiers simultanés est fixé à six … (400 caractères au plus)",
-        "[…] La dérogation précise la durée … (400 caractères au plus) […]"
-      ]
-    }
-  ],
-  "summary": "rev-plafond-six | source 2026-10-21 | Plafond de chantiers simultanés | company-memory-source:decision-2026-10-21 | Le plafond … […] … [une ligne par révision]",
-  "candidate_count": 2,
-  "suppressed_count": 1,
-  "excerpt_budget_chars": 8160,
-  "warning": "bounded_search_excerpts_full_text_via_memory_query"
-}
+Exact identifiers sort first by descending source date (review date fallback), followed by other matches by descending score. Each revision has up to two non-overlapping 400-character windows selected for coverage of distinct query terms longer than two letters, ignoring case and accents. Windows remain in text order, use `[…]` at cut boundaries and fall back to the beginning if no term matches. The total excerpt bound is 10 × 2 × (400 plus two markers) = 8,160 characters. Full text is available via `memory-query`.
+
+Historical offline measurements: a compact example with two selected revisions (one 1,400 characters) and one superseded revision was 1,932 JSON bytes, including 987 result characters; a nearby 0.2.0 example was 3,777 bytes. On a 606-revision laboratory corpus, evidence was visible in 29% with the beginning only, 85% with two 260-character windows and 91% with two 400-character windows. These are not One runtime measurements.
+
+`memory-query` returns `validated` with the revision text, `superseded` with its text for explicit inspection, `successor_conflict` with no answer for multiple successors, `expired` with no answer, `refused`/`disputed` with no answer, `evidence_changed` if the quote no longer matches, and `review_invalid`/`review_date_invalid` for inconsistent review or deadline. Fields added in 0.3.0 are `title`, `source_date`, `reviewed_at`, `previous_revision`, `superseded_by` and `successor_ids`; absent previous/successor values are empty. Reading without a review remains a native read error.
+
+## Supersession
+
+When review validates Y with `previous_revision = X`, it writes the validated review first, then `/company-memory/superseded-X.json` with `overwrite:false` and `{"superseded": X, "successor": Y, "reviewed_at": ...}`. A marker cannot precede a validated review and does not require indexing Y. A pre-existing marker rejects another validation with `successor_conflict` before any write; refused/disputed decisions create no marker.
+
+Query combines this native marker (listing and conditional child `memory-read-supersession`) with validated Memory successors. One successor yields `superseded` and its ID; several yield `successor_conflict` and no answer. Search serves only validated Memory rows without a validated successor or native marker and with a valid unexpired deadline. A conflict is suppressed too. Index refuses anything no longer `validated`. Marker write/read are internal children `memory-write-supersession` 3 and `memory-read-supersession` 2 in 0.3.1.
+
+The native marker records the decision before indexing; each search lists markers, so a validated but unindexed successor already hides X. Reading every `proposal-*.json` to find successors would be unbounded. An expired successor still supersedes X. If marker and Memory identify different successors, X stays hidden until manual resolution. If Y's review write fails, no marker is written and X remains served. If the marker write fails after Y's final review, X remains served until Y is indexed; a missing marker can be written manually after review, and without it a second validation is not immediately refused but becomes a conflict once both successors are indexed. Pre-0.3.0 validated revisions lack markers. Native files are not given a `superseded` status; it is calculated on read.
+
+## Brain dependency
+
+Search calls `brain.keyword` with `tenant_id: company-memory`, `max_results: 10`, `response_format: "concise"`. The concise URI, passage ID, score and bounded excerpt come from AGENT-1049; an older Brain image is incompatible. An image ignoring `response_format` must fail rather than silently return zero results; its exact behaviour is not qualified. The `candidates` step reads `uri`, `match_type` and the best score per revision; field names require AGENT-1049 confirmation, with `other` and 0 as defaults. Detailed `document.file_path` responses fail with `brain_concise_unsupported`, and results without any URI fail with `invalid_brain_response`. Brain excerpts are not the answer: text and citation come from Memory, indexed from revalidated native files.
+
+When the corrected image is published, pin its digest in the consumer, confirm the URI field and independence from `document.file_path`, remove the detailed fallback, rerun `test_candidates_read_concise_uri_and_fail_closed` against the frozen shape, and execute the Brain cases in the qualification plan.
+
+## Migration and composition
+
+For 0.2.0 consumers, deploy and digest-pin the corrected AGENT-1049 Brain image; otherwise search fails. Review the consumer diff and compose with `--update`: without it differing 0.2.0 files prevent every write. The dry-run lists `would_replace_files`; `--update --write` lists `replaced_files`. Only the ten Module Workflows, six MiniApps and `tests/test-plan.json` are replaced; no consumer file is deleted, and identities and connections are untouched. The composer reports `retired_files_present` for `memory-resolve-candidate` without deleting it; remove that retired consumer file manually before `spec check`, because it pins an undelivered `memory-query` version. `mcp_requirements` are merged into `agent-spec.json`.
+
+```bash
+python3 tooling/company-memory/compose.py --consumer-dir <consumer> --agent-alias memory --update
+python3 tooling/company-memory/compose.py --consumer-dir <consumer> --agent-alias memory --update --write
+maurice --config <config> spec check --dir <consumer> --env integration_test --agent-alias memory --json
+maurice --config <config> spec deploy --dir <consumer> --env integration_test --agent-alias memory --tests auto --json
 ```
 
-- **Chemin.** Un appel Brain (`brain.keyword`, dix résultats), une seule requête Memory (`memory.query` sur `v_entities` : révisions validées dont l'identifiant est un candidat ou dont `previous_revision` est un candidat, `maxRows` 60) et un listage de `/company-memory` (marqueurs `superseded-ID.json`), sans sous-Workflow. Les identifiants sont inlinés dans le SQL après contrôle du slug ; la liste ne contient jamais la chaîne vide. Sans candidat Brain, le moteur n'ayant pas d'étape conditionnelle, la requête Memory est une requête qui ne renvoie rien (`external_id IN ('')`, sans clause `previous_revision`, qui renverrait toutes les révisions sans prédécesseur) et la réponse est vide : zéro résultat, `candidate_count` 0, `suppressed_count` 0. Le texte vient de `name`, `review_due` de `expires_at`, `title`, `date` et `date_kind` des attributs `title`, `source_date` et `reviewed_at`, `source_ref` de l'attribut `source_ref`, que `memory-index-revision` écrit depuis 0.3.0 ; à défaut, de la première citation de `citations`, lue en tableau, en chaîne JSON de tableau ou en chaîne rendue à la Go `[référence]` (une seule citation, l'intérieur des crochets tel quel). Un paramètre d'outil qui référence un tableau seul est rendu en texte Go par chatserver (`ResolveTemplateMap`) : `citations` est donc écrit avec `{{ json .record.citations }}`.
-- **Exclusions.** Un candidat sans ligne Memory validée, remplacé (ligne validée dont `previous_revision` vaut son identifiant, ou marqueur natif), ou dont l'échéance est dépassée ou illisible est exclu et compté dans `suppressed_count`. `rows: null` est un résultat vide ; une erreur d'outil, une forme inattendue ou `truncated: true` font échouer la recherche.
-- **Révisions indexées avant ces attributs.** Le titre est dérivé de la référence de source (fragment entre le premier « # » et le dernier « @ », sinon l'identifiant) ; `date` est vide et `date_kind` vaut `inconnue`. Rejouer `memory-index-revision` rétablit titre et date.
-- **Ordre.** D'abord les candidats `match_type: "exact_identifier"`, par date décroissante (date de la source, à défaut de la revue) : une correction récente précède la section qu'elle corrige. Ensuite les autres, par score décroissant.
-- **Extraits.** Jusqu'à deux fenêtres de 400 caractères par révision, choisies pour couvrir le plus de termes distincts de la requête (mots de plus de deux lettres, accents et casse ignorés). Elles ne se chevauchent pas et sont présentées dans l'ordre du texte. Une fenêtre qui ne commence pas au début du texte est préfixée de « […] » ; une fenêtre qui s'arrête avant la fin est suivie de « […] ». Si aucun terme n'est trouvé, l'extrait est le début du texte.
-- **Borne.** 10 résultats × 2 fenêtres × (400 caractères et deux marqueurs) = 8 160 caractères au plus par réponse (`excerpt_budget_chars`).
-- **Champs.** Chaque ligne porte `proposal_id`, `title`, `date`, `date_kind`, `source_ref`, `review_due`, `match_type` (`exact_identifier` ou `other`), `excerpts`, et `superseded_by` seulement s'il existe (ne devrait pas apparaître après filtrage). Les champs textuels sont normalisés : toute suite de blancs, retours compris, devient une espace ; le titre est borné à 200 caractères, la référence de source à 300.
-- **Résumé.** Une ligne par révision (une ligne garantie même si un champ contient des retours à la ligne) : identifiant, date, titre, référence de source, `remplacée par` si `superseded_by` existe, puis les extraits.
-- **Texte entier.** Il reste dans `memory-query`, avec `proposal_id`.
-- **Taille.** Exemple type (deux révisions retenues dont une de 1 400 caractères, une révision remplacée, requête « plafond chantiers ») : 1 932 octets en JSON compact, dont 987 caractères de résultats. Référence 0.2.0 sur un exemple voisin (deux révisions de 1 200 caractères, une remplacée) : 3 777 octets. Mesures hors One, par exécution du code de l'étape `answer`.
-- **Choix d'extraits.** Un extrait de début de texte manque la preuve située au milieu d'un long texte. Mesure du laboratoire sur les 606 révisions du banc : preuve visible dans 29 % des cas avec le début, 85 % avec deux fenêtres de 260 caractères choisies par couverture, 91 % avec deux fenêtres de 400 caractères.
+Verify the execution service loads the new definition; this was a known 0.2.0 limitation and the One path is not qualified. For every already validated and indexed 0.2.0 revision Y replacing X, replay `memory-index-revision` using the same ID: indexing is idempotent on `externalId` and `document_uri`; without replay X remains served. Native `source-*`, `proposal-*`, `review-*` formats do not migrate. Reindex older rows to fill `title`, `source_date`, `reviewed_at`, `source_ref` and JSON `citations`. Pre-0.3.0 validated revisions lack native markers: without reindexing, after checking Y's review, the documented marker may be written manually; that operation is unqualified. Callers formerly reading `results[].answer`, `citations` or `excerpt` must use `excerpts` and `source_ref`, and query full text separately.
 
-### `memory-query`
+A fresh consumer requires a reachable One, a test Agent created with `maurice test setup --fresh --save=false --json`, and Agent Spec V2 initialized with that ID. Use the target One's configuration explicitly. Different aliases do not isolate data: dedicate an Agent and sidecars/volumes to each memory. Fixed tenant `company-memory` does not isolate companies sharing a sidecar. The composer copies Module bytes into an Agent Spec; it is not Module Catalog installation. The `integration_test` plan uses its native authorization; Catalog installation retains its own approval gate. Consumer identity, policies, connections and locks remain in the consumer.
 
-`status` vaut :
-
-| Statut | Sens | `answer` |
-|---|---|---|
-| `validated` | révision valide, citation intacte, échéance non dépassée | texte de la révision |
-| `superseded` | révision remplacée par une révision validée plus récente (`superseded_by`) | texte conservé pour consultation explicite |
-| `successor_conflict` | deux révisions validées ou plus pointent vers cette révision | vide ; arbitrage manuel |
-| `expired` | échéance de revue dépassée | vide |
-| `refused`, `disputed` | décision de revue | vide |
-| `evidence_changed` | la citation n'est plus dans la source | vide |
-| `review_invalid`, `review_date_invalid` | revue ou échéance incohérente | vide |
-
-Champs ajoutés en 0.3.0 : `title`, `source_date`, `reviewed_at`, `previous_revision` (vide si absent), `superseded_by` (vide si aucun), `successor_ids`. Une lecture sans revue reste une erreur de lecture native.
-
-## Remplacement de révision
-
-La vérité est native. Quand `memory-review-update` valide une révision Y dont `previous_revision` vaut X, il écrit **après** la revue validée de Y un marqueur natif `/company-memory/superseded-X.json` (`overwrite:false`), de contenu `{"superseded": X, "successor": Y, "reviewed_at": ...}`, si bien qu'un marqueur n'existe jamais sans revue validée de Y. Ce marqueur ne dépend pas de l'indexation de Y.
-
-- `memory-review-update` refuse de valider Y (`successor_conflict`, avant toute écriture) si le marqueur de X existe déjà : une révision ne peut être remplacée qu'une fois. Une décision `refused` ou `disputed` n'écrit aucun marqueur.
-- `memory-query` lit ce marqueur (listage de `/company-memory`, puis lecture seulement s'il existe, par le Workflow enfant `memory-read-supersession`) et l'unit aux successeurs trouvés dans Memory (`memory.query`, révisions validées dont `previous_revision` vaut X). Un successeur unique : statut `superseded` avec `superseded_by`, texte conservé. Plusieurs successeurs distincts : `successor_conflict`, sans réponse.
-- `memory-search` ne sert que les révisions validées présentes dans Memory, sans successeur validé dans Memory ni marqueur natif, et dont l'échéance n'est pas dépassée : une révision remplacée est comptée dans `suppressed_count`. Un conflit de successeurs est traité comme un remplacement : la révision n'est pas servie.
-- `memory-index-revision` refuse une révision qui n'est plus `validated`.
-- L'écriture du marqueur `memory-write-supersession` (version 2) et la lecture `memory-read-supersession` (version 1) sont des Workflows enfants internes.
-
-Pourquoi ce mécanisme : le fichier natif porte la décision au moment où elle est prise, avant toute indexation ; un écart d'indexation ne peut plus laisser X servie. Pour `memory-query`, la copie Memory reste une seconde source, lue pour compléter, comme avant. Pour `memory-search`, elle porte le texte servi, et le marqueur natif est relu (listage) à chaque recherche : un successeur validé mais pas encore indexé masque déjà X. Le marqueur est un fichier par révision remplacée, écrit une seule fois, ce qui rend le double remplacement détectable sans lire de contenu. Une recherche des successeurs dans tous les `proposal-*.json` serait non bornée.
-
-Conséquences à connaître :
-
-- Une successeur qui expire reste un remplacement : X n'est pas rétablie automatiquement.
-- Deux successeurs distincts (marqueur et copie Memory) donnent `successor_conflict` : X n'est servie ni en réponse ni en recherche, jusqu'à arbitrage.
-- Échec de l'écriture de la revue de Y : aucun marqueur n'est écrit, X reste servie. Échec du marqueur après la revue (exécution `failed`, revue de Y enregistrée et finale) : X reste servie jusqu'à l'indexation de Y, dont la ligne Memory `previous_revision` la remplace ; c'est le côté conservateur. Le marqueur manquant s'écrit à la main si besoin, et sans lui une seconde validation remplaçant X n'est pas refusée d'emblée : elle aboutit à `successor_conflict` une fois les deux successeurs indexés.
-- Les révisions validées avant 0.3.0 n'ont pas de marqueur. Voir la migration.
-- Les fichiers natifs ne reçoivent aucun statut `superseded` ; le statut est calculé à la consultation.
-
-## Recherche Brain (dépendance)
-
-`memory-search` appelle `brain.keyword` avec `tenant_id: company-memory`, `max_results: 10` et `response_format: "concise"`. Le paramètre et la forme concise (URI, identifiant de passage, score, extrait borné) viennent de la correction Brain AGENT-1049 ; **le module n'est pas utilisable avec une image Brain antérieure**. Le comportement exact d'une image qui ignore `response_format` n'est pas qualifié : la recherche doit échouer, jamais renvoyer un résultat vide silencieux, ce point figure dans le plan de requalification.
-
-L'unique endroit qui lit la réponse Brain est l'étape `candidates` de `memory-search`. Elle lit l'URI de chaque résultat (champ `uri`), son `match_type` (valeur `exact_identifier` pour l'ordre des résultats) et son `score` (le meilleur par révision). Ces noms de champs sont à confirmer avec AGENT-1049 ; à défaut, `match_type` vaut `other` et `score` vaut 0. Elle échoue fermée : une réponse en forme détaillée (`document.file_path`, image Brain antérieure à la forme concise) renvoie l'erreur `brain_concise_unsupported`, sans repli silencieux ; des résultats sans aucune URI renvoient `invalid_brain_response`. Les extraits Brain ne servent jamais de réponse : le texte et la citation viennent de la copie Memory, écrite par `memory-index-revision` à partir d'une révision revalidée sur les fichiers natifs.
-
-**À faire quand l'image Brain d'AGENT-1049 sera publiée** : épingler son digest dans l'Agent consommateur ; confirmer le nom du champ URI et l'absence de dépendance à `document.file_path` ; retirer le repli détaillé ; relancer le test `test_candidates_read_concise_uri_and_fail_closed` avec la forme figée ; exécuter les cas Brain du plan de requalification.
-
-## Migration depuis 0.2.0
-
-1. Déployer une image Brain corrigée (AGENT-1049) et l'épingler par digest dans l'Agent consommateur. Sans elle, `memory-search` échoue.
-2. Composer en 0.3.0 avec `--update`. Sans cette option, le composeur refuse les fichiers 0.2.0 qui diffèrent, et n'écrit rien.
-
-   ```bash
-   python3 tooling/company-memory/compose.py --consumer-dir <consommateur> --agent-alias memory --update           # liste would_replace_files
-   python3 tooling/company-memory/compose.py --consumer-dir <consommateur> --agent-alias memory --update --write   # remplace, liste replaced_files
-   ```
-
-   `--update` ne remplace que les fichiers possédés par le Module : les dix Workflows, les six MiniApps et `tests/test-plan.json`. Il ne supprime aucun fichier du consommateur, et ne touche pas aux identités ni aux connexions. `memory-resolve-candidate` est retiré du Module : le composeur le signale (`retired_files_present`) sans le supprimer ; retirer `workflows/memory-resolve-candidate.json` du consommateur à la main avant `spec check`, car il épingle une version de `memory-query` qui n'est plus livrée. `agent-spec.json` reçoit les `mcp_requirements` comme à chaque composition. Relire le diff du consommateur avant tout commit.
-3. Vérifier puis déployer :
-
-   ```bash
-   maurice --config <config> spec check --dir <consommateur> --env integration_test --agent-alias memory --json
-   maurice --config <config> spec deploy --dir <consommateur> --env integration_test --agent-alias memory --tests auto --json
-   ```
-
-   Vérifier que le service d'exécution charge bien la nouvelle définition (limite notée pour 0.2.0). Cette étape n'est pas qualifiée sur un One : elle figure dans le plan de requalification.
-4. Les révisions déjà validées et indexées en 0.2.0 n'ont pas d'attribut `previous_revision`. Pour chaque révision qui en remplace une autre, rejouer `memory-index-revision` avec le même identifiant : l'indexation est idempotente sur `externalId` et `document_uri`. Sans ce rejeu, la révision remplacée reste servie.
-5. Les fichiers natifs (`source-*`, `proposal-*`, `review-*`) gardent leur format : aucune migration de fichiers. Les révisions indexées avant l'ajout des attributs `title`, `source_date`, `reviewed_at` et `source_ref` restent servies avec un titre dérivé de la citation et une date `inconnue` ; rejouer `memory-index-revision` sur chacune les complète et réécrit `citations` en JSON.
-6. Révisions validées avant 0.3.0 : leur `previous_revision` n'a pas été écrit en marqueur natif. Une révision Y validée en 0.2.0 et remplaçant X n'empêche donc X d'être servie qu'après indexation (étape 4). Pour fermer l'écart sans réindexer, écrire à la main `/company-memory/superseded-X.json` avec le contenu décrit ci-dessus, après contrôle de la revue de Y. Cette opération n'est pas qualifiée.
-7. Les appelants de `memory-search` qui lisaient `results[].answer`, `results[].citations` ou `results[].excerpt` doivent lire `excerpts` (liste) et `source_ref`, puis appeler `memory-query` pour le texte complet.
-
-## Vérification hors ligne
+## Offline checks and qualification
 
 ```bash
 python3 -m unittest discover -s tooling/company-memory/tests -p 'test_*.py'
@@ -175,61 +91,21 @@ maurice module validate --file company-memory/module.yaml --json
 maurice module test --file company-memory/module.yaml --json
 ```
 
-- `tests/test_compose.py` : composition, conflits, provider MCP, `--update` (remplacement limité aux fichiers du Module, liste imprimée, rien écrit en cas de refus), signalement du Workflow retiré sans suppression.
-- `tests/test_module_offline.py` : versions du manifeste, validation Agent Spec V2 des Workflows, MiniApps et plan de test (validateur généré `contracts/agent-authoring/v2/generated/python/validator.gen.py`) ; absence de `{{ }}` et de texte `npm:nats` dans les `code` ; contexte bindable ; requête Memory de remplacement ; fenêtres d'extraits (terme au milieu d'un long texte, deux termes distants, repli, accents), ordre des identifiants exacts par date, borne de taille ; requête Memory unique de la recherche (slugs inlinés, refus d'un identifiant hors slug, `rows: null`, `truncated`, attributs en objet ou en chaîne, remplacement par ligne et par marqueur, candidat absent, échéance, titre dérivé, attribut `source_ref`, `citations` en tableau, chaîne JSON ou chaîne Go) ; rendu texte Go des paramètres d'outil dans le faux moteur, comme `ResolveTemplateMap` ; unicité des identifiants d'action dans le module ; exécution des étapes `code` sous node (`tests/code_step_harness.mjs`, liaisons `const` comme le sandbox) ; enchaînement capture → proposition → revue → consultation → indexation → recherche sur des faux Memory et Brain, y compris remplacement, conflit, expiration, refus et cas négatifs.
-- Les tests de code exigent `node` et les tests de contrat `jsonschema` ; sans eux, ils sont ignorés avec motif affiché.
-- Les faux Memory et Brain vérifient la forme des requêtes (tenant, SQL, `response_format`) mais ne prouvent pas le comportement réel du One. La qualification réelle reste à faire.
+`test_compose.py` covers conflict handling, MCP providers, update scope and retired-file reporting without deletion. `test_module_offline.py` checks manifests, V2 resources when the generated validator and `jsonschema` are available, bound contexts, SQL and excerpt shapes, legacy citation encodings, action ID uniqueness, Node execution and a fake Memory/Brain capture → propose → review → query → index → search sequence including supersession, conflict, expiry, refusal and negative cases. Node and `jsonschema` dependent tests skip when unavailable. Fake providers check request shapes, not real One behaviour.
 
-## Qualification
+Historical **0.2.0** evidence: 33 runtime cases and six Viewer MiniApps passed on two dedicated Agents, backend `fe7e5970`. Replays `tests/mcp-replay.py` and `tests/search-replay.py` were adapted to compact output but not rerun here. **0.3.0** was not qualified on One; `tests/requalification-plan.json` records pending commands and cases. **0.3.1** requires its own runtime and Viewer qualification. The plan retains its historical French hostile-text fixture byte for byte to test multilingual data fidelity. Historical replay tools belong to the authorized canonical pilot checkout and are not distributed here; the owning session must prepare an isolated One and external tools. Historical offline test counts do not qualify a later version.
 
-- **0.2.0** : 33 cas runtime et six MiniApps Viewer réussis sur deux Agents dédiés (historique, backend `fe7e5970`). Le rejeu `tests/mcp-replay.py` (33 cas) et `tests/search-replay.py` ont été adaptés au format compact, mais ne sont pas réexécutés ici.
-- **0.3.0** : non qualifiée sur un One. Le plan de requalification est `tests/requalification-plan.json` (commandes, cas à rejouer, cas nouveaux). Il n'a pas été exécuté.
+## Sidecar pins recorded for 0.3.0
 
-## Épinglage des sidecars (0.3.0)
+The MCP instance registry, not this Module, pins sidecars by digest; requirements name the registry entries `company_memory` and `brain`, and the platform uses the active entry. Reference files are in [`tests/registry/`](tests/registry/):
 
-Les sidecars sont épinglés par digest dans le registre MCP de l'instance, pas dans le module : `mcp_requirements` ne porte qu'un nom de registre (`company_memory`, `brain`) et la plateforme prend l'entrée active de ce nom. Les fichiers de référence sont dans [`tests/registry/`](tests/registry/) :
-
-| Fichier | Nom de registre | Version | Digest de l'image |
+| File | Registry name | Version | Image digest |
 |---|---|---|---|
-| `tests/registry/memory-1.1.0.json` | `company_memory` | 1.1.0 | `sha256:10ec6f7ebd498127137edf9007b06286b9395ef92a89dc5ffa9a6ec7fa3cae7f` |
-| `tests/registry/brain-1.2.0.json` | `brain` | 1.2.0 | `sha256:fbdf0122fb6c4c043940588441c9df2af7a019ce97cdff4268fa468d7f2f848b` |
+| `memory-1.1.0.json` | `company_memory` | 1.1.0 | `sha256:10ec6f7ebd498127137edf9007b06286b9395ef92a89dc5ffa9a6ec7fa3cae7f` |
+| `brain-1.2.0.json` | `brain` | 1.2.0 | `sha256:fbdf0122fb6c4c043940588441c9df2af7a019ce97cdff4268fa468d7f2f848b` |
 
-Les noms sont uniques dans le registre : une nouvelle version met à jour l'entrée existante (`PUT /api/v1/registry/entries/<nom>`), elle ne s'y ajoute pas. Les versions précédentes (memory 1.0.16, brain 1.1.7) sont documentées dans le dépôt pilote ; elles ne sont pas incluses ici. Après une mise à jour, le sidecar actif porte encore l'ancienne image : le plan signale `provider or image drift` jusqu'au retrait de ce sidecar (`DELETE /api/v1/mcp/servers/<id>`, qui conserve le volume de données) puis au redéploiement.
+Registry names are unique: update an existing entry via `PUT /api/v1/registry/entries/<name>`, do not add a duplicate. Previous Memory 1.0.16 and Brain 1.1.7 are documented in the pilot, not included here. An active sidecar retains its old image after registry update: a plan reports `provider or image drift` until the sidecar is removed via `DELETE /api/v1/mcp/servers/<id>` (data volume retained) and redeployed.
 
-## Composition dans un autre consommateur
+## Limits
 
-Prérequis : One joignable, Agent de test créé par `maurice test setup --fresh --save=false --json`, puis Agent Spec V2 initialisée avec cet identifiant. Utiliser explicitement le fichier de configuration du One visé pour toutes les commandes CLI. Un alias différent ne crée pas une nouvelle frontière de données : il faut un déploiement et un stockage effectivement isolés.
-
-```bash
-python3 tooling/company-memory/compose.py --consumer-dir /chemin/consommateur --agent-alias memory
-python3 tooling/company-memory/compose.py --consumer-dir /chemin/consommateur --agent-alias memory --write
-# Mise à jour d'une composition 0.2.0 : remplace seulement les fichiers du Module qui diffèrent
-python3 tooling/company-memory/compose.py --consumer-dir /chemin/consommateur --agent-alias memory --update --write
-maurice --config /chemin/config.yaml spec check --dir /chemin/consommateur --env local --agent-alias memory --json
-# Relire et commiter les fichiers dans le consommateur avant deploy.
-maurice --config /chemin/config.yaml spec deploy --dir /chemin/consommateur --env local --agent-alias memory --tests auto --json
-```
-
-Le composeur refuse d'écraser des fichiers différents, sauf avec `--update` (voir Migration). Les identités, politiques, connexions et locks restent dans le consommateur. Ce chemin compose les octets du Module dans l'Agent Spec ; il ne constitue pas une installation via Module Catalog. La qualification courante utilise un environnement `integration_test` et son autorisation native de plan. Une installation Catalog conserve son approbation spécifique ; ne pas contourner une demande d'approbation humaine.
-
-**Prérequis d'isolation : un Agent et des sidecars/volumes dédiés par mémoire.** Le tenant fixe `company-memory` n'isole pas deux entreprises sur un sidecar partagé. Le composeur reporte `requires.mcp` dans `agent-spec.json.mcp_requirements`.
-
-## Qualification plan availability
-
-The [requalification plan](tests/requalification-plan.json) separates local
-composition commands from historical runtime commands. The `mcp-replay.py`
-and `search-replay.py` tools belong to the authorized canonical pilot checkout
-and are not distributed in this library. Their paths are external source
-references, not commands runnable from this repository. The owning session must
-prepare an isolated One and the corresponding external tools before runtime
-qualification; repository reorganization does not provide that qualification.
-
-## Limites de cette version
-
-- Pas de statut `superseded` écrit dans les fichiers natifs ; le statut est calculé à la consultation à partir de la copie Memory.
-- Pas de tête de page courante, de résolution atomique d'une modification concurrente, ni de résolution automatique d'un conflit de successeurs.
-- La confirmation manuelle est une déclaration d'intention, pas une preuve d'identité humaine ni une approbation d'architecture.
-- `memory-health` liste au maximum 100 fichiers, sans synthèse des incohérences.
-- Pas de recherche sémantique, d'ingestion automatique, de synthèse LLM, d'appel inter-Agents ni de permissions fines.
-- L'isolation rejouée concerne deux déploiements distincts sur le provider filesystem d'un même One. Elle ne prouve pas le cloisonnement de deux entreprises, deux utilisateurs ou un bucket S3 partagé.
-- Le contrôle de confirmation et le tenant restent dans les Workflows, pas dans un contrôle plateforme. Un tenant absent donne zéro résultat sans erreur côté Brain et Memory ; le Module le passe toujours explicitement.
+There is no native persisted `superseded` status, current-page head, atomic concurrent change resolution, automatic successor-conflict resolution, semantic search, automatic ingestion, LLM summary, inter-Agent call or fine-grained permission model. Manual confirmation expresses intent; it is not human identity proof or architecture approval. `memory-health` lists at most 100 files and does not summarize inconsistencies. Historical isolation replay covered two separate deployments on the filesystem provider of one One; it does not prove isolation between companies, users or a shared S3 bucket. Confirmation and tenant enforcement live in Workflows, not a platform control; a missing tenant can silently return zero Brain or Memory results, so the Module always supplies it.

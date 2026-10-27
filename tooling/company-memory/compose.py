@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
-"""Copie contrôlée de ressources V2, sans appel runtime. Dry-run par défaut.
+"""Copy V2 resources without calling a runtime. Dry-run by default.
 
-Sans --update, tout fichier existant qui diffère de la ressource du Module fait échouer
-la composition avant toute écriture. Avec --update, seuls les fichiers possédés par le
-Module (Workflows, MiniApps, plan de test) peuvent être remplacés ; la liste est imprimée
-(would_replace_files en dry-run, replaced_files avec --write). Aucun autre fichier n'est
-touché ni supprimé. Un Workflow retiré du Module encore présent chez le consommateur est
-signalé (retired_files_present) et reste à retirer à la main.
+Without --update, a conflicting owned file prevents all writes. With --update,
+only Module-owned Workflows, MiniApps and the test plan may be replaced; the
+command reports replacements. Retired Workflows are reported but never deleted.
 """
 import argparse
 import hashlib
@@ -14,14 +11,14 @@ import json
 from pathlib import Path
 import shutil
 
-# Workflows livrés par une version antérieure du Module, puis retirés : jamais supprimés ici.
+# Workflows retired from earlier versions are never deleted here.
 RETIRED_WORKFLOWS=['memory-resolve-candidate.json']
 
 p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('--consumer-dir',required=True,type=Path)
 p.add_argument('--agent-alias',required=True)
 p.add_argument('--write',action='store_true')
-p.add_argument('--update',action='store_true',help='remplacer les fichiers du Module qui diffèrent (avec ou sans --write)')
+p.add_argument('--update',action='store_true',help='replace differing Module files (with or without --write)')
 a=p.parse_args()
 root=Path(__file__).resolve().parent
 module_root=root.parents[1]/"company-memory"

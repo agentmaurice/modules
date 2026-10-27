@@ -3,31 +3,31 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "memory-index-revision",
-  "version": "8",
-  "title": "Indexer une révision validée dans Memory et Brain",
+  "version": "9",
+  "title": "Index a validated revision in Memory and Brain",
   "forms": [
     {
       "id": "submit",
-      "title": "Saisie manuelle",
+      "title": "Manual input",
       "fields": [
         {
           "name": "proposal_id",
-          "title": "Révision",
+          "title": "Revision",
           "type": "string",
           "required": true
         },
         {
           "name": "confirmation_manuelle",
-          "title": "Confirmer l’indexation interne",
+          "title": "Confirm internal indexing",
           "type": "select",
           "required": true,
           "options": [
             {
-              "label": "Oui",
+              "label": "Yes",
               "value": "oui"
             },
             {
-              "label": "Non",
+              "label": "No",
               "value": "non"
             }
           ]
@@ -60,7 +60,7 @@
       "id": "revalidate-revision",
       "type": "workflow_call",
       "workflow_id": "memory-query",
-      "workflow_version": "7",
+      "workflow_version": "8",
       "execution": "sync",
       "timeout_ms": 60000,
       "input": {

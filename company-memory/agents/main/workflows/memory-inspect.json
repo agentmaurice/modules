@@ -3,18 +3,18 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "memory-inspect",
-  "version": "4",
-  "title": "Inspecter une proposition et sa preuve",
+  "version": "5",
+  "title": "Inspect a proposal and its evidence",
   "forms": [
     {
       "id": "submit",
-      "title": "Charger une proposition",
+      "title": "Load a proposal",
       "fields": [
         {
           "name": "proposal_id",
           "type": "string",
           "required": true,
-          "title": "Proposition"
+          "title": "Proposal"
         }
       ],
       "actions_on_submit": [

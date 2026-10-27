@@ -3,18 +3,18 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "memory-query",
-  "version": "7",
-  "title": "Lire une proposition mémoire validée",
+  "version": "8",
+  "title": "Read a validated memory proposal",
   "forms": [
     {
       "id": "submit",
-      "title": "Saisie manuelle",
+      "title": "Manual input",
       "fields": [
         {
           "name": "proposal_id",
           "type": "string",
           "required": true,
-          "title": "Proposition"
+          "title": "Proposal"
         }
       ],
       "actions_on_submit": [
@@ -125,7 +125,7 @@
     {
       "id": "query-answer",
       "type": "code_execution",
-      "code": "const p = proposal;\nconst s = JSON.parse(source_file.content);\nconst r = JSON.parse(review_file.content);\nconst checked_at = new Date().toISOString();\n// Memory répond rows=null quand aucune ligne ne correspond : c'est un résultat vide (observé en direct et\n// dans un appel enfant, où queryStats n'est pas toujours présent). Une erreur d'outil fait échouer l'étape.\nconst successorRows = successors && Array.isArray(successors.rows) ? successors.rows\n  : (successors && successors.rows === null ? [] : null);\nif (successorRows === null) throw new Error(\"successor_lookup_unavailable\");\nconst markerSuccessors = (Array.isArray(markers) ? markers : []).map(m => {\n  let d;\n  try { d = JSON.parse(m.text); } catch (e) { throw new Error(\"supersession_marker_invalid\"); }\n  if (!d || d.superseded !== p.proposal_id || typeof d.successor !== \"string\" || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(d.successor)) throw new Error(\"supersession_marker_invalid\");\n  return d.successor;\n});\nconst successor_ids = [...new Set([...successorRows.map(x => x[0]), ...markerSuccessors].filter(x => typeof x === \"string\" && x !== p.proposal_id))].sort();\nconst base = {citations: [], answer: \"\", status: \"\", warning: \"exact_revision_not_current_page\", checked_at, proposal_id: p.proposal_id, expires_at: p.review_due, previous_revision: p.previous_revision || \"\", title: p.title || \"\", source_date: s.date || \"\", reviewed_at: r.reviewed_at || \"\", superseded_by: \"\", successor_ids};\nif (r.proposal_id !== p.proposal_id || r.source_id !== p.source_id || r.evidence_quote !== p.evidence_quote || ![\"validated\", \"refused\", \"disputed\"].includes(r.decision)) return {...base, status: \"review_invalid\"};\nif (r.decision !== \"validated\") return {...base, status: r.decision};\nif (typeof p.review_due !== \"string\" || Number.isNaN(Date.parse(p.review_due))) return {...base, status: \"review_date_invalid\"};\nif (s.source_id !== p.source_id || typeof s.content !== \"string\" || typeof p.evidence_quote !== \"string\" || !p.evidence_quote.trim() || !s.content.includes(p.evidence_quote) || typeof s.ref !== \"string\" || !s.ref.trim()) return {...base, status: \"evidence_changed\"};\nif (successor_ids.length > 1) return {...base, status: \"successor_conflict\", warning: \"successor_conflict_manual_review\", successor_ids};\nif (successor_ids.length === 1) return {...base, answer: p.content, citations: [s.ref], status: \"superseded\", warning: \"superseded_by_newer_revision\", superseded_by: successor_ids[0], successor_ids};\nif (Date.parse(p.review_due) <= Date.now()) return {...base, status: \"expired\"};\nreturn {...base, answer: p.content, citations: [s.ref], status: \"validated\"};",
+      "code": "const p = proposal;\nconst s = JSON.parse(source_file.content);\nconst r = JSON.parse(review_file.content);\nconst checked_at = new Date().toISOString();\nconst successorRows = successors && Array.isArray(successors.rows) ? successors.rows\n  : (successors && successors.rows === null ? [] : null);\nif (successorRows === null) throw new Error(\"successor_lookup_unavailable\");\nconst markerSuccessors = (Array.isArray(markers) ? markers : []).map(m => {\n  let d;\n  try { d = JSON.parse(m.text); } catch (e) { throw new Error(\"supersession_marker_invalid\"); }\n  if (!d || d.superseded !== p.proposal_id || typeof d.successor !== \"string\" || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(d.successor)) throw new Error(\"supersession_marker_invalid\");\n  return d.successor;\n});\nconst successor_ids = [...new Set([...successorRows.map(x => x[0]), ...markerSuccessors].filter(x => typeof x === \"string\" && x !== p.proposal_id))].sort();\nconst base = {citations: [], answer: \"\", status: \"\", warning: \"exact_revision_not_current_page\", checked_at, proposal_id: p.proposal_id, expires_at: p.review_due, previous_revision: p.previous_revision || \"\", title: p.title || \"\", source_date: s.date || \"\", reviewed_at: r.reviewed_at || \"\", superseded_by: \"\", successor_ids};\nif (r.proposal_id !== p.proposal_id || r.source_id !== p.source_id || r.evidence_quote !== p.evidence_quote || ![\"validated\", \"refused\", \"disputed\"].includes(r.decision)) return {...base, status: \"review_invalid\"};\nif (r.decision !== \"validated\") return {...base, status: r.decision};\nif (typeof p.review_due !== \"string\" || Number.isNaN(Date.parse(p.review_due))) return {...base, status: \"review_date_invalid\"};\nif (s.source_id !== p.source_id || typeof s.content !== \"string\" || typeof p.evidence_quote !== \"string\" || !p.evidence_quote.trim() || !s.content.includes(p.evidence_quote) || typeof s.ref !== \"string\" || !s.ref.trim()) return {...base, status: \"evidence_changed\"};\nif (successor_ids.length > 1) return {...base, status: \"successor_conflict\", warning: \"successor_conflict_manual_review\", successor_ids};\nif (successor_ids.length === 1) return {...base, answer: p.content, citations: [s.ref], status: \"superseded\", warning: \"superseded_by_newer_revision\", superseded_by: successor_ids[0], successor_ids};\nif (Date.parse(p.review_due) <= Date.now()) return {...base, status: \"expired\"};\nreturn {...base, answer: p.content, citations: [s.ref], status: \"validated\"};",
       "context": {
         "proposal": "{{ proposal }}",
         "source_file": "{{ source_file }}",

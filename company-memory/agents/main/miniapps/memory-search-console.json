@@ -3,9 +3,9 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "memory-search-console",
-  "title": "Mémoire — recherche par mots-clés",
-  "description": "Action manuelle dans la mémoire dédiée ; aucune publication externe.",
-  "version": "2",
+  "title": "Memory — keyword search",
+  "description": "Manual action in dedicated memory; no external publication.",
+  "version": "3",
   "ui": {
     "renderer": "component",
     "component": "company-memory",
@@ -13,7 +13,7 @@
       "layout": [
         {
           "type": "text",
-          "value": "Révisions exactes et sourcées ; la recherche ne garantit pas la dernière version d’une page."
+          "value": "Exact, sourced revisions; search does not guarantee the latest version of a page."
         },
         {
           "type": "text",

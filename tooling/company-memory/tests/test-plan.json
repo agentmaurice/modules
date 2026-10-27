@@ -5,7 +5,7 @@
   "cases": [
     {
       "id": "capture-missing-confirmation",
-      "description": "Une capture sans confirmation est rejetée.",
+      "description": "A capture without confirmation is rejected.",
       "workflow": {
         "workflow_id": "memory-capture-source",
         "input": {
@@ -25,7 +25,7 @@
     },
     {
       "id": "proposal-missing-source",
-      "description": "Une proposition sans source lisible est fermée.",
+      "description": "A proposal without a readable source fails closed.",
       "workflow": {
         "workflow_id": "memory-propose-update",
         "input": {
@@ -47,7 +47,7 @@
     },
     {
       "id": "review-invalid-decision",
-      "description": "La décision est une enum bornée.",
+      "description": "The decision is a bounded enum.",
       "workflow": {
         "workflow_id": "memory-review-update",
         "input": {
@@ -65,7 +65,7 @@
     },
     {
       "id": "query-traversal",
-      "description": "Un identifiant traversal est rejeté avant lecture.",
+      "description": "A traversal identifier is rejected before reading.",
       "workflow": {
         "workflow_id": "memory-query",
         "input": {

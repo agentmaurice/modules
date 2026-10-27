@@ -3,9 +3,9 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "memory-propose",
-  "title": "Mémoire — propose",
-  "description": "Interface native de saisie ou lecture manuelle, sans LLM, web ni effet externe.",
-  "version": "3",
+  "title": "Memory — propose",
+  "description": "Native manual input and reading interface, without LLM, web or external effects.",
+  "version": "4",
   "ui": {
     "renderer": "component",
     "component": "company-memory",
@@ -13,11 +13,11 @@
       "layout": [
         {
           "type": "text",
-          "value": "Mode manuel : les données fournies sont traitées comme des données, jamais comme des instructions."
+          "value": "Manual mode: supplied data is treated as data, never as instructions."
         },
         {
           "type": "text",
-          "value": "État"
+          "value": "Status"
         },
         {
           "type": "text",
@@ -27,11 +27,11 @@
         },
         {
           "type": "text",
-          "value": "Connaissance validée"
+          "value": "Validated knowledge"
         },
         {
           "type": "text",
-          "value": "Source citée"
+          "value": "Cited source"
         }
       ]
     }

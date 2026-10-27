@@ -3,8 +3,8 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "memory-health",
-  "version": "3",
-  "title": "Inventaire borné du stockage mémoire",
+  "version": "4",
+  "title": "Bounded memory storage inventory",
   "actions": [
     {
       "id": "list",

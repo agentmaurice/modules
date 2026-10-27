@@ -3,9 +3,9 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "memory-review",
-  "title": "Mémoire — revue manuelle",
-  "description": "Charger une proposition, lire sa preuve, puis prendre une décision manuelle.",
-  "version": "3",
+  "title": "Memory — manual review",
+  "description": "Load a proposal, read its evidence, then make a manual decision.",
+  "version": "4",
   "ui": {
     "renderer": "component",
     "component": "company-memory",
@@ -13,11 +13,11 @@
       "layout": [
         {
           "type": "text",
-          "value": "Proposition enregistrée — inspection avant décision."
+          "value": "Proposal saved — inspect before deciding."
         },
         {
           "type": "text",
-          "value": "Titre proposé"
+          "value": "Proposed title"
         },
         {
           "type": "text",
@@ -27,7 +27,7 @@
         },
         {
           "type": "text",
-          "value": "Texte proposé"
+          "value": "Proposed text"
         },
         {
           "type": "text",
@@ -37,7 +37,7 @@
         },
         {
           "type": "text",
-          "value": "Extrait utilisé comme preuve"
+          "value": "Evidence excerpt"
         },
         {
           "type": "text",
@@ -47,7 +47,7 @@
         },
         {
           "type": "text",
-          "value": "Source conservée"
+          "value": "Stored source"
         },
         {
           "type": "text",
@@ -57,7 +57,7 @@
         },
         {
           "type": "text",
-          "value": "Référence de la source"
+          "value": "Source reference"
         },
         {
           "type": "text",
@@ -67,7 +67,7 @@
         },
         {
           "type": "text",
-          "value": "À revoir avant le début de cette date (UTC)"
+          "value": "Review before the start of this date (UTC)"
         },
         {
           "type": "text",
@@ -77,22 +77,22 @@
         },
         {
           "type": "button",
-          "label": "Valider cette proposition",
+          "label": "Validate this proposal",
           "on_click": "validate"
         },
         {
           "type": "button",
-          "label": "Refuser cette proposition",
+          "label": "Refuse this proposal",
           "on_click": "refuse"
         },
         {
           "type": "button",
-          "label": "Signaler une contradiction",
+          "label": "Flag a contradiction",
           "on_click": "dispute"
         },
         {
           "type": "text",
-          "value": "Décision enregistrée"
+          "value": "Decision recorded"
         },
         {
           "type": "text",

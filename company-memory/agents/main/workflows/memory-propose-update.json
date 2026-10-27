@@ -3,30 +3,30 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "memory-propose-update",
-  "version": "4",
-  "title": "Proposer une mise à jour mémoire",
+  "version": "5",
+  "title": "Propose a memory update",
   "forms": [
     {
       "id": "submit",
-      "title": "Saisie manuelle",
+      "title": "Manual input",
       "fields": [
         {
           "name": "proposal_id",
           "type": "string",
           "required": true,
-          "title": "Identifiant proposition"
+          "title": "Proposal ID"
         },
         {
           "name": "title",
           "type": "string",
           "required": true,
-          "title": "Titre"
+          "title": "Title"
         },
         {
           "name": "content",
           "type": "text",
           "required": true,
-          "title": "Texte proposé"
+          "title": "Proposed text"
         },
         {
           "name": "source_id",
@@ -38,33 +38,33 @@
           "name": "evidence_quote",
           "type": "text",
           "required": true,
-          "title": "Citation exacte"
+          "title": "Exact quotation"
         },
         {
           "name": "review_due",
           "type": "string",
           "required": true,
-          "title": "Date limite ISO"
+          "title": "ISO deadline"
         },
         {
           "name": "previous_revision",
           "type": "string",
           "required": false,
-          "title": "Révision précédente"
+          "title": "Previous revision"
         },
         {
           "name": "confirmation_manuelle",
           "type": "select",
           "required": true,
-          "title": "Confirmer l’écriture",
+          "title": "Confirm write",
           "options": [
             {
               "value": "non",
-              "label": "Non"
+              "label": "No"
             },
             {
               "value": "oui",
-              "label": "Oui"
+              "label": "Yes"
             }
           ]
         }
