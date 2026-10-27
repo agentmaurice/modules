@@ -128,6 +128,12 @@ python3 tooling/enterprise-admin/compose.py --consumer-dir /path/to/consumer --o
 python3 tooling/marketing-launch/compose.py --consumer-dir /path/to/consumer --agent-alias veille
 ```
 
+Memory integration also checks that each explicitly pinned local Workflow is
+available at the required native version before writing any files. In
+particular, the Content Agent must already provide `review_completion` version
+`2`; composing over an older role does not upgrade it automatically. Remote
+capability targets retain their separate contract versions.
+
 Daily routine requires the memory integration composer first: every role must have a
 parseable `company-memory-query` bridge Workflow at native version `2`. This
 is independent of the memory capability contract version `1`.

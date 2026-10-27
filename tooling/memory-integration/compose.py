@@ -25,6 +25,31 @@ def read(path):
 def encoded(value):
     return (json.dumps(value, ensure_ascii=False, indent=2)+'\n').encode()
 
+def validate_planned_local_pins(consumer, planned):
+    """Check exact local Workflow targets against the final planned filesystem."""
+    def visit(value, role):
+        if isinstance(value, dict):
+            if value.get('type') == 'workflow_call' and 'target' not in value and 'workflow_id' in value and 'workflow_version' in value:
+                target, version = value['workflow_id'], value['workflow_version']
+                if not isinstance(target, str) or not re.fullmatch(r'[a-z][a-z0-9_-]*', target) or not isinstance(version, str) or not version:
+                    raise ValueError('invalid local Workflow reference for '+role)
+                path = consumer/'agents'/role/'workflows'/(target+'.json')
+                try:
+                    document = json.loads(planned[path] if path in planned else path.read_bytes())
+                except (OSError, ValueError, UnicodeDecodeError) as exc:
+                    raise ValueError('missing or invalid local Workflow '+target+' for '+role) from exc
+                if not isinstance(document, dict) or document.get('workflow_id') != target or document.get('version') != version:
+                    raise ValueError('local Workflow '+target+' must match pinned version '+version+' for '+role)
+            for child in value.values(): visit(child, role)
+        elif isinstance(value, list):
+            for child in value: visit(child, role)
+    for role in ROLES:
+        directory = consumer/'agents'/role/'workflows'
+        for path, content in planned.items():
+            if path.parent == directory and path.suffix == '.json':
+                workflow = json.loads(content)
+                visit(workflow.get('actions', []), role)
+
 def compose(consumer, memory_alias='memory'):
     if not re.fullmatch(r'[a-z][a-z0-9_-]*', memory_alias):
         raise ValueError('invalid memory alias')
@@ -58,6 +83,7 @@ def compose(consumer, memory_alias='memory'):
             if prior and prior!=[target]:
                 raise ValueError('conflicting memory dependency: '+role+'/'+op)
             if not prior:deps.append(target)
+    validate_planned_local_pins(consumer, planned)
     grants=[specs[r]['agent_id'] for r in ROLES]
     caps=memory.setdefault('capabilities',[])
     for op,(workflow,_,_) in CONTRACTS.items():

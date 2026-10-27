@@ -1,5 +1,8 @@
 import importlib.util
 import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 import shutil
 import tempfile
@@ -38,6 +41,7 @@ class CompositionTest(unittest.TestCase):
             (p/'agent-spec.json').write_text(json.dumps({'schema_version':2,'agent_alias':alias,'agent_id':'c'+str(index)*19,'identity':{'instructions':'preserve me'}}))
             names=[x[0] for x in module.CONTRACTS.values()] if alias=='memory' else [alias+'-read',alias+'-save']
             for n in names:(p/'workflows'/f'{n}.json').write_text('{}')
+            if alias=='contenu':(p/'workflows/review_completion.json').write_text(json.dumps({'workflow_id':'review_completion','version':'2'}))
     def test_scoped_portable_idempotent(self):
         outputs=module.compose(self.root)
         memory=json.loads(outputs[self.root/'agents/memory/agent-spec.json'])
@@ -63,6 +67,27 @@ class CompositionTest(unittest.TestCase):
         definition=json.loads(bridge.read_text());definition['version']='1';bridge.write_bytes(module.encoded(definition))
         with self.assertRaises(AssertionError):
             assert_local_pins(self,self.root/'agents/veille/workflows')
+    def test_write_rejects_missing_or_incompatible_local_pin_atomically(self):
+        target=self.root/'agents/contenu/workflows/review_completion.json'
+        for case, contents in [('old', {'workflow_id':'review_completion','version':'1'}), ('wrong-id', {'workflow_id':'other','version':'2'}), ('missing', None)]:
+            with self.subTest(case=case):
+                if contents is None: target.unlink()
+                else: target.write_text(json.dumps(contents))
+                before={str(p.relative_to(self.root)):p.read_bytes() if p.is_file() else None for p in self.root.rglob('*')}
+                run=subprocess.run([sys.executable,str(ROOT/'compose.py'),'--consumer-dir',str(self.root),'--write'],capture_output=True,text=True,env={**os.environ,'PYTHONDONTWRITEBYTECODE':'1'})
+                self.assertNotEqual(run.returncode,0)
+                self.assertIn('local Workflow review_completion',run.stderr)
+                after={str(p.relative_to(self.root)):p.read_bytes() if p.is_file() else None for p in self.root.rglob('*')}
+                self.assertEqual(before,after)
+        target.write_text(json.dumps({'workflow_id':'review_completion','version':'2'}))
+        run=subprocess.run([sys.executable,str(ROOT/'compose.py'),'--consumer-dir',str(self.root),'--write'],capture_output=True,text=True,env={**os.environ,'PYTHONDONTWRITEBYTECODE':'1'})
+        self.assertEqual(run.returncode,0,run.stderr)
+        draft=json.loads((self.root/'agents/contenu/workflows/contenu-memory-draft.json').read_text())
+        call=next(a for a in draft['actions'] if a.get('workflow_id')=='review_completion')
+        self.assertEqual(call['workflow_version'],'2')
+        bridge=json.loads((self.root/'agents/contenu/workflows/company-memory-query.json').read_text())
+        self.assertEqual(bridge['actions'][0]['target']['version'],'1')
+
     def test_conflict_does_not_write(self):
         p=self.root/'agents/veille/workflows/company-memory-query.json';p.write_text('{"custom":true}')
         with self.assertRaisesRegex(ValueError,'overwrite divergent'):module.compose(self.root)
