@@ -35,7 +35,7 @@ composers and tests live under `tooling/`. The consumer template lives under
 | `solutions/company-in-a-box/marketing-launch` tools | `tooling/marketing-launch` |
 | `solutions/company-in-a-box/memory-integration` tools | `tooling/memory-integration` |
 | `solutions/company-memory` tools | `tooling/company-memory` |
-| `marketing-launch/module/test-plan.json` | `templates/company-in-a-box/tests/marketing-launch-plan.json` |
+| `solutions/company-in-a-box/marketing-launch/module/test-plan.json` | `templates/company-in-a-box/tests/marketing-launch-plan.json` |
 | `solutions/company-in-a-box/README.md` | `docs/COMPANY_IN_A_BOX.md` |
 
 The marketing test plan remains a consumer test plan; it is outside the
