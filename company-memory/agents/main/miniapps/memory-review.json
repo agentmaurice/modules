@@ -142,7 +142,7 @@
         "input": {
           "proposal_id": "{{ state.selected.proposal_id }}",
           "decision": "validated",
-          "review_note": "Revue depuis la MiniApp",
+          "review_note": "Review from the MiniApp",
           "confirmation_manuelle": "oui"
         }
       },
@@ -156,7 +156,7 @@
         "input": {
           "proposal_id": "{{ state.selected.proposal_id }}",
           "decision": "refused",
-          "review_note": "Revue depuis la MiniApp",
+          "review_note": "Review from the MiniApp",
           "confirmation_manuelle": "oui"
         }
       },
@@ -170,7 +170,7 @@
         "input": {
           "proposal_id": "{{ state.selected.proposal_id }}",
           "decision": "disputed",
-          "review_note": "Revue depuis la MiniApp",
+          "review_note": "Review from the MiniApp",
           "confirmation_manuelle": "oui"
         }
       },

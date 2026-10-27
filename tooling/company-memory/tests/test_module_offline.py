@@ -67,7 +67,7 @@ SQL_ID_LIST = re.compile(r"^'[a-z0-9][a-z0-9_-]*'(?:, '[a-z0-9][a-z0-9_-]*')*$")
 # No candidates: empty query without a previous_revision clause.
 EMPTY_SEARCH_SQL = ("SELECT external_id, name, status, attributes FROM v_entities"
                     " WHERE entity_type = 'company_memory_revision' AND external_id IN ('')")
-FILLER = "Phrase de remplissage sans intérêt pour la requête. "
+FILLER = "Filler text unrelated to the query. "
 
 
 def load_json(path):
@@ -172,7 +172,7 @@ def render(value, state, preserve_types=True):
         if not isinstance(target, str):
             if not preserve_types:
                 return go_text(target)
-            raise StepError("rendu texte d'une valeur non textuelle")
+            raise StepError("text rendering of a non-text value")
         return target
 
     return INLINE.sub(replace, value)
@@ -425,7 +425,7 @@ class CodeStepTest(unittest.TestCase):
 
     @staticmethod
     def revision(proposal_id, answer, **extra):
-        base = {"status": "validated", "proposal_id": proposal_id, "title": "Titre " + proposal_id,
+        base = {"status": "validated", "proposal_id": proposal_id, "title": "Title " + proposal_id,
                 "answer": answer, "citations": ["fixture:" + proposal_id], "expires_at": "2099-01-01",
                 "source_date": "2026-10-10", "match_type": "other", "score": 1.0}
         base.update(extra)
@@ -484,7 +484,7 @@ class CodeStepTest(unittest.TestCase):
         self.assertIn("invalid_candidates", run_node(code, {"candidates": {"x": 1}})["error"])
 
     def test_answer_reads_rows_null_as_empty_and_fails_on_tool_errors(self):
-        context = self.search_context([self.revision("rev-a", "Texte."), self.revision("rev-b", "Autre.")], "texte")
+        context = self.search_context([self.revision("rev-a", "Text."), self.revision("rev-b", "Other.")], "text")
         context["memory_rows"] = {"rows": None}
         empty = self.run_answer(context)
         self.assertTrue(empty["ok"], empty)
@@ -506,7 +506,7 @@ class CodeStepTest(unittest.TestCase):
         self.assertEqual(no_candidate["result"]["summary"], "No validated revisions found.")
 
     def test_answer_without_candidate_is_empty_whatever_memory_returned(self):
-        reference = self.search_value([self.revision("rev-a", "Texte.")], "texte")["excerpt_budget_chars"]
+        reference = self.search_value([self.revision("rev-a", "Text.")], "text")["excerpt_budget_chars"]
         many = {"rows": [["rev-%d" % i, "x", "validated", {"previous_revision": ""}] for i in range(60)],
                 "truncated": True}
         for candidates in ([], None):
@@ -519,45 +519,45 @@ class CodeStepTest(unittest.TestCase):
                                                     "excerpt_budget_chars": reference})
 
     def test_answer_accepts_attributes_as_object_or_json_string(self):
-        revisions = [self.revision("rev-a", "Plafond de six chantiers.", reviewed_at="2026-10-11T08:00:00.000Z"),
+        revisions = [self.revision("rev-a", "Limit of six projects.", reviewed_at="2026-10-11T08:00:00.000Z"),
                      self.revision("rev-b", "Plafond ancien.", status="superseded")]
-        as_object = self.search_value(revisions, "plafond")
-        as_string = self.search_value(revisions, "plafond", attributes_as_string=True)
+        as_object = self.search_value(revisions, "limit")
+        as_string = self.search_value(revisions, "limit", attributes_as_string=True)
         self.assertEqual(as_object, as_string)
         self.assertEqual([r["proposal_id"] for r in as_object["results"]], ["rev-a"])
         row = as_object["results"][0]
         self.assertEqual((row["title"], row["date"], row["date_kind"], row["source_ref"], row["review_due"]),
-                         ("Titre rev-a", "2026-10-10", "source", "fixture:rev-a", "2099-01-01"))
-        double = self.search_context(revisions[:1], "plafond")
+                         ("Title rev-a", "2026-10-10", "source", "fixture:rev-a", "2099-01-01"))
+        double = self.search_context(revisions[:1], "limit")
         double["memory_rows"]["rows"][0][3] = json.dumps(json.dumps(double["memory_rows"]["rows"][0][3]))
         self.assertEqual(self.run_answer(double)["result"]["results"], as_object["results"])
-        positional = self.search_context(revisions[:1], "plafond")
+        positional = self.search_context(revisions[:1], "limit")
         positional["memory_rows"]["rows"] = [dict(zip(("external_id", "name", "status", "attributes"), r))
                                              for r in positional["memory_rows"]["rows"]]
         self.assertEqual(self.run_answer(positional)["result"]["results"], as_object["results"])
 
     def test_answer_hides_revisions_replaced_by_memory_row_or_native_marker(self):
-        context = self.search_context([self.revision("rev-a", "Règle A."), self.revision("rev-b", "Règle B."),
-                                       self.revision("rev-c", "Règle C."), self.revision("rev-self", "Règle S.",
+        context = self.search_context([self.revision("rev-a", "Rule A."), self.revision("rev-b", "Rule B."),
+                                       self.revision("rev-c", "Rule C."), self.revision("rev-self", "Rule S.",
                                                                                        previous_revision="rev-self")],
-                                      "règle")
+                                      "rule")
         # rev-a is replaced by a validated Memory row; rev-b by a native marker.
-        context["memory_rows"]["rows"].append(["rev-a2", "Règle A révisée.", "validated",
+        context["memory_rows"]["rows"].append(["rev-a2", "Rule A revised.", "validated",
                                                {"previous_revision": "rev-a", "expires_at": "2099-01-01"}])
         context["files"].append({"path": "/company-memory/superseded-rev-b.json"})
         value = self.run_answer(context)["result"]
         self.assertEqual([r["proposal_id"] for r in value["results"]], ["rev-c", "rev-self"])
         self.assertEqual((value["candidate_count"], value["suppressed_count"]), (4, 2))
-        self.assertNotIn("Règle A", value["summary"])
-        self.assertNotIn("Règle B", value["summary"])
+        self.assertNotIn("Rule A", value["summary"])
+        self.assertNotIn("Rule B", value["summary"])
         for row in value["results"]:
             self.assertNotIn("superseded_by", row)
 
     def test_answer_excludes_candidates_absent_from_memory_or_expired(self):
-        value = self.search_value([self.revision("rev-ok", "Présente."),
+        value = self.search_value([self.revision("rev-ok", "Present."),
                                    self.revision("rev-missing", "Absente de Memory.", status="not_indexed"),
-                                   self.revision("rev-old", "Échue.", expires_at="2020-01-01"),
-                                   self.revision("rev-bad-date", "Date illisible.", expires_at="bientôt")], "présente")
+                                   self.revision("rev-old", "Expired.", expires_at="2020-01-01"),
+                                   self.revision("rev-bad-date", "Unreadable date.", expires_at="soon")], "present")
         self.assertEqual([r["proposal_id"] for r in value["results"]], ["rev-ok"])
         self.assertEqual((value["candidate_count"], value["suppressed_count"]), (4, 3))
 
@@ -570,37 +570,37 @@ class CodeStepTest(unittest.TestCase):
             "go-padded": "  [" + ref + "]  ",
         }
         for name, citations in forms.items():
-            row = self.search_value([self.revision("rev-" + name, "Texte.", citations=citations, title="")],
-                                    "texte")["results"][0]
+            row = self.search_value([self.revision("rev-" + name, "Text.", citations=citations, title="")],
+                                    "text")["results"][0]
             self.assertEqual(row["source_ref"], ref, name)
             self.assertEqual(row["title"], "Authentification des agents", name)
         for citations, expected in (("[]", ""), ("", ""), ("fixture:sans-crochets", "fixture:sans-crochets"),
                                     ('[ref "citée" #x@y]', 'ref "citée" #x@y'), (None, ""), (7, ""),
                                     ([], ""), ([3, "fixture:b"], "fixture:b")):
-            row = self.search_value([self.revision("rev-edge", "Texte.", citations=citations)], "texte")["results"][0]
+            row = self.search_value([self.revision("rev-edge", "Text.", citations=citations)], "text")["results"][0]
             self.assertEqual(row["source_ref"], expected, citations)
 
     def test_answer_prefers_the_source_ref_attribute(self):
-        row = self.search_value([self.revision("rev-s", "Texte.", source_ref="wiki/a.md#Section A@1f2e@abc",
+        row = self.search_value([self.revision("rev-s", "Text.", source_ref="wiki/a.md#Section A@1f2e@abc",
                                                citations="[wiki/b.md#Section B@9]", title="")],
-                                "texte")["results"][0]
+                                "text")["results"][0]
         self.assertEqual(row["source_ref"], "wiki/a.md#Section A@1f2e@abc")
         self.assertEqual(row["title"], "Section A@1f2e")  # fragment up to the last @
-        blank = self.search_value([self.revision("rev-b", "Texte.", source_ref="  ", citations=["fixture:c"])],
-                                  "texte")["results"][0]
+        blank = self.search_value([self.revision("rev-b", "Text.", source_ref="  ", citations=["fixture:c"])],
+                                  "text")["results"][0]
         self.assertEqual(blank["source_ref"], "fixture:c")
-        titled = self.search_value([self.revision("rev-t", "Texte.", source_ref="wiki/a.md#Section@1")],
-                                   "texte")["results"][0]
-        self.assertEqual(titled["title"], "Titre rev-t")  # the title attribute takes precedence over the derived title
+        titled = self.search_value([self.revision("rev-t", "Text.", source_ref="wiki/a.md#Section@1")],
+                                   "text")["results"][0]
+        self.assertEqual(titled["title"], "Title rev-t")  # the title attribute takes precedence over the derived title
 
     def test_answer_derives_title_and_unknown_date_for_rows_indexed_before_the_new_attributes(self):
-        legacy = lambda pid, citation: {"status": "validated", "proposal_id": pid, "answer": "Texte hérité.",
+        legacy = lambda pid, citation: {"status": "validated", "proposal_id": pid, "answer": "Legacy text.",
                                         "citations": [citation], "expires_at": "2099-01-01", "match_type": "other",
                                         "score": 1.0}
         value = self.search_value([legacy("rev-wiki", "wiki/regles.md#plafond-chantiers@3f2a9c1"),
                                    legacy("rev-frag", "wiki/regles.md#section"),
                                    legacy("rev-plain", "fixture:source-sans-fragment"),
-                                   legacy("rev-empty", "wiki/regles.md#@3f2a")], "hérité")
+                                   legacy("rev-empty", "wiki/regles.md#@3f2a")], "legacy")
         titles = {r["proposal_id"]: r["title"] for r in value["results"]}
         self.assertEqual(titles, {"rev-wiki": "plafond-chantiers", "rev-frag": "section",
                                   "rev-plain": "rev-plain", "rev-empty": "rev-empty"})
@@ -610,11 +610,11 @@ class CodeStepTest(unittest.TestCase):
 
     def test_compact_rows_carry_identifier_date_title_source_and_bounded_excerpts(self):
         value = self.search_value([
-            self.revision("rev-long", ("Une procédure détaillée. " * 80).strip(), source_date="2026-10-10"),
+            self.revision("rev-long", ("A detailed procedure. " * 80).strip(), source_date="2026-10-10"),
             self.revision("rev-old", "ancien", status="superseded"),
-            self.revision("rev-short", "Court.\nSur deux lignes.", source_date="",
+            self.revision("rev-short", "Short.\nTwo lines.", source_date="",
                           reviewed_at="2026-10-12T08:00:00.000Z"),
-        ], "procédure")
+        ], "procedure")
         self.assertEqual(value["candidate_count"], 3)
         self.assertEqual(value["suppressed_count"], 1)
         self.assertEqual([r["proposal_id"] for r in value["results"]], ["rev-long", "rev-short"])
@@ -631,21 +631,21 @@ class CodeStepTest(unittest.TestCase):
         self.assertNotIn("\n", value["summary"].splitlines()[1].split(" | ")[-1])
 
     def test_row_fields_are_flattened_and_bounded_so_each_revision_stays_on_one_line(self):
-        value = self.search_value([self.revision("rev-nl", "Texte court.", title="Titre\nSuite",
-                                                 citations=["fixture:a\nfixture:b"])], "texte")
+        value = self.search_value([self.revision("rev-nl", "Short text.", title="Title\nNext",
+                                                 citations=["fixture:a\nfixture:b"])], "text")
         row = value["results"][0]
-        self.assertEqual(row["title"], "Titre Suite")
+        self.assertEqual(row["title"], "Title Next")
         self.assertEqual(row["source_ref"], "fixture:a fixture:b")
         self.assertEqual(len(value["summary"].splitlines()), 1)
         self.assertNotIn("\n", value["summary"])
-        long_row = self.search_value([self.revision("rev-long", "Texte court.", title="T" * 250,
-                                                    citations=["S" * 350])], "texte")["results"][0]
+        long_row = self.search_value([self.revision("rev-long", "Short text.", title="T" * 250,
+                                                    citations=["S" * 350])], "text")["results"][0]
         self.assertEqual(len(long_row["title"]), 200)
         self.assertEqual(len(long_row["source_ref"]), 300)
 
     @unittest.skip("Private replay scripts are not distributed in this library")
     def test_replay_scripts_read_only_the_compact_row_fields(self):
-        row = self.search_value([self.revision("rev-r", "Réponse de rejeu.")], "réponse")["results"][0]
+        row = self.search_value([self.revision("rev-r", "Replay response.")], "response")["results"][0]
         for script in (ROOT / "tests/search-replay.py", ROOT / "tests/mcp-replay.py"):
             text = script.read_text(encoding="utf-8")
             self.assertNotIn("'excerpt'", text, script.name)
@@ -672,7 +672,7 @@ class CodeStepTest(unittest.TestCase):
         self.assertFalse(excerpts[0].startswith("[…] "))
 
     def test_excerpt_falls_back_to_the_start_when_no_term_matches(self):
-        text = "Texte sans rien de particulier. " * 40
+        text = "Unremarkable text. " * 40
         excerpts = self.search_value([self.revision("rev-none", text)], "zèbre")["results"][0]["excerpts"]
         flat = " ".join(text.split())
         self.assertEqual(excerpts, [flat[:400] + " […]"])
@@ -680,11 +680,11 @@ class CodeStepTest(unittest.TestCase):
     def test_exact_identifier_first_by_date_then_other_by_score(self):
         # A recent correction precedes the section it corrects.
         value = self.search_value([
-            self.revision("rev-other-high", "AGENT-530 mentionné ici.", match_type="other", score=9.0),
-            self.revision("rev-exact-old", "Entrée AGENT-530 initiale.", match_type="exact_identifier",
+            self.revision("rev-other-high", "AGENT-530 mentioned here.", match_type="other", score=9.0),
+            self.revision("rev-exact-old", "Initial AGENT-530 entry.", match_type="exact_identifier",
                           source_date="2026-10-01"),
             self.revision("rev-other-low", "AGENT-530 encore.", match_type="other", score=1.0),
-            self.revision("rev-exact-correction", "Correction AGENT-530 : la règle est six.",
+            self.revision("rev-exact-correction", "Correction AGENT-530: the limit is six.",
                           match_type="exact_identifier", source_date="2026-10-21"),
             self.revision("rev-exact-review", "AGENT-530 revue.", match_type="exact_identifier",
                           source_date="", reviewed_at="2026-10-15T08:00:00.000Z"),
@@ -783,13 +783,13 @@ class ChainTest(unittest.TestCase):
 
     def propose(self, proposal_id, source_id, content, quote, previous="", due="2099-01-01"):
         return self.run_wf("memory-propose-update", {
-            "proposal_id": proposal_id, "source_id": source_id, "title": "Titre " + proposal_id,
+            "proposal_id": proposal_id, "source_id": source_id, "title": "Title " + proposal_id,
             "content": content, "evidence_quote": quote, "review_due": due,
             "previous_revision": previous, "confirmation_manuelle": "oui"})
 
     def review(self, proposal_id, decision="validated", expected="completed"):
         return self.run_wf("memory-review-update", {
-            "proposal_id": proposal_id, "decision": decision, "review_note": "revue synthétique",
+            "proposal_id": proposal_id, "decision": decision, "review_note": "synthetic review",
             "confirmation_manuelle": "oui"}, expected)
 
     def query(self, proposal_id, expected="completed"):
@@ -817,14 +817,14 @@ class ChainTest(unittest.TestCase):
         self.assertEqual(self.store.memory["rev-h"]["name"], self.hostile)
 
     def test_replacement_hides_predecessor_from_search_and_marks_it(self):
-        self.capture("src-r", "Le plafond est de trois chantiers.")
-        quote = "Le plafond est de trois chantiers."
-        self.propose("rev-old", "src-r", "Le plafond est de trois chantiers. Ancienne règle.", quote)
+        self.capture("src-r", "The limit is three projects.")
+        quote = "The limit is three projects."
+        self.propose("rev-old", "src-r", "The limit is three projects. Previous rule.", quote)
         self.review("rev-old")
         self.index("rev-old")
-        self.capture("src-r2", "Le plafond est de six chantiers depuis le 2026-10-21.")
-        self.propose("rev-new", "src-r2", "Le plafond est de six chantiers.",
-                     "Le plafond est de six chantiers", previous="rev-old")
+        self.capture("src-r2", "The limit is six projects since 2026-10-21.")
+        self.propose("rev-new", "src-r2", "The limit is six projects.",
+                     "The limit is six projects", previous="rev-old")
         self.review("rev-new")
         self.index("rev-new")
         self.assertEqual(self.store.memory["rev-new"]["attributes"]["previous_revision"], "rev-old")
@@ -833,31 +833,31 @@ class ChainTest(unittest.TestCase):
         old = self.query("rev-old")
         self.assertEqual(old["status"], "superseded")
         self.assertEqual(old["superseded_by"], "rev-new")
-        self.assertEqual(old["answer"], "Le plafond est de trois chantiers. Ancienne règle.")
+        self.assertEqual(old["answer"], "The limit is three projects. Previous rule.")
 
-        found = self.search("plafond")
+        found = self.search("limit")
         ids = [row["proposal_id"] for row in found["results"]]
         self.assertEqual(ids, ["rev-new"])
         self.assertEqual(found["suppressed_count"], 1)
-        self.assertNotIn("Ancienne règle", json.dumps(found, ensure_ascii=False))
+        self.assertNotIn("Previous rule", json.dumps(found, ensure_ascii=False))
 
         self.index("rev-old", expected="failed")
         self.assertEqual(self.query("rev-new")["status"], "validated")
 
     def test_second_replacement_is_refused_and_the_first_one_stays(self):
-        self.capture("src-c", "Politique synthétique de conflit.")
-        quote = "Politique synthétique de conflit."
-        self.propose("rev-base", "src-c", "Politique synthétique de conflit.", quote)
+        self.capture("src-c", "Synthetic conflict policy.")
+        quote = "Synthetic conflict policy."
+        self.propose("rev-base", "src-c", "Synthetic conflict policy.", quote)
         self.review("rev-base")
         self.index("rev-base")
-        self.propose("rev-fork-a", "src-c", "Politique synthétique de conflit.", quote, previous="rev-base")
+        self.propose("rev-fork-a", "src-c", "Synthetic conflict policy.", quote, previous="rev-base")
         self.review("rev-fork-a")
         self.index("rev-fork-a")
         marker = json.loads(self.store.files["/company-memory/superseded-rev-base.json"])
         self.assertEqual((marker["superseded"], marker["successor"]), ("rev-base", "rev-fork-a"))
-        self.propose("rev-fork-b", "src-c", "Politique synthétique de conflit.", quote, previous="rev-base")
+        self.propose("rev-fork-b", "src-c", "Synthetic conflict policy.", quote, previous="rev-base")
         refused = self.engine.run("memory-review-update", {
-            "proposal_id": "rev-fork-b", "decision": "validated", "review_note": "revue synthétique",
+            "proposal_id": "rev-fork-b", "decision": "validated", "review_note": "synthetic review",
             "confirmation_manuelle": "oui"})
         self.assertEqual(refused["state"], "failed")
         self.assertEqual(refused["error"], "successor_conflict")  # explicit refusal before any write
@@ -866,7 +866,7 @@ class ChainTest(unittest.TestCase):
         replaced = self.query("rev-base")
         self.assertEqual(replaced["status"], "superseded")
         self.assertEqual(replaced["superseded_by"], "rev-fork-a")
-        found = self.search("conflit")
+        found = self.search("conflict")
         self.assertEqual([r["proposal_id"] for r in found["results"]], ["rev-fork-a"])
         self.assertEqual(found["suppressed_count"], 1)
         # A Memory-only successor in addition to the native marker remains a conflict.
@@ -879,20 +879,20 @@ class ChainTest(unittest.TestCase):
         del self.store.memory["rev-fork-b"]
 
     def test_validated_successor_not_indexed_still_hides_its_predecessor(self):
-        self.capture("src-u", "Plafond synthétique non indexé.")
-        quote = "Plafond synthétique non indexé."
+        self.capture("src-u", "Synthetic unindexed limit.")
+        quote = "Synthetic unindexed limit."
         self.propose("rev-x", "src-u", quote, quote)
         self.review("rev-x")
         self.index("rev-x")
-        self.assertEqual(self.search("plafond")["results"][0]["proposal_id"], "rev-x")
-        self.capture("src-v", "Plafond synthétique révisé non indexé.")
-        revised = "Plafond synthétique révisé non indexé."
+        self.assertEqual(self.search("limit")["results"][0]["proposal_id"], "rev-x")
+        self.capture("src-v", "Synthetic revised unindexed limit.")
+        revised = "Synthetic revised unindexed limit."
         self.propose("rev-y", "src-v", revised, revised, previous="rev-x")
         self.review("rev-y")  # validated, never indexed: only the native marker links it to X
         self.assertNotIn("rev-y", self.store.memory)
         self.assertEqual(self.query("rev-x")["status"], "superseded")
         self.assertEqual(self.query("rev-x")["superseded_by"], "rev-y")
-        found = self.search("plafond")
+        found = self.search("limit")
         self.assertEqual(found["results"], [])
         self.assertEqual(found["suppressed_count"], 1)
         self.index("rev-x", expected="failed")
@@ -909,8 +909,8 @@ class ChainTest(unittest.TestCase):
         return original
 
     def replaced_pair(self, prefix):
-        self.capture("src-" + prefix, "Plafond synthétique " + prefix + ".")
-        quote = "Plafond synthétique " + prefix + "."
+        self.capture("src-" + prefix, "Synthetic limit " + prefix + ".")
+        quote = "Synthetic limit " + prefix + "."
         self.propose(prefix + "-x", "src-" + prefix, quote, quote)
         self.review(prefix + "-x")
         self.index(prefix + "-x")
@@ -926,7 +926,7 @@ class ChainTest(unittest.TestCase):
         self.assertNotIn("/company-memory/superseded-%s.json" % x, self.store.files)
         self.assertNotIn("/company-memory/review-%s.json" % y, self.store.files)
         self.assertEqual(self.query(x)["status"], "validated")
-        self.assertEqual([r["proposal_id"] for r in self.search("plafond")["results"]], [x])
+        self.assertEqual([r["proposal_id"] for r in self.search("limit")["results"]], [x])
         self.review(y)  # review can be retried: nothing final was written
         self.assertEqual(self.query(x)["superseded_by"], y)
 
@@ -940,16 +940,16 @@ class ChainTest(unittest.TestCase):
         self.assertNotIn("/company-memory/superseded-%s.json" % x, self.store.files)
         self.assertEqual(self.query(y)["status"], "validated")
         self.assertEqual(self.query(x)["status"], "validated")  # conservative side: X remains served until Y is indexed
-        self.assertEqual([r["proposal_id"] for r in self.search("plafond")["results"]], [x])
+        self.assertEqual([r["proposal_id"] for r in self.search("limit")["results"]], [x])
         self.index(y)
         self.assertEqual(self.query(x)["superseded_by"], y)
-        found = self.search("plafond")
+        found = self.search("limit")
         self.assertEqual([r["proposal_id"] for r in found["results"]], [y])
         self.assertEqual(found["suppressed_count"], 1)
 
     def test_marker_is_written_only_by_a_validated_review_and_refused_siblings_do_not_block(self):
-        self.capture("src-p", "Règle synthétique de marqueur.")
-        quote = "Règle synthétique de marqueur."
+        self.capture("src-p", "Synthetic marker rule.")
+        quote = "Synthetic marker rule."
         self.propose("rev-p", "src-p", quote, quote)
         self.review("rev-p")
         self.index("rev-p")
@@ -963,21 +963,21 @@ class ChainTest(unittest.TestCase):
         self.assertTrue(marker["reviewed_at"])
         self.assertEqual(self.query("rev-p")["status"], "superseded")
 
-        self.capture("src-e", "Donnée expirée synthétique.")
-        self.propose("rev-exp", "src-e", "Donnée expirée synthétique.", "Donnée expirée synthétique.", due="2020-01-01")
+        self.capture("src-e", "Synthetic expired data.")
+        self.propose("rev-exp", "src-e", "Synthetic expired data.", "Synthetic expired data.", due="2020-01-01")
         self.review("rev-exp")
         self.assertEqual(self.query("rev-exp")["status"], "expired")
         self.index("rev-exp", expected="failed")
-        self.assertEqual(self.search("expirée")["results"], [])
+        self.assertEqual(self.search("expired")["results"], [])
 
     def test_refused_review_is_never_indexed_nor_served(self):
-        self.capture("src-f", "Affirmation refusée synthétique.")
-        self.propose("rev-ref", "src-f", "Affirmation refusée synthétique.", "Affirmation refusée synthétique.")
+        self.capture("src-f", "Synthetic refused statement.")
+        self.propose("rev-ref", "src-f", "Synthetic refused statement.", "Synthetic refused statement.")
         self.review("rev-ref", decision="refused")
         self.assertEqual(self.query("rev-ref")["status"], "refused")
         self.index("rev-ref", expected="failed")
-        self.assertEqual(self.search("refusée")["results"], [])
-        self.assertEqual(self.search("refusée")["candidate_count"], 0)
+        self.assertEqual(self.search("refused")["results"], [])
+        self.assertEqual(self.search("refused")["candidate_count"], 0)
 
     def test_negative_cases_fail_closed(self):
         self.run_wf("memory-capture-source", {
@@ -989,33 +989,33 @@ class ChainTest(unittest.TestCase):
                                              "confirmation_manuelle": "oui"}, expected="failed")
 
     def test_search_calls_brain_once_memory_once_and_lists_once_without_child_workflow(self):
-        self.capture("src-k", "Règle synthétique de comptage.")
-        quote = "Règle synthétique de comptage."
+        self.capture("src-k", "Synthetic counting rule.")
+        quote = "Synthetic counting rule."
         for i in range(3):
             self.propose("rev-k%d" % i, "src-k", quote, quote)
             self.review("rev-k%d" % i)
             self.index("rev-k%d" % i)
         self.store.calls = []
-        found = self.search("comptage")
+        found = self.search("counting")
         self.assertEqual(len(found["results"]), 3)
         self.assertEqual(self.store.calls, ["brain.keyword", "memory.query", "list_files"])
 
     def test_index_stores_title_and_dates_and_search_reads_them(self):
-        self.capture("src-t", "Titre et dates synthétiques.")
-        quote = "Titre et dates synthétiques."
+        self.capture("src-t", "Synthetic title and dates.")
+        quote = "Synthetic title and dates."
         self.propose("rev-t", "src-t", quote, quote)
         self.review("rev-t")
         self.index("rev-t")
         attrs = self.store.memory["rev-t"]["attributes"]
         self.assertEqual((attrs["title"], attrs["source_date"], attrs["source_ref"]),
-                         ("Titre rev-t", "2026-10-10", "fixture:src-t"))
+                         ("Title rev-t", "2026-10-10", "fixture:src-t"))
         self.assertTrue(attrs["reviewed_at"])
         self.assertEqual(json.loads(attrs["citations"]), ["fixture:src-t"])  # JSON string, not [fixture:src-t]
         for as_string in (False, True):
             self.store.attributes_as_string = as_string
-            row = self.search("synthétiques")["results"][0]
+            row = self.search("synthetic")["results"][0]
             self.assertEqual((row["proposal_id"], row["title"], row["date"], row["date_kind"], row["source_ref"]),
-                             ("rev-t", "Titre rev-t", "2026-10-10", "source", "fixture:src-t"))
+                             ("rev-t", "Title rev-t", "2026-10-10", "source", "fixture:src-t"))
             self.assertEqual(row["excerpts"], [quote])
 
     def test_tool_parameters_render_a_lone_array_as_go_text(self):
@@ -1029,8 +1029,8 @@ class ChainTest(unittest.TestCase):
 
     def test_rows_indexed_with_go_rendered_citations_still_give_source_ref_and_title(self):
         ref = "pilote-maurice:wiki/operations/am-lifecycle-loop.md#Introduction et portée@8963891e"
-        self.capture("src-g", "Révision rendue à la Go.")
-        quote = "Révision rendue à la Go."
+        self.capture("src-g", "Revision rendered as Go text.")
+        quote = "Revision rendered as Go text."
         self.propose("rev-g", "src-g", quote, quote)
         self.review("rev-g")
         self.index("rev-g")
@@ -1040,19 +1040,19 @@ class ChainTest(unittest.TestCase):
         attrs["citations"] = "[" + ref + "]"  # shape observed on Agent C (index v7)
         for as_string in (False, True):
             self.store.attributes_as_string = as_string
-            row = self.search("rendue")["results"][0]
+            row = self.search("rendered")["results"][0]
             self.assertEqual((row["source_ref"], row["title"], row["date_kind"]),
                              (ref, "Introduction et portée", "source"))
 
     def test_revision_indexed_before_the_new_attributes_gets_a_derived_title(self):
-        self.capture("src-l", "Révision héritée synthétique.")
-        quote = "Révision héritée synthétique."
+        self.capture("src-l", "Synthetic legacy revision.")
+        quote = "Synthetic legacy revision."
         self.propose("rev-l", "src-l", quote, quote)
         self.review("rev-l")
         self.index("rev-l")
         for key in ("title", "source_date", "reviewed_at"):
             del self.store.memory["rev-l"]["attributes"][key]
-        row = self.search("héritée")["results"][0]
+        row = self.search("legacy")["results"][0]
         self.assertEqual((row["title"], row["date"], row["date_kind"]), ("rev-l", "", "inconnue"))
 
     def test_search_without_brain_candidate_answers_empty_even_with_many_revisions(self):
@@ -1060,17 +1060,17 @@ class ChainTest(unittest.TestCase):
         # IN ('') query returned all, Memory truncated at 60 rows and search failed (memory_rows_truncated).
         for i in range(61):
             self.store.memory["rev-bulk-%02d" % i] = {
-                "entity_type": "company_memory_revision", "name": "Texte %d." % i, "status": "validated",
+                "entity_type": "company_memory_revision", "name": "Text %d." % i, "status": "validated",
                 "attributes": {"previous_revision": "", "expires_at": "2099-01-01", "citations": "[fixture:x]"}}
         self.store.calls = []
-        found = self.search("introuvable")
+        found = self.search("notfound")
         self.assertEqual((found["results"], found["candidate_count"], found["suppressed_count"]), ([], 0, 0))
         self.assertEqual(found["summary"], "No validated revisions found.")
         self.assertEqual(self.store.calls, ["brain.keyword", "memory.query", "list_files"])
 
     def test_brain_hit_without_memory_row_is_suppressed_not_failed(self):
-        self.store.brain.append({"uri": "company-memory://revisions/rev-ghost", "content": "fantôme synthétique"})
-        found = self.search("fantôme")
+        self.store.brain.append({"uri": "company-memory://revisions/rev-ghost", "content": "synthetic ghost"})
+        found = self.search("ghost")
         self.assertEqual(found["results"], [])
         self.assertEqual((found["candidate_count"], found["suppressed_count"]), (1, 1))
 
@@ -1136,6 +1136,12 @@ class ContractTest(unittest.TestCase):
         self.assertIn('date_kind: "revue"', code)
         self.assertIn('date_kind: "inconnue"', code)
         self.assertIn('revue: "review", inconnue: "unknown"', code)
+
+    def test_review_buttons_submit_english_generated_notes(self):
+        app = load_json(MINIAPPS / "memory-review.json")
+        notes = [event["workflow"]["input"]["review_note"] for event in app["events"]
+                 if "review_note" in event["workflow"].get("input", {})]
+        self.assertEqual(notes, ["Review from the MiniApp"] * 3)
 
     def test_revalidation_calls_pin_the_new_query_version(self):
         calls = [(name, a) for name, doc in WORKFLOWS_CACHE.items() for a in doc["actions"]
