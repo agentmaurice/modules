@@ -214,6 +214,16 @@ Le composeur refuse d'écraser des fichiers différents, sauf avec `--update` (v
 
 **Prérequis d'isolation : un Agent et des sidecars/volumes dédiés par mémoire.** Le tenant fixe `company-memory` n'isole pas deux entreprises sur un sidecar partagé. Le composeur reporte `requires.mcp` dans `agent-spec.json.mcp_requirements`.
 
+## Qualification plan availability
+
+The [requalification plan](tests/requalification-plan.json) separates local
+composition commands from historical runtime commands. The `mcp-replay.py`
+and `search-replay.py` tools belong to the authorized canonical pilot checkout
+and are not distributed in this library. Their paths are external source
+references, not commands runnable from this repository. The owning session must
+prepare an isolated One and the corresponding external tools before runtime
+qualification; repository reorganization does not provide that qualification.
+
 ## Limites de cette version
 
 - Pas de statut `superseded` écrit dans les fichiers natifs ; le statut est calculé à la consultation à partir de la copie Memory.

@@ -5,12 +5,12 @@
     "version": "0.3.0"
   },
   "ticket": "AGENT-1050",
-  "status": "planned_not_executed",
-  "status_note": "Plan préparé hors One. Aucune commande de ce fichier n'a été lancée. La conversation principale décide de l'exécution et de l'environnement.",
+  "status": "source_reconciled_runtime_requalification_required",
+  "status_note": "This repository includes local composition commands and a documentary runtime qualification plan. Private replay tools are not distributed. No runtime qualification is performed by repository reorganization.",
   "preconditions": [
     "Image Brain corrigée AGENT-1049 publiée par le pipeline GitLab de son dépôt, digest épinglé dans l'Agent consommateur. Aucun docker build ou push local.",
     "Image Memory 1.0.16 et brain-sidecar épinglés par digest, comme pour 0.2.0 (valeurs à reprendre du consommateur, non recopiées ici).",
-    "Un One isolé dédié au ticket, démarré par la procédure du dépôt (scripts/dev-stack.sh avec DEV_STACK_TICKET du ticket). Le worker ne lance pas dev-stack.sh.",
+    "An isolated One is prepared by the owning session through the canonical sandbox procedure; this library has no dev-stack.sh and its CI starts no runtime.",
     "Deux Agents integration_test distincts (A et B) avec stockage filesystem, chacun avec ses sidecars et volumes Memory et Brain.",
     "Consommateur de qualification avec les fichiers 0.2.0 retirés selon la procédure de mise à jour décidée (voir README, section Migration), puis composition 0.3.0.",
     "Les rejeux écrivent dans les deux Agents de test : aucune mémoire contenant des données métier."
@@ -23,16 +23,16 @@
   "commands_not_executed": [
     {
       "id": "compose-dry-run",
-      "command": "python3 solutions/company-memory/compose.py --consumer-dir <consumer> --agent-alias memory"
+      "command": "python3 tooling/company-memory/compose.py --consumer-dir <consumer> --agent-alias memory"
     },
     {
       "id": "compose-write",
-      "command": "python3 solutions/company-memory/compose.py --consumer-dir <consumer> --agent-alias memory --write",
+      "command": "python3 tooling/company-memory/compose.py --consumer-dir <consumer> --agent-alias memory --write",
       "note": "Refus attendu tant que les copies 0.2.0 sont présentes."
     },
     {
       "id": "compose-update",
-      "command": "python3 solutions/company-memory/compose.py --consumer-dir <consumer> --agent-alias memory --update --write",
+      "command": "python3 tooling/company-memory/compose.py --consumer-dir <consumer> --agent-alias memory --update --write",
       "note": "Remplace seulement les fichiers du Module qui diffèrent ; liste replaced_files."
     },
     {
@@ -43,24 +43,17 @@
       "id": "spec-deploy",
       "command": "maurice --config <config> spec deploy --dir <consumer> --env integration_test --agent-alias memory --tests auto --json",
       "note": "Vérifier que le service d'exécution recharge la nouvelle définition (limite notée dans le README 0.2.0)."
-    },
-    {
-      "id": "replay-legacy",
-      "command": "python3 solutions/company-memory/tests/mcp-replay.py --cli <maurice> --config <config> --consumer-dir <consumer> --agent <agent-A> --output-dir <dossier hors dépôt>",
-      "note": "33 cas historiques, assertions adaptées au format compact. A relancer sur A puis sur B."
-    },
-    {
-      "id": "replay-search",
-      "command": "python3 solutions/company-memory/tests/search-replay.py --cli <maurice> --config <config> --consumer-dir <consumer> --agent <agent-A> --output-dir <dossier hors dépôt>",
-      "note": "memory-search sans sous-Workflow : révision indexée par memory-index-revision, document Brain forgé ensuite ; texte servi depuis la copie Memory ; candidat Brain sans ligne Memory exclu (completed, suppressed_count)."
     }
   ],
   "cases": [
     {
       "id": "legacy-33",
       "group": "runtime",
-      "source": "tests/mcp-replay.py",
-      "expect": "33 cas passent sur A et B ; search-compact-shape adapté (excerpt et source_ref)."
+      "expect": "33 cas passent sur A et B ; search-compact-shape adapté (excerpt et source_ref).",
+      "availability": "external_not_distributed",
+      "source_repository": "mcpchatui/pilote-maurice",
+      "source_commit": "8cb35a14b825dcdae4515d46e3b4c5149c154901",
+      "source_path": "solutions/company-memory/tests/mcp-replay.py"
     },
     {
       "id": "capture-hostile-text",
@@ -283,5 +276,28 @@
     "Expiration temporelle d'une successeur (dépend de l'horloge ; à traiter par un cas daté).",
     "Résolution atomique d'une modification concurrente ; le modèle reste single-writer.",
     "Cloisonnement entre deux entreprises sur un sidecar partagé."
+  ],
+  "execution_scope": "Local composition uses this repository; runtime qualification requires an authorized external checkout and an isolated One.",
+  "external_commands_not_distributed": [
+    {
+      "id": "replay-legacy",
+      "command": "python3 solutions/company-memory/tests/mcp-replay.py --cli <maurice> --config <config> --consumer-dir <consumer> --agent <agent-A> --output-dir <dossier hors dépôt>",
+      "note": "33 cas historiques, assertions adaptées au format compact. A relancer sur A puis sur B.",
+      "availability": "external_not_distributed",
+      "source_repository": "mcpchatui/pilote-maurice",
+      "source_commit": "8cb35a14b825dcdae4515d46e3b4c5149c154901",
+      "source_path": "solutions/company-memory/tests/mcp-replay.py",
+      "execution_note": "Historical command for the authorized canonical checkout only; unavailable in this library. Private credentials, data and output remain outside this repository."
+    },
+    {
+      "id": "replay-search",
+      "command": "python3 solutions/company-memory/tests/search-replay.py --cli <maurice> --config <config> --consumer-dir <consumer> --agent <agent-A> --output-dir <dossier hors dépôt>",
+      "note": "memory-search sans sous-Workflow : révision indexée par memory-index-revision, document Brain forgé ensuite ; texte servi depuis la copie Memory ; candidat Brain sans ligne Memory exclu (completed, suppressed_count).",
+      "availability": "external_not_distributed",
+      "source_repository": "mcpchatui/pilote-maurice",
+      "source_commit": "8cb35a14b825dcdae4515d46e3b4c5149c154901",
+      "source_path": "solutions/company-memory/tests/search-replay.py",
+      "execution_note": "Historical command for the authorized canonical checkout only; unavailable in this library. Private credentials, data and output remain outside this repository."
+    }
   ]
 }
