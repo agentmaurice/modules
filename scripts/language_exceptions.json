@@ -100,21 +100,6 @@
     "reason": "Historical exact test plan for safe upgrade matching."
   },
   {
-    "path": "tooling/marketing-launch/legacy-0.1.0-test-plan.json",
-    "line_sha256": "1709eaa4ae35e8c6c26720a69f84a0df36eef1d8665e4d22ee82c6a2a6c0bdfe",
-    "reason": "Historical exact test plan for safe upgrade matching."
-  },
-  {
-    "path": "tooling/marketing-launch/legacy-0.1.0-test-plan.json",
-    "line_sha256": "1709eaa4ae35e8c6c26720a69f84a0df36eef1d8665e4d22ee82c6a2a6c0bdfe",
-    "reason": "Historical exact test plan for safe upgrade matching."
-  },
-  {
-    "path": "tooling/marketing-launch/legacy-0.1.0-test-plan.json",
-    "line_sha256": "1709eaa4ae35e8c6c26720a69f84a0df36eef1d8665e4d22ee82c6a2a6c0bdfe",
-    "reason": "Historical exact test plan for safe upgrade matching."
-  },
-  {
     "path": "tooling/memory-integration/compose.py",
     "line_sha256": "a7502ac6b4afc7d0e2bc6883841d2cf9b73cb958d35d86d44da637a50beeed11",
     "reason": "Exact historical bridge or capability text for safe upgrade matching."

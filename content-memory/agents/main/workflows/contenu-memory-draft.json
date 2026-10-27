@@ -74,7 +74,7 @@
       "id": "consult",
       "type": "workflow_call",
       "workflow_id": "company-memory-query",
-      "workflow_version": "1",
+      "workflow_version": "2",
       "execution": "sync",
       "input": {
         "proposal_id": "{{ request.proposal_id }}"
@@ -103,7 +103,7 @@
       "id": "review",
       "type": "workflow_call",
       "workflow_id": "review_completion",
-      "workflow_version": "1",
+      "workflow_version": "2",
       "execution": "sync",
       "input": {
         "dossier_id": "{{ record.id }}",

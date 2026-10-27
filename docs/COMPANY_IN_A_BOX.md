@@ -8,7 +8,7 @@ three initialized Agents in the consumer project, in preview mode by default.
 [Standalone memory](../tooling/company-memory/README.md), its
 [integration](../tooling/memory-integration/README.md), the
 [daily routine](../tooling/daily-routine/README.md),
-[work cases and Direction](../tooling/work-cases/README.md),
+[work cases and Management](../tooling/work-cases/README.md),
 [administration](../tooling/enterprise-admin/README.md) and
 [launch Marketing](../tooling/marketing-launch/README.md) can be composed to
 meet the company's needs.

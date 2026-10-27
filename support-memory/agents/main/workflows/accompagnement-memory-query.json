@@ -27,7 +27,7 @@
       "id": "consult",
       "type": "workflow_call",
       "workflow_id": "company-memory-query",
-      "workflow_version": "1",
+      "workflow_version": "2",
       "execution": "sync",
       "input": {
         "proposal_id": "{{ proposal_id }}"

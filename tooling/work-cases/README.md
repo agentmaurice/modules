@@ -1,7 +1,7 @@
-# Work cases and Direction — cib-work-dossiers
+# Work cases and Management — cib-work-dossiers
 
 This shared case Module records an objective, operational owner, references,
-next action, blocker and evidence of internal closure. Direction receives only
+next action, blocker and evidence of internal closure. Management receives only
 records accessible to the authenticated person.
 
 ```sh

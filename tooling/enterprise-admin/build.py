@@ -183,7 +183,7 @@ def build() -> None:
 const directory = await callTool("recipe--company_admin_v1", {operation:"directory_snapshot"});
 const application_people = await callTool("recipe--company_admin_v1", {operation:"application_people_list"});
 const approval_mandates = await callTool("recipe--company_admin_v1", {operation:"approval_mandates_list"});
-const roles={cib_admin:"Administration",cib_marketing:"Marketing",cib_service_client:"Customer service",cib_direction:"Management",cib_dossiers:"Shared cases"};
+const roles={cib_admin:"Administration",cib_marketing:"Marketing",cib_service_client:"Customer support",cib_direction:"Management",cib_dossiers:"Shared cases"};
 const grants=directory.grants || [];
 const mandates=(approval_mandates.items || []).map(item => ({mandate_id:item.mandate?.mandate_id || item.mandate_id || "", status:item.status || ""}));
 const grants_display=grants.map(item=>({...item,role_label:roles[item.role_key] || item.role_key || ""}));
@@ -195,7 +195,7 @@ return {people: directory.people || [], grants, grants_display, application_peop
         field("person_id", "Person identifier", required=False),
         field("display_name", "Display name", required=False),
         field("target_platform_user_id", "Existing user identity", required=False),
-        field("role_key", "Business role", "select", [("cib_admin", "Administration"), ("cib_marketing", "Marketing"), ("cib_service_client", "Customer service"), ("cib_direction", "Management"), ("cib_dossiers", "Shared cases")], required=False),
+        field("role_key", "Business role", "select", [("cib_admin", "Administration"), ("cib_marketing", "Marketing"), ("cib_service_client", "Customer support"), ("cib_direction", "Management"), ("cib_dossiers", "Shared cases")], required=False),
         field("mandate_id", "Mandate identifier", required=False),
         field("reason", "Reason", "text", required=False),
         field("confirmation_manuelle", "Manual confirmation", "select", [("false", "No"), ("true", "Yes")]),

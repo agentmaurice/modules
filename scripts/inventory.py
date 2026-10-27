@@ -129,12 +129,12 @@ def render():
             'provides': module.get('provides', {}), 'requires': module.get('requires', {}),
             'composition_dependencies': CONSUMERS.get(root.name, []),
             'known_consumers': sorted(name for name, deps in CONSUMERS.items() if root.name in deps),
-            'language': ('M5 English source reviewed offline; One and Viewer qualification pending.' if is_m5_candidate
+            'language': ('M5 English source candidate prepared; complete review and One and Viewer qualification remain pending.' if is_m5_candidate
                          else 'Version outside the recorded M5 candidate; language review status is not inferred.'),
             'runtime': 'Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred',
             'publication': ('M5 candidate version is local and unpublished; no release or qualification is asserted.' if is_m5_candidate
                             else 'Publication status of this version is not inferred.'),
-            'migration_m5_m6': ('M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending.' if is_m5_candidate
+            'migration_m5_m6': ('M5 source candidate prepared, not fully qualified; M6 Go port and runtime qualification remain pending.' if is_m5_candidate
                                 else 'M5 and M6 status for this version is not inferred.')})
     catalogue = {'schema_version': 1, 'modules': rows}
     pins = {'schema_version': 1, 'modules': rows}

@@ -574,10 +574,10 @@
         "support-memory",
         "watch-memory"
       ],
-      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
+      "language": "M5 English source candidate prepared; complete review and One and Viewer qualification remain pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
       "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
-      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
+      "migration_m5_m6": "M5 source candidate prepared, not fully qualified; M6 Go port and runtime qualification remain pending."
     },
     {
       "key": "cib-contenu",
@@ -625,8 +625,8 @@
           "content/agents/main/workflows/contenu-save.json": "406ae63f44aa7ca8e2161572e02d9b9924d90ba22be65ddcb58d72e1a8cc1957",
           "content/agents/main/workflows/contenu-share.json": "35a57462a1290753ba094f56081cc1963b55b02506319973e177cd41f5e826f9",
           "content/agents/main/workflows/review_completion.json": "3b0ae711ad2a9ba56fc3f4f6909f3baa702e1ac1bd9421ea935e601cc56fe071",
-          "content/agents/main/miniapps/contenu-console.json": "bbbad59f1ea054d9fb86510d4f5e499056f2e1f14d4939d0d488aee288899ca8",
-          "content/agents/main/miniapps/contenu-sharing-console.json": "4ac23096b36d400e868e3be2a6bbb93cbc2bba9f0fb349769bcf7820b22f97c3"
+          "content/agents/main/miniapps/contenu-console.json": "51e354557ef4239aebfb530015879e29270116fc16615e0033c74c2df7ecce21",
+          "content/agents/main/miniapps/contenu-sharing-console.json": "7e8cdd392188b9508a441868ca7ab8b4342b313dd021cc05e1b5ad16d9c9aced"
         }
       },
       "workflow_actions": {
@@ -792,10 +792,10 @@
         "content-memory",
         "daily-routine"
       ],
-      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
+      "language": "M5 English source candidate prepared; complete review and One and Viewer qualification remain pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
       "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
-      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
+      "migration_m5_m6": "M5 source candidate prepared, not fully qualified; M6 Go port and runtime qualification remain pending."
     },
     {
       "key": "cib-contenu-memory",
@@ -837,10 +837,10 @@
         ],
         "sha256": {
           "content-memory/module.yaml": "bde7102b6dc519d6c1866b8e4aaf2b8f47b4dad0e9113b079605ca868c6b63e2",
-          "content-memory/agents/main/workflows/contenu-memory-contribute.json": "78892ef319dae9e5d0f9ab7b436b793233337edb7067a90df9a31b77192450da",
-          "content-memory/agents/main/workflows/contenu-memory-draft.json": "1a3d1993f1a1381eeead432fa915e55eb720d95fa6c732e1044fd574eceacef2",
-          "content-memory/agents/main/workflows/contenu-memory-query.json": "486cfb4b14fff725f796e987b2398688dab97c828ff2ee9d240910b93b9d8970",
-          "content-memory/agents/main/workflows/contenu-memory-search.json": "d7ff267529119878ca92c1e12edb63144d91581170f29dfa1ed4b1a2fa2b7554",
+          "content-memory/agents/main/workflows/contenu-memory-contribute.json": "7432d6ba6815c048962961f3db7c385d429a0e218f95c46c932e8d6bc9d98a41",
+          "content-memory/agents/main/workflows/contenu-memory-draft.json": "68054652d8d8d0b510120da511fc554fc46be06b19a3642ffd5f84a22a97bb8e",
+          "content-memory/agents/main/workflows/contenu-memory-query.json": "6b3b9ab3ee94264565090809e07cbc7255c6c6d57769863a4e55063aebe54c61",
+          "content-memory/agents/main/workflows/contenu-memory-search.json": "f69461a745f684949690aef527a4eaf3b6e9461a64b81ac30f51312ac002deba",
           "content-memory/agents/main/miniapps/contenu-memory-contribute-console.json": "8cf95794e0bf8ec2e224ec96380caee81485e0aff1c1feec8905929a63ca0214",
           "content-memory/agents/main/miniapps/contenu-memory-draft-console.json": "becdbba8ce1796ed301807c5311d9c05f11cab66e4f64d1ca7689c26d04af24c",
           "content-memory/agents/main/miniapps/contenu-memory-query-console.json": "d2772700470ea17e43c771eb968b51ad2e53ebccac981708a4cdb5c80568a42e",
@@ -1025,10 +1025,10 @@
         "company-memory"
       ],
       "known_consumers": [],
-      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
+      "language": "M5 English source candidate prepared; complete review and One and Viewer qualification remain pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
       "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
-      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
+      "migration_m5_m6": "M5 source candidate prepared, not fully qualified; M6 Go port and runtime qualification remain pending."
     },
     {
       "key": "cib-daily-routine",
@@ -1238,10 +1238,10 @@
         "company-memory"
       ],
       "known_consumers": [],
-      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
+      "language": "M5 English source candidate prepared; complete review and One and Viewer qualification remain pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
       "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
-      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
+      "migration_m5_m6": "M5 source candidate prepared, not fully qualified; M6 Go port and runtime qualification remain pending."
     },
     {
       "key": "cib-enterprise-admin",
@@ -1288,8 +1288,8 @@
           "enterprise-admin/module.yaml": "7cff6f9345fc142250d5653d5115334747c103c4cf22df8763fc7f3dcfb2ac41",
           "enterprise-admin/agents/main/workflows/cib-admin-approval-check.json": "6101bda7644845a6da708aab6415a56793ad8f8314d0020df672849fa1ac7f86",
           "enterprise-admin/agents/main/workflows/cib-admin-import-record.json": "8b149ff31b9da0a1deeb1ca3f4343efe539212136478aebd8394fca679631c9d",
-          "enterprise-admin/agents/main/workflows/cib-admin-manage.json": "0575ee37d332f49c9abea9c3fd4479e54490ce49363484483873aa09981b82bc",
-          "enterprise-admin/agents/main/workflows/cib-admin-overview.json": "48da2f0de79cd0deda70b332b4a352bb42a659bc38e406f302d7f077a4926802",
+          "enterprise-admin/agents/main/workflows/cib-admin-manage.json": "8ba4e8e2558a118dcc3302d939f2a6b38378b1f4369be645399fee3d1ea0524a",
+          "enterprise-admin/agents/main/workflows/cib-admin-overview.json": "3dbe1a1964ab8e3c4229b94f1b0a3ce46bc30e3e9bc9e3fe7059b23dd3964cd0",
           "enterprise-admin/agents/main/workflows/cib-admin-record-people.json": "f46e021f94b39cbc63ed3d7d7a8ccfd4fecf50d5be89bf118c583fc70e7dd985",
           "enterprise-admin/agents/main/workflows/cib-admin-record-read.json": "8f1157fc57b318fa68115310f3dd821252a8b58537081fec1cca06fa52fddf96",
           "enterprise-admin/agents/main/workflows/cib-admin-record-share.json": "c285276a3f37c5a3723143d6f170bcf7efe66805428ca40ccabf58aa948c20e8",
@@ -1344,7 +1344,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "6b7edeab8793dfc5c44c7cf7cce563c18c4fb6a5f4cc466d81ffa00ed856114c"
+              "code_sha256": "fcff83a598126f00cc637a57eb10a71914e16461bb16965adbc6d36c41f9b7d7"
             }
           ]
         },
@@ -1449,10 +1449,10 @@
       "requires": {},
       "composition_dependencies": [],
       "known_consumers": [],
-      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
+      "language": "M5 English source candidate prepared; complete review and One and Viewer qualification remain pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
       "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
-      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
+      "migration_m5_m6": "M5 source candidate prepared, not fully qualified; M6 Go port and runtime qualification remain pending."
     },
     {
       "key": "cib-marketing-launch",
@@ -1724,10 +1724,10 @@
       "requires": {},
       "composition_dependencies": [],
       "known_consumers": [],
-      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
+      "language": "M5 English source candidate prepared; complete review and One and Viewer qualification remain pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
       "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
-      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
+      "migration_m5_m6": "M5 source candidate prepared, not fully qualified; M6 Go port and runtime qualification remain pending."
     },
     {
       "key": "cib-accompagnement",
@@ -1775,8 +1775,8 @@
           "support/agents/main/workflows/accompagnement-read.json": "6303327bc1765b51d903be249e815de870110065c0ee16152a1e16529f528e5e",
           "support/agents/main/workflows/accompagnement-save.json": "25543d79b270670eb4dcfe06ff1172cbfd68b259dfdbabea255548d3b4ea2113",
           "support/agents/main/workflows/accompagnement-share.json": "b8045e18b4fbcf08a83b1063502706a6a6c0cbcb64ace49ca92913f32b221164",
-          "support/agents/main/miniapps/accompagnement-console.json": "f34bb11b96ff59964cf3ecead3c01c4030e88a2d1a02ebbdcf502163285b8c52",
-          "support/agents/main/miniapps/accompagnement-sharing-console.json": "d33aac552417ddd81844389c45e4d3cfbb88a1c85332aab0908626230df337fb"
+          "support/agents/main/miniapps/accompagnement-console.json": "e3be6179ddb189f3414d4179683ec1ccfe3c74f7c63ff240034411cd4867d8fa",
+          "support/agents/main/miniapps/accompagnement-sharing-console.json": "df0aeea1eaf20b63870ae490cedf81b5839aa270398e8dcbafd785b1e5d8bc73"
         }
       },
       "workflow_actions": {
@@ -1942,10 +1942,10 @@
         "daily-routine",
         "support-memory"
       ],
-      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
+      "language": "M5 English source candidate prepared; complete review and One and Viewer qualification remain pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
       "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
-      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
+      "migration_m5_m6": "M5 source candidate prepared, not fully qualified; M6 Go port and runtime qualification remain pending."
     },
     {
       "key": "cib-accompagnement-memory",
@@ -1985,9 +1985,9 @@
         ],
         "sha256": {
           "support-memory/module.yaml": "c25e25beef583996deda031473ff4ca6ec4aeb9f2d5eea64c1471fbc169d8ff7",
-          "support-memory/agents/main/workflows/accompagnement-memory-contribute.json": "0d8f9029e2275c3ce9bd662acb8a0368dc425e371e0fbde3e39c134112991056",
-          "support-memory/agents/main/workflows/accompagnement-memory-query.json": "b519c9a0c531891689ce2399dedb9cd12ba460d6823bb0c94968345775c20e8d",
-          "support-memory/agents/main/workflows/accompagnement-memory-search.json": "7bd82aa7c7752917a0ddb4ce68f0d7700bf3cccf39b19fe50f7e19d14325122c",
+          "support-memory/agents/main/workflows/accompagnement-memory-contribute.json": "72ab2a7dcecf7d677b0a4cc2b1cd9f77f95405790fd61a9e65143d44e9cc8001",
+          "support-memory/agents/main/workflows/accompagnement-memory-query.json": "fb0e602c63d027ce161c4c8a011a16f987a9e4f74faaee1bb79b820159eb5272",
+          "support-memory/agents/main/workflows/accompagnement-memory-search.json": "2bbce70e774f0c5e74b92cb8da5f747b736b3446408a1e059a8e45037b4c17ce",
           "support-memory/agents/main/miniapps/accompagnement-memory-contribute-console.json": "f150ac2cbc7bf1b2e77305c5de49973343c0cfb6bd7660560e5b7847d9d806f8",
           "support-memory/agents/main/miniapps/accompagnement-memory-query-console.json": "a72778ed6b76f28ce70e15a4332ec5f8f3da2186c425b2965937b066410cb014",
           "support-memory/agents/main/miniapps/accompagnement-memory-search-console.json": "a47b91d4e19a27d7a676f7c9f950d7bbe7536a51278923b3541a46fc70ecf7a1"
@@ -2098,10 +2098,10 @@
         "company-memory"
       ],
       "known_consumers": [],
-      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
+      "language": "M5 English source candidate prepared; complete review and One and Viewer qualification remain pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
       "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
-      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
+      "migration_m5_m6": "M5 source candidate prepared, not fully qualified; M6 Go port and runtime qualification remain pending."
     },
     {
       "key": "cib-veille",
@@ -2151,8 +2151,8 @@
           "watch/agents/main/workflows/veille-read.json": "636f56112a07eaf72a5896e3dd0e767aae3f3a8f7c3d44b8570aae52e7776ef3",
           "watch/agents/main/workflows/veille-save.json": "de9d076ae4478e01253849e718d0b24aeedf38ae8c9f174ab0469688689bed4a",
           "watch/agents/main/workflows/veille-share.json": "9869c956b8ee7124f99c86918d162845649f4bfd55a4e44df36f384504a83153",
-          "watch/agents/main/miniapps/veille-console.json": "6da9f091b0c36e1444773299414af72bd8269daaa97108d50a697186129f1f3a",
-          "watch/agents/main/miniapps/veille-sharing-console.json": "347c0bf9b471db747a4aa2abda6611058b771fa0340d9d63c9bf07d4e1a9b313"
+          "watch/agents/main/miniapps/veille-console.json": "25e579ccc0abe4ca9b75e94eeb398e32f16fe7ae26983f04161ae27ff680ec13",
+          "watch/agents/main/miniapps/veille-sharing-console.json": "f2f3cb06eb0929625556c268c7b3d9ac9764368157dd04b87cbb96400c75f6da"
         }
       },
       "workflow_actions": {
@@ -2341,10 +2341,10 @@
         "daily-routine",
         "watch-memory"
       ],
-      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
+      "language": "M5 English source candidate prepared; complete review and One and Viewer qualification remain pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
       "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
-      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
+      "migration_m5_m6": "M5 source candidate prepared, not fully qualified; M6 Go port and runtime qualification remain pending."
     },
     {
       "key": "cib-veille-memory",
@@ -2384,9 +2384,9 @@
         ],
         "sha256": {
           "watch-memory/module.yaml": "14b68aba339e312ca915442802c1d9d51c31409c5dff1b57b727b04237799784",
-          "watch-memory/agents/main/workflows/veille-memory-contribute.json": "85e082b33957b5794bf2443bb1f1ab630a01fc4ab13614c0639a10a5bc597f99",
-          "watch-memory/agents/main/workflows/veille-memory-query.json": "cb82fd29f9c0671e262f65ede4173299b9f1a2dab51fd4cbf5c4ae0b23c0b106",
-          "watch-memory/agents/main/workflows/veille-memory-search.json": "a018da1f46001ead0ba8d869e71d37422d592a174053b35ae40bace31cdcc334",
+          "watch-memory/agents/main/workflows/veille-memory-contribute.json": "bd1115e14c235a643663545e5e4f31c5b35080edf2c6eadfe9bcf7be31c4797d",
+          "watch-memory/agents/main/workflows/veille-memory-query.json": "6df577ae86ff9cad6cc29bcc17797c09f7f2236dc9dda58b6b79b19b97113284",
+          "watch-memory/agents/main/workflows/veille-memory-search.json": "f73c4253877a7db6bb20ffc6294ff862b76e18baa00122c1bb7a5f671cc98cd3",
           "watch-memory/agents/main/miniapps/veille-memory-contribute-console.json": "d3389d680971510b3311dad54108184a750b9bd9a377ae4f2c30ca3a9e74c1a6",
           "watch-memory/agents/main/miniapps/veille-memory-query-console.json": "2e30b66741895350f8ced84b893beb47f28d44283acf060d91e2a41631947018",
           "watch-memory/agents/main/miniapps/veille-memory-search-console.json": "fdba9b8894c9a85f4ce5975b53caaa2db225c1c9728cbda40243268e1320eeae"
@@ -2497,10 +2497,10 @@
         "company-memory"
       ],
       "known_consumers": [],
-      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
+      "language": "M5 English source candidate prepared; complete review and One and Viewer qualification remain pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
       "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
-      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
+      "migration_m5_m6": "M5 source candidate prepared, not fully qualified; M6 Go port and runtime qualification remain pending."
     },
     {
       "key": "cib-work-dossiers",
@@ -2724,10 +2724,10 @@
       "requires": {},
       "composition_dependencies": [],
       "known_consumers": [],
-      "language": "M5 English source reviewed offline; One and Viewer qualification pending.",
+      "language": "M5 English source candidate prepared; complete review and One and Viewer qualification remain pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
       "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
-      "migration_m5_m6": "M5 source migration reviewed offline; M6 Go port and runtime qualification remain pending."
+      "migration_m5_m6": "M5 source candidate prepared, not fully qualified; M6 Go port and runtime qualification remain pending."
     }
   ]
 }

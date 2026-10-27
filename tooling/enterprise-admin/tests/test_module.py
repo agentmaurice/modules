@@ -140,7 +140,7 @@ main().then(() => {{
     main().then(v=>console.log(JSON.stringify(v))).catch(e=>{console.error(e);process.exit(1)});"""
     value=json.loads(subprocess.run(["node","-e",script],text=True,capture_output=True,check=True).stdout)
     self.assertEqual(value["grants"][0]["role_key"],"cib_service_client")
-    self.assertEqual(value["grants_display"][0]["role_label"],"Customer service")
+    self.assertEqual(value["grants_display"][0]["role_label"],"Customer support")
     self.assertEqual(value["approval_mandates"][0]["status"],"revoked")
     self.assertEqual(value["approval_mandates_display"][0]["status_label"],"Revoked")
 

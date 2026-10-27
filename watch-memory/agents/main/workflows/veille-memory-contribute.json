@@ -104,7 +104,7 @@
       "id": "capture",
       "type": "workflow_call",
       "workflow_id": "company-memory-capture",
-      "workflow_version": "1",
+      "workflow_version": "2",
       "execution": "sync",
       "input": {
         "source_id": "{{ request.source_id }}",
@@ -119,7 +119,7 @@
       "id": "propose",
       "type": "workflow_call",
       "workflow_id": "company-memory-propose",
-      "workflow_version": "1",
+      "workflow_version": "2",
       "execution": "sync",
       "input": {
         "proposal_id": "{{ request.proposal_id }}",

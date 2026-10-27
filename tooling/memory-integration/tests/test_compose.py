@@ -1,12 +1,34 @@
 import importlib.util
 import json
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('compose_memory',ROOT/'compose.py')
 module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+
+def assert_local_pins(test, directory):
+    definitions = {}
+    for file in directory.glob('*.json'):
+        definition = json.loads(file.read_text())
+        if 'workflow_id' in definition:
+            definitions[definition['workflow_id']] = definition
+    count = 0
+    def visit(value):
+        nonlocal count
+        if isinstance(value, dict):
+            if value.get('type') == 'workflow_call' and 'workflow_id' in value and 'workflow_version' in value:
+                target = value['workflow_id']
+                test.assertIn(target, definitions, f'missing local target {target}')
+                test.assertEqual(str(value['workflow_version']), str(definitions[target]['version']), target)
+                count += 1
+            for item in value.values(): visit(item)
+        elif isinstance(value, list):
+            for item in value: visit(item)
+    for definition in definitions.values(): visit(definition)
+    return count
 
 class CompositionTest(unittest.TestCase):
     def setUp(self):
@@ -28,6 +50,19 @@ class CompositionTest(unittest.TestCase):
         self.assertEqual(outputs,module.compose(self.root))
         for p in (path for name in ('watch-memory', 'content-memory', 'support-memory') for path in (ROOT.parents[1]/name/'agents/main').rglob('*.json')):
             text=p.read_text();self.assertNotIn('agent_id',text);self.assertNotIn('"target"',text)
+    def test_composed_consumer_resolves_every_explicit_local_workflow_pin(self):
+        for role, folder in [('veille','watch'),('contenu','content'),('accompagnement','support')]:
+            source=ROOT.parents[1]/folder/'agents/main/workflows'
+            destination=self.root/'agents'/role/'workflows'
+            for file in source.glob('*.json'): shutil.copyfile(file, destination/file.name)
+        for path,data in module.compose(self.root).items():
+            path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(data)
+        total=sum(assert_local_pins(self,self.root/'agents'/role/'workflows') for role in module.ROLES)
+        self.assertEqual(total,18)
+        bridge=self.root/'agents/veille/workflows/company-memory-query.json'
+        definition=json.loads(bridge.read_text());definition['version']='1';bridge.write_bytes(module.encoded(definition))
+        with self.assertRaises(AssertionError):
+            assert_local_pins(self,self.root/'agents/veille/workflows')
     def test_conflict_does_not_write(self):
         p=self.root/'agents/veille/workflows/company-memory-query.json';p.write_text('{"custom":true}')
         with self.assertRaisesRegex(ValueError,'overwrite divergent'):module.compose(self.root)
