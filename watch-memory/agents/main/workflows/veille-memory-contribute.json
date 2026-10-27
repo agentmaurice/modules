@@ -3,50 +3,50 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "veille-memory-contribute",
-  "version": "2",
-  "title": "Veille — Proposer un extrait à la mémoire",
+  "version": "3",
+  "title": "Watch — Propose an excerpt to memory",
   "forms": [
     {
       "id": "submit",
-      "title": "Veille — Proposer un extrait à la mémoire",
+      "title": "Watch — Propose an excerpt to memory",
       "fields": [
         {
           "name": "dossier_id",
           "type": "string",
           "required": true,
-          "title": "Dossier local"
+          "title": "Local case"
         },
         {
           "name": "proposal_id",
           "type": "string",
           "required": true,
-          "title": "Nouvelle révision (identifiant unique)"
+          "title": "New revision (unique identifier)"
         },
         {
           "name": "selected_excerpt",
           "type": "text",
           "required": true,
-          "title": "Extrait du dossier à partager"
+          "title": "Case excerpt to share"
         },
         {
           "name": "review_due",
           "type": "string",
           "required": true,
-          "title": "Date limite de revue (AAAA-MM-JJ)"
+          "title": "Review deadline (YYYY-MM-DD)"
         },
         {
           "name": "partage_entreprise",
           "type": "select",
-          "title": "Autoriser cet extrait dans la mémoire commune de l’entreprise",
+          "title": "Authorize this excerpt in shared company memory",
           "required": true,
           "options": [
             {
               "value": "non",
-              "label": "Non"
+              "label": "No"
             },
             {
               "value": "oui",
-              "label": "Oui, cet extrait peut être consulté par les membres autorisés à la mémoire commune"
+              "label": "Yes, members authorized to access shared memory may view this excerpt"
             }
           ]
         },
@@ -54,15 +54,15 @@
           "name": "confirmation_manuelle",
           "type": "select",
           "required": true,
-          "title": "Confirmer cet apport manuel",
+          "title": "Confirm this manual contribution",
           "options": [
             {
               "value": "non",
-              "label": "Non"
+              "label": "No"
             },
             {
               "value": "oui",
-              "label": "Oui"
+              "label": "Yes"
             }
           ]
         }
@@ -124,7 +124,7 @@
       "input": {
         "proposal_id": "{{ request.proposal_id }}",
         "source_id": "{{ request.source_id }}",
-        "title": "Apport manuel — veille",
+        "title": "Manual contribution — watch",
         "content": "{{ selected.content }}",
         "evidence_quote": "{{ selected.content }}",
         "review_due": "{{ request.review_due }}",

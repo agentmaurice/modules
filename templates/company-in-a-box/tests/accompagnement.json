@@ -5,13 +5,13 @@
   "cases": [
     {
       "id": "save-happy",
-      "description": "Exécution technique sans preuve humaine : le broker ACL doit refuser cet accès. Les cas positifs sont vérifiés avec les comptes existants depuis la surface CIB.",
+      "description": "Technical execution without human identity: the ACL broker must refuse access. Positive cases are verified with existing accounts from the CIB surface.",
       "workflow": {
         "workflow_id": "accompagnement-save",
         "input": {
           "dossier_id": "dossier-acme-001",
           "entreprise": "Acme",
-          "objectif": "Préparer le suivi",
+          "objectif": "Prepare follow-up",
           "resultat_observe": "",
           "preuve_ref": "note-interne-001",
           "blocage": "",
@@ -28,7 +28,7 @@
     },
     {
       "id": "read-happy",
-      "description": "Exécution technique sans preuve humaine : le broker ACL doit refuser cet accès. Les cas positifs sont vérifiés avec les comptes existants depuis la surface CIB.",
+      "description": "Technical execution without human identity: the ACL broker must refuse access. Positive cases are verified with existing accounts from the CIB surface.",
       "workflow": {
         "workflow_id": "accompagnement-read",
         "input": {
@@ -44,7 +44,7 @@
     },
     {
       "id": "guard-external-confirmed",
-      "description": "Une action externe reste refusée même avec confirmation.",
+      "description": "An external action remains refused even with confirmation.",
       "workflow": {
         "workflow_id": "accompagnement-guard-action",
         "input": {
@@ -90,7 +90,7 @@
     },
     {
       "id": "read-id-traversal",
-      "description": "Exécution technique sans preuve humaine : le broker ACL doit refuser cet accès. Les cas positifs sont vérifiés avec les comptes existants depuis la surface CIB.",
+      "description": "Technical execution without human identity: the ACL broker must refuse access. Positive cases are verified with existing accounts from the CIB surface.",
       "workflow": {
         "workflow_id": "accompagnement-read",
         "input": {

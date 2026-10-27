@@ -39,4 +39,36 @@ class CompositionTest(unittest.TestCase):
     def test_broad_existing_grant_not_replaced(self):
         p=self.root/'agents/memory/agent-spec.json';v=json.loads(p.read_text());v['capabilities']=[{'name':'company-memory-query','allowed_agent_ids':['*']}];p.write_text(json.dumps(v))
         with self.assertRaisesRegex(ValueError,'conflicting existing'):module.compose(self.root)
+    def test_upgrade_exact_old_bridges_and_capabilities(self):
+        outputs=module.compose(self.root)
+        for p,data in outputs.items():
+            p.parent.mkdir(parents=True,exist_ok=True)
+            if p.name.startswith('company-memory-') and p.parent.name=='workflows':
+                value=json.loads(data);value['version']='1';value['title']=value['title'].replace('Memory — ','Mémoire — ',1);data=module.encoded(value)
+            elif p==self.root/'agents/memory/agent-spec.json':
+                value=json.loads(data)
+                for cap in value['capabilities']:
+                    cap['description']=cap['description'].replace('Manual memory integration: ','Raccordement manuel mémoire : ',1)
+                data=module.encoded(value)
+            p.write_bytes(data)
+        upgraded=module.compose(self.root)
+        bridge=json.loads(upgraded[self.root/'agents/veille/workflows/company-memory-query.json'])
+        self.assertEqual(bridge['version'],'2')
+        self.assertEqual(bridge['actions'][0]['target']['version'],'1')
+        capability=json.loads(upgraded[self.root/'agents/memory/agent-spec.json'])['capabilities'][0]
+        self.assertEqual(capability['version'],'1')
+        self.assertEqual(len(capability['allowed_agent_ids']),3)
+    def test_modified_old_bridge_is_not_treated_as_known(self):
+        path=self.root/'agents/veille/workflows/company-memory-query.json'
+        value=json.loads(module.compose(self.root)[path]);value['version']='1';value['title']='Mémoire — query';value['output']['extra']='changed'
+        path.write_bytes(module.encoded(value))
+        with self.assertRaisesRegex(ValueError,'overwrite divergent'):module.compose(self.root)
+    def test_upgrade_known_old_module_resource_by_fingerprint(self):
+        path=self.root/'agents/veille/miniapps/veille-memory-search-console.json'
+        path.parent.mkdir(parents=True,exist_ok=True)
+        path.write_bytes((ROOT/'tests/fixtures/veille-memory-search-console-0.2.0.json').read_bytes())
+        upgraded=module.compose(self.root)
+        self.assertEqual(json.loads(upgraded[path])['version'],'2')
+        path.write_bytes(path.read_bytes()+b' ')
+        with self.assertRaisesRegex(ValueError,'overwrite divergent'):module.compose(self.root)
 if __name__=='__main__':unittest.main()

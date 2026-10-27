@@ -1,0 +1,207 @@
+[
+  {
+    "path": "tooling/daily-routine/metrics.js",
+    "line_sha256": "7d46f46ca4d14c4f61e66d06cd0ee3a2951e289910c08068f43301c92aa62052",
+    "reason": "Stable machine-readable codes or English label mapping."
+  },
+  {
+    "path": "tooling/daily-routine/metrics.js",
+    "line_sha256": "8b704d36e37b061967eabefbfc643b56e7a94cfb01a15f931903e8bff2c3263a",
+    "reason": "Stable machine-readable codes or English label mapping."
+  },
+  {
+    "path": "tooling/daily-routine/metrics.js",
+    "line_sha256": "4eb2d761c28375cd4c32d89c722cb2e31c6e39577dd6c05a24ed613464935979",
+    "reason": "Stable machine-readable codes or English label mapping."
+  },
+  {
+    "path": "tooling/daily-routine/metrics.js",
+    "line_sha256": "a90c7e455f730235d37b834118818a0891fc690aabfd47b7c39ddcc6156092df",
+    "reason": "Stable machine-readable codes or English label mapping."
+  },
+  {
+    "path": "tooling/daily-routine/metrics.js",
+    "line_sha256": "889f7d7cfd432d91db92533b09a158e8abb3fd336f368c70968168d6f9309743",
+    "reason": "Stable machine-readable codes or English label mapping."
+  },
+  {
+    "path": "tooling/daily-routine/metrics.js",
+    "line_sha256": "f26965261b406906a8e7be4ab38e10ef3216e2fbfc776a70d529c562b6a8d9ab",
+    "reason": "Stable machine-readable codes or English label mapping."
+  },
+  {
+    "path": "tooling/daily-routine/metrics.js",
+    "line_sha256": "b50bb7162d95e270f6d57ca73ffcfe7ce3bdf206955994df6440d15ebeb1eb90",
+    "reason": "Stable machine-readable codes or English label mapping."
+  },
+  {
+    "path": "tooling/daily-routine/metrics.js",
+    "line_sha256": "cac9700bdfbe710f9b95b109f5f84f35d13522789f4bdad041f40a6c7d88be29",
+    "reason": "Stable machine-readable codes or English label mapping."
+  },
+  {
+    "path": "tooling/daily-routine/metrics.js",
+    "line_sha256": "1944328fcc55c384143dd7f393aa990fa94db57c55b3bfb084787184c7a6cf11",
+    "reason": "Stable machine-readable codes or English label mapping."
+  },
+  {
+    "path": "tooling/daily-routine/metrics.js",
+    "line_sha256": "6e56c24b680e7c997f4461b341aacf7c5c91b18871eca73b97dfb24a8614c6a0",
+    "reason": "Stable machine-readable codes or English label mapping."
+  },
+  {
+    "path": "tooling/daily-routine/metrics.js",
+    "line_sha256": "f49ef8e3d49fbd4bf2f4dd9200a9b20b9593c699209151150a1c10f4e755cc3f",
+    "reason": "Stable machine-readable codes or English label mapping."
+  },
+  {
+    "path": "tooling/daily-routine/metrics.js",
+    "line_sha256": "f41256236886a8569a1827146e53fd6fa10242de7e782e1db24e99e6c248349d",
+    "reason": "Stable machine-readable codes or English label mapping."
+  },
+  {
+    "path": "tooling/daily-routine/metrics.js",
+    "line_sha256": "bd4a607e36ce3fb6b122df9dd2b73c2bffe2f04c53f4149f3010dc1204d54a9e",
+    "reason": "Stable machine-readable codes or English label mapping."
+  },
+  {
+    "path": "tooling/daily-routine/metrics.js",
+    "line_sha256": "e3fab585e049ad95b5009ea3dda2a576da8ba11fcd1dddc570747325e1bc0650",
+    "reason": "Stable machine-readable codes or English label mapping."
+  },
+  {
+    "path": "tooling/daily-routine/tests/metrics.test.mjs",
+    "line_sha256": "20c0bbd886062a9739b8c18c1d7414cec372bd08f67ad250580fb6291f9661dc",
+    "reason": "Assertion of stable machine-readable codes."
+  },
+  {
+    "path": "tooling/daily-routine/tests/metrics.test.mjs",
+    "line_sha256": "036ba4013f10948c6d67d1d10b873cde82b0f4cd50156817b258536cc478c5d7",
+    "reason": "Assertion of stable machine-readable codes."
+  },
+  {
+    "path": "tooling/daily-routine/tests/metrics.test.mjs",
+    "line_sha256": "0e915fda4240c62a1f3abd84bab1324e2e1f01f910fc7aadca8ab68f781a3b1f",
+    "reason": "Assertion of stable machine-readable codes."
+  },
+  {
+    "path": "tooling/daily-routine/tests/metrics.test.mjs",
+    "line_sha256": "42318c9ba28c731cc2af625a0c63c97ebe328a7d2edec2cca08c373c072c46fa",
+    "reason": "Assertion of stable machine-readable codes."
+  },
+  {
+    "path": "tooling/marketing-launch/legacy-0.1.0-test-plan.json",
+    "line_sha256": "1709eaa4ae35e8c6c26720a69f84a0df36eef1d8665e4d22ee82c6a2a6c0bdfe",
+    "reason": "Historical exact test plan for safe upgrade matching."
+  },
+  {
+    "path": "tooling/marketing-launch/legacy-0.1.0-test-plan.json",
+    "line_sha256": "6e9bb4dd3c7820fab4b610d0f3fd89bdbff1143d028eb77ad61ae14b6eb035bc",
+    "reason": "Historical exact test plan for safe upgrade matching."
+  },
+  {
+    "path": "tooling/marketing-launch/legacy-0.1.0-test-plan.json",
+    "line_sha256": "1709eaa4ae35e8c6c26720a69f84a0df36eef1d8665e4d22ee82c6a2a6c0bdfe",
+    "reason": "Historical exact test plan for safe upgrade matching."
+  },
+  {
+    "path": "tooling/marketing-launch/legacy-0.1.0-test-plan.json",
+    "line_sha256": "1709eaa4ae35e8c6c26720a69f84a0df36eef1d8665e4d22ee82c6a2a6c0bdfe",
+    "reason": "Historical exact test plan for safe upgrade matching."
+  },
+  {
+    "path": "tooling/marketing-launch/legacy-0.1.0-test-plan.json",
+    "line_sha256": "1709eaa4ae35e8c6c26720a69f84a0df36eef1d8665e4d22ee82c6a2a6c0bdfe",
+    "reason": "Historical exact test plan for safe upgrade matching."
+  },
+  {
+    "path": "tooling/memory-integration/compose.py",
+    "line_sha256": "a7502ac6b4afc7d0e2bc6883841d2cf9b73cb958d35d86d44da637a50beeed11",
+    "reason": "Exact historical bridge or capability text for safe upgrade matching."
+  },
+  {
+    "path": "tooling/memory-integration/compose.py",
+    "line_sha256": "d7bb96e70ad61974e24f966b500984ec83011c5b689a3735f0bc874c3acb6636",
+    "reason": "Exact historical bridge or capability text for safe upgrade matching."
+  },
+  {
+    "path": "tooling/memory-integration/tests/test_compose.py",
+    "line_sha256": "efd26d6c7ce0dcab2a50fd402f86da378d4ca0734215732aae287ba8bf97098e",
+    "reason": "Exact historical bridge or capability compatibility test."
+  },
+  {
+    "path": "tooling/memory-integration/tests/test_compose.py",
+    "line_sha256": "226869eeeb356c1d163d408595160e89bb93e9f891de9f6d08e7ff798f787876",
+    "reason": "Exact historical bridge or capability compatibility test."
+  },
+  {
+    "path": "tooling/memory-integration/tests/test_compose.py",
+    "line_sha256": "4c8919926752380c8ed2ab5da10e75838b29a6d7ce71ad5285c7a354fe50929f",
+    "reason": "Exact historical bridge or capability compatibility test."
+  },
+  {
+    "path": "tooling/company-memory/tests/requalification-plan.json",
+    "line_sha256": "571c4d66a934506a0cca588c0d966c2c2e5d9ad7daa6f201644d1028aae2c155",
+    "reason": "Historical hostile synthetic payload retained verbatim."
+  },
+  {
+    "path": "tooling/company-memory/tests/test_module_offline.py",
+    "line_sha256": "64d0d1fe25a621157364e20a9698472386bbde1240a6f12cd14800548e1533c2",
+    "reason": "Unicode citation compatibility test."
+  },
+  {
+    "path": "tooling/company-memory/tests/test_module_offline.py",
+    "line_sha256": "954b35bb0c0041ae4f04f3cf34737025172508d3151caa2d0a4b9fa8fd1f1219",
+    "reason": "Accented search excerpt coverage."
+  },
+  {
+    "path": "tooling/company-memory/tests/test_module_offline.py",
+    "line_sha256": "47e581ed035249b31aaa6db7b3f826b838c4abb42dae41b8d1cfd4ddee39a191",
+    "reason": "Accented search excerpt assertion."
+  },
+  {
+    "path": "tooling/company-memory/tests/test_module_offline.py",
+    "line_sha256": "ad3cf082e5814a65f6d2caaf3b5e816a124aea630d435d5c9f94b499f1ee1055",
+    "reason": "Accented search excerpt assertion."
+  },
+  {
+    "path": "tooling/company-memory/tests/test_module_offline.py",
+    "line_sha256": "da311d526ddb3093ee4de57eb33ef0670913564045c49e85a02c534107b6f557",
+    "reason": "Unicode search with no matching occurrence."
+  },
+  {
+    "path": "tooling/company-memory/tests/test_module_offline.py",
+    "line_sha256": "438d885ebe352defe519b88bfb684663f06379d0e2c47818936412862ffff825",
+    "reason": "Distinct accented terms for excerpt windows."
+  },
+  {
+    "path": "tooling/company-memory/tests/test_module_offline.py",
+    "line_sha256": "967c1d88bd3beb710d8754c53260b89c91d1c8c34d2f5c9104f54ddf7983743e",
+    "reason": "Historical hostile Unicode and interpolation payload."
+  },
+  {
+    "path": "tooling/company-memory/tests/test_module_offline.py",
+    "line_sha256": "6d759d0a13a3c75bc212cd0154a28b697f19a41827933eca8599e639464fa679",
+    "reason": "Historical hostile Unicode and escaped JSON payload."
+  },
+  {
+    "path": "tooling/company-memory/tests/test_module_offline.py",
+    "line_sha256": "31a2d51e92a813c58c5d862fd1ca393f7ddd1ea8123e22142572353b6ef56fec",
+    "reason": "Historical source citation with exact heading."
+  },
+  {
+    "path": "tooling/company-memory/tests/test_module_offline.py",
+    "line_sha256": "656d3b5ec1bb2baa6be5d379c1711baf1dfac9a145f853a115877eaeb9648afc",
+    "reason": "Historical source citation heading assertion."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-report.json",
+    "line_sha256": "5654ed16cf78024e41561eb5a15b6fccbd203e92adfd9904a98fb6735c6f25c4",
+    "reason": "Stable machine codes embedded in generated code; displayed labels are English."
+  },
+  {
+    "path": "daily-routine/agents/main/workflows/daily-time-save.json",
+    "line_sha256": "d3e9b3330c386e2902ba939b003225ae243fa3048fb5cc21bb2c6546d8fa85ca",
+    "reason": "Stable machine codes embedded in generated code; displayed labels are English."
+  }
+]

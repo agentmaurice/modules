@@ -3,9 +3,9 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "daily-report-console",
-  "version": "1",
-  "title": "Briefing et bilan du temps",
-  "description": "Routine manuelle interne ; aucun envoi ni publication.",
+  "version": "2",
+  "title": "Time briefing and report",
+  "description": "Internal manual routine; no sending or publication.",
   "ui": {
     "renderer": "component",
     "component": "daily-routine",
@@ -13,7 +13,7 @@
       "layout": [
         {
           "type": "text",
-          "value": "Bilan descriptif : les données de test ne prouvent aucun gain réel. Les deux périodes doivent être incluses."
+          "value": "Descriptive report: test data does not prove a real gain. Both periods must be included."
         },
         {
           "type": "text",
@@ -23,35 +23,39 @@
         },
         {
           "type": "metric",
-          "label": "Gain récurrent (minutes)",
+          "label": "Recurring gain (minutes)",
           "value": {
             "state": "result.summary.gain_minutes"
           }
         },
         {
           "type": "metric",
-          "label": "Mise en place (minutes)",
+          "label": "Setup (minutes)",
           "value": {
             "state": "result.summary.installation_minutes"
           }
         },
         {
           "type": "metric",
-          "label": "Temps humain total (minutes)",
+          "label": "Total human time (minutes)",
           "value": {
             "state": "result.summary.total_temps_humain_minutes"
           }
         },
         {
           "type": "text",
-          "value": "Mesures exclues de la comparaison"
+          "value": "Measurements excluded from comparison"
         },
         {
           "type": "table",
           "columns": [
             "comparaison_id",
-            "reason"
+            "reason_label"
           ],
+          "column_labels": {
+            "comparaison_id": "Comparison",
+            "reason_label": "Reason"
+          },
           "rows": {
             "state": "result.exclusions"
           }
@@ -61,20 +65,20 @@
           "columns": [
             "session_id",
             "date",
-            "phase",
+            "phase_label",
             "dossier_id",
-            "qualite",
+            "quality_label",
             "temps_humain_minutes",
             "prochaine_etape"
           ],
           "column_labels": {
-            "session_id": "Mesure",
+            "session_id": "Measurement",
             "date": "Date",
-            "phase": "Méthode",
-            "dossier_id": "Dossier",
-            "qualite": "Qualité",
-            "temps_humain_minutes": "Minutes humaines",
-            "prochaine_etape": "Prochaine étape"
+            "phase_label": "Method",
+            "dossier_id": "Case",
+            "quality_label": "Quality",
+            "temps_humain_minutes": "Human minutes",
+            "prochaine_etape": "Next step"
           },
           "rows": {
             "state": "result.items"
@@ -83,7 +87,7 @@
         },
         {
           "type": "text",
-          "value": "Mesure sélectionnée"
+          "value": "Selected measurement"
         },
         {
           "type": "text",
@@ -124,7 +128,7 @@
     "result": {
       "items": [],
       "exclusions": [],
-      "message": "Aucune période consultée."
+      "message": "No period viewed."
     },
     "listing": {
       "items": []

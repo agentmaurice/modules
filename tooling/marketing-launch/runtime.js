@@ -18,10 +18,12 @@ function prefill(item,form) {
   if(form==='support')return {...common,trial_id:r.id,phase:r.phase==='demande'?'en_cours':r.phase,accompagnement_ref:r.accompagnement_ref||'',accompagnement_revision:String(r.accompagnement_revision||''),date_confirmation:r.date_confirmation||'',confirmation_resultat:'non'};
   return common;
 }
+const phaseLabels={brouillon:'Draft',contenu_pret:'Content ready',demande:'Requested',en_cours:'In progress',bloque:'Blocked',premier_resultat_confirme:'First result confirmed'};
+const kindLabels={campaign:'Campaign',trial:'Trial'};
 function result(extra={}) {return {record:null,revision:0,owner_user_id:'',permissions:{},permissions_summary:'',shares:[],share_count:0,rows:[],items:[],people:[],selected_target:null,summary:null,prefill:{},effects:[],replayed:false,message:'',scope:'internal_only',validation_mode:'manual_attestation',external_effect:false,...extra};}
 function view(item,form,message='',open=false) {
   const p=item.permissions, shares=Array.isArray(item.shares)?item.shares:[], bag=prefill(item,form);
-  return result({record:item.data,revision:item.revision,owner_user_id:item.owner_user_id||'',permissions:p,permissions_summary:'Lecture : '+(p.can_read?'oui':'non')+' · Modification : '+(p.can_write?'oui':'non')+' · Partage : '+(p.can_manage?'oui':'non'),shares,share_count:shares.length,prefill:bag,rows:[{jeu:item.data.jeu,kind:item.data.kind,id:item.data.id,phase:item.data.phase,revision:item.revision,objectif:item.data.objectif}],message,effects:open?[{type:'open_form',payload:{form_id:form,submit_event:'save',prefill:bag}}]:[]});
+  return result({record:item.data,revision:item.revision,owner_user_id:item.owner_user_id||'',permissions:p,permissions_summary:'Read: '+(p.can_read?'yes':'no')+' · Write: '+(p.can_write?'yes':'no')+' · Share: '+(p.can_manage?'yes':'no'),shares,share_count:shares.length,prefill:bag,rows:[{jeu:item.data.jeu,kind:item.data.kind,id:item.data.id,phase:item.data.phase,revision:item.revision,objectif:item.data.objectif}],message,effects:open?[{type:'open_form',payload:{form_id:form,submit_event:'save',prefill:bag}}]:[]});
 }
 async function persist(data,revision,form,message) { const key=recordKey(data.jeu,data.kind,data.id);const item=checked((await invoke('save',{namespace:NS,record_key:key,data,expected_revision:revision})).record,NS,key);return view(item,form,message,true); }
 async function accessible(game,filterKind) {
@@ -33,11 +35,11 @@ async function accessible(game,filterKind) {
 }
 async function execute(operation,x) {
   object(x,'input');
-  if(operation==='campaign-save') {const data=normalizeCampaign(x);return persist(data,expectedRevision(x.expected_revision??0,true),'campaign','Campagne enregistrée. Tout changement du brief impose une nouvelle liaison du contenu.');}
+  if(operation==='campaign-save') {const data=normalizeCampaign(x);return persist(data,expectedRevision(x.expected_revision??0,true),'campaign','Campaign saved. Any brief change requires content to be linked again.');}
   if(operation==='content-link') {
     manual(x.confirmation_manuelle);const c=await load(x.jeu,'campaign',x.campaign_id);if(c.revision!==expectedRevision(x.expected_revision))throw Error('campaign_revision_changed');
     const v=await foreign('cib-veille',x.veille_ref,x.veille_revision), d=await foreign('cib-contenu',x.contenu_ref,x.contenu_revision);
-    return persist(linkContent(c.data,x,v,d),c.revision,'content','Références Veille et Contenu liées à leurs révisions lues. Brouillon interne seulement.');
+    return persist(linkContent(c.data,x,v,d),c.revision,'content','Watch and Content references linked to the revisions read. Internal draft only.');
   }
   if(operation==='request') {
     manual(x.confirmation_manuelle);const c=await load(x.jeu,'campaign',x.campaign_id);if(c.revision!==expectedRevision(x.campaign_revision))throw Error('campaign_revision_changed');
@@ -48,32 +50,32 @@ async function execute(operation,x) {
     try {existing=await load(data.jeu,'trial',data.id);} catch(error) {if(!String(error?.message||error).includes('[NOT_FOUND]'))throw error;}
     if(existing) {
       const same=['campaign_id','campaign_revision','personne_ref','besoin','objectif','contenu_ref','contenu_revision'].every(k=>existing.data[k]===data[k]);if(!same)throw Error('request_id_conflict');
-      return {...view(existing,'request','Demande déjà enregistrée : aucune seconde création ni remise à zéro.',true),replayed:true};
+      return {...view(existing,'request','Request already recorded: no duplicate creation or reset.',true),replayed:true};
     }
-    return persist(data,0,'request','Demande interne créée, privée. Partagez explicitement cette fiche avec la personne chargée de l’accompagnement.');
+    return persist(data,0,'request','Private internal request created. Explicitly share this record with the support person.');
   }
   if(operation==='progress') {
     manual(x.confirmation_manuelle);const t=await load(x.jeu,'trial',x.trial_id);if(t.revision!==expectedRevision(x.expected_revision))throw Error('trial_revision_changed');
     const support=await foreign('cib-accompagnement',x.accompagnement_ref,x.accompagnement_revision);
-    return persist(progressTrial(t.data,x,support),t.revision,'support',x.phase==='premier_resultat_confirme'?'Premier résultat attesté en interne avec preuve. Aucune conversion commerciale déduite.':'Suivi interne mis à jour.');
+    return persist(progressTrial(t.data,x,support),t.revision,'support',x.phase==='premier_resultat_confirme'?'First result attested internally with evidence. No commercial conversion inferred.':'Internal progress updated.');
   }
-  if(operation==='read') {if(!['campaign','content','request','support','sharing'].includes(x.form_id))throw Error('form_invalid');return view(await load(x.jeu,x.kind,x.id),x.form_id,'Fiche accessible relue.');}
+  if(operation==='read') {if(!['campaign','content','request','support','sharing'].includes(x.form_id))throw Error('form_invalid');return view(await load(x.jeu,x.kind,x.id),x.form_id,'Accessible record reviewed.');}
   if(operation==='list'||operation==='summary') {
     const items=await accessible(x.jeu,operation==='summary'?'all':x.kind);
-    const rows=items.map(({data:r,revision})=>({jeu:r.jeu,kind:r.kind,id:r.id,phase:r.phase,revision,objectif:r.objectif,prochaine_etape:r.prochaine_etape||'Préparer/revoir le contenu.'}));
-    return result({items:rows,rows,summary:summarize(items.map(r=>r.data)),message:'Vue limitée aux fiches accessibles à votre identité. Les résultats sont des attestations internes, sans taux de conversion ni gain déduit.'});
+    const rows=items.map(({data:r,revision})=>({jeu:r.jeu,kind:r.kind,kind_label:kindLabels[r.kind]||r.kind,id:r.id,phase:r.phase,phase_label:phaseLabels[r.phase]||r.phase,revision,objectif:r.objectif,prochaine_etape:r.prochaine_etape||'Prepare or review content.'}));
+    return result({items:rows,rows,summary:summarize(items.map(r=>r.data)),message:'View limited to records accessible to your identity. Results are internal attestations; no conversion rate or gain is inferred.'});
   }
   if(operation==='people') {
     const item=await load(x.jeu,x.kind,x.id);const p=await invoke('people',{namespace:NS,record_key:recordKey(x.jeu,x.kind,x.id)});
     if(!Array.isArray(p.people))throw Error('broker_people_invalid');const people=p.people.map(p=>({user_id:text(p.user_id,'member_id',256),display_name:text(p.display_name,'member_name',256)}));
     const target=x.subject_user_id?people.find(p=>p.user_id===x.subject_user_id):null;if(x.subject_user_id&&!target)throw Error('external_target');
     const bag={...prefill(item,'sharing'),subject_user_id:target?.user_id||''};
-    return {...view(item,'sharing','Membres existants ; aucun droit modifié.'),people,selected_target:target,effects:target?[{type:'open_form',payload:{form_id:'sharing',submit_event:'save',prefill:bag}}]:[]};
+    return {...view(item,'sharing','Existing members; no permissions changed.'),people,selected_target:target,effects:target?[{type:'open_form',payload:{form_id:'sharing',submit_event:'save',prefill:bag}}]:[]};
   }
   if(operation==='share') {
     manual(x.confirmation_manuelle);if(!['read','write','none'].includes(x.permission))throw Error('permission_invalid');const subject=text(x.subject_user_id,'subject_user_id',256);if(/[\s/\\]/.test(subject))throw Error('subject_user_id_invalid');
     const key=recordKey(x.jeu,x.kind,x.id);const item=checked((await invoke('share',{namespace:NS,record_key:key,expected_revision:expectedRevision(x.expected_revision),subject_user_id:subject,permission:x.permission})).record,NS,key);
-    return view(item,'sharing','Partage unitaire mis à jour. Le droit de service et le droit de partage restent distincts.',true);
+    return view(item,'sharing','Individual sharing updated. Service and sharing permissions remain distinct.',true);
   }
   throw Error('operation_invalid');
 }

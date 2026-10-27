@@ -12,7 +12,7 @@
   "modules": [
     {
       "key": "company-memory",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "manifest": "company-memory/module.yaml",
       "workflows": 10,
       "miniapps": 6,
@@ -47,23 +47,23 @@
           "company-memory/agents/main/miniapps/memory-search-console.json"
         ],
         "sha256": {
-          "company-memory/module.yaml": "a26d8495505180a3d75be3ef6b6ea017aaf2467e87e0da0f2e653a4da719314e",
-          "company-memory/agents/main/workflows/memory-capture-source.json": "164543b7b03469ae9e39c540b65c60db4e9ca7e1834eb4747ade52e53742b873",
-          "company-memory/agents/main/workflows/memory-health.json": "409035a9dd3e14fc5e3ce71f8134dfc0dd1b191749057d501ed3a877db36cdd6",
-          "company-memory/agents/main/workflows/memory-index-revision.json": "b41c6693382f72dedebc92d01510bae214829fde62d2b4f797c7f6a28930218f",
-          "company-memory/agents/main/workflows/memory-inspect.json": "a4385ef6e3114e4ed81341677df60b20ac41f391f3e7a599649f44a689c05cc9",
-          "company-memory/agents/main/workflows/memory-propose-update.json": "03fa7810676ccc42ade3a0688d3d97aa218c4b5bbc21449f38e05bb6061d7501",
-          "company-memory/agents/main/workflows/memory-query.json": "bec7547cb51d4bcb4d5ec4ff7336835a8c277def2b1f753379bfa85423600332",
-          "company-memory/agents/main/workflows/memory-read-supersession.json": "74117679bc1c20869d1b6a7ea623e2a2d07bf16ad0c9e708bef1741f012c30a1",
-          "company-memory/agents/main/workflows/memory-review-update.json": "6db84c0a7ecd21db91295752866543015d621ece0bbcbb2324be0947b322408f",
-          "company-memory/agents/main/workflows/memory-search.json": "e8435ab9ffcbc1e347447b7de15bf6555b0923402c412071e1c5c08de800509b",
-          "company-memory/agents/main/workflows/memory-write-supersession.json": "5c4de7536b07e592c65861254f59205454ddb8a98286ab26395a9f979f5ddb8f",
-          "company-memory/agents/main/miniapps/memory-capture.json": "348e426342b2e052548358e184f55f189bded72892008dc145a6fa085b8633a6",
-          "company-memory/agents/main/miniapps/memory-index-console.json": "b42eae5e4627d93fa6a810c3d09ae80d948301851150ccf17cf6c256d0cc6104",
-          "company-memory/agents/main/miniapps/memory-propose.json": "3e3c56aa7019669d685bf29b377d9403cff25992e9fe3f92ec522a0a8d66bb2f",
-          "company-memory/agents/main/miniapps/memory-query-console.json": "7d4ef4fdec7cc04bf8eb4441d79de89643787edfbe9ad626e485a53f8de287e7",
-          "company-memory/agents/main/miniapps/memory-review.json": "c6e79989427c85f8358cd38701dc4c1c6462efae256ab2317e49b09c410f3893",
-          "company-memory/agents/main/miniapps/memory-search-console.json": "ebeb996d4088e706e782918573096afdd748c8e37637c0720e10b61e37e0b93b"
+          "company-memory/module.yaml": "32f66a3ea36e3b3b2f2023d390e333ca11c7f3f628112174ce6a3be65d9d6431",
+          "company-memory/agents/main/workflows/memory-capture-source.json": "f2a591ba24cbc5f4708f542d3c543aef664f2022ea0ed5e9cf7efdaec1a5a736",
+          "company-memory/agents/main/workflows/memory-health.json": "7b8090dde2daef9a9e93f0528f2281032bb028bcca301146046b94f349b1b423",
+          "company-memory/agents/main/workflows/memory-index-revision.json": "93a2225301a3f21280d866148e6197ad94fd7db7668daad7609ea570abd00820",
+          "company-memory/agents/main/workflows/memory-inspect.json": "38b2d84527ce3fbc1132004e90e7ea45272e03a5ce4464a5c73b08b127680b9d",
+          "company-memory/agents/main/workflows/memory-propose-update.json": "f017661dcf84d40e2fb5c5a9d4a6b392274dd149b361b3a95330138651ed1cdb",
+          "company-memory/agents/main/workflows/memory-query.json": "4cb198a7ec46089bc3ba38128b41725296910ef0151597a6cbc94aedb7333b53",
+          "company-memory/agents/main/workflows/memory-read-supersession.json": "82590c04e99b21631060123810a7a676a53f3814c56dcab0836481ac09645a42",
+          "company-memory/agents/main/workflows/memory-review-update.json": "7fafeab460d2d131d15c816e5e846e5a660fb8e4bde0fe2742ac95dfe8872256",
+          "company-memory/agents/main/workflows/memory-search.json": "7d4b21e3e0e6480adbe485061c20f765a4bb6094e55c3c49fb55fcc1ced662da",
+          "company-memory/agents/main/workflows/memory-write-supersession.json": "40e9c506cd1738a3ff42305c82243bb4f13ecfcfdf6f438a21f713bfba644b5f",
+          "company-memory/agents/main/miniapps/memory-capture.json": "a551e22dafb91a78979cab81bde4098f4be5cccebd39993eb8037ec60deaaef0",
+          "company-memory/agents/main/miniapps/memory-index-console.json": "ed109d56868504e34943beb658b962b118bbac88f4a36a0806db7d2492abc47c",
+          "company-memory/agents/main/miniapps/memory-propose.json": "82c3e1e6eb3ff2b948ae7bf16a7713977c8d0a774acc9b5232a7a40acd0c4340",
+          "company-memory/agents/main/miniapps/memory-query-console.json": "5a2db965243d8ef5c61a5f94b8f9839b139a8927faa6008d94d132f09b41dbd4",
+          "company-memory/agents/main/miniapps/memory-review.json": "2ec532f45a77c8c70dde8f70cdf025e0c29e920a6bfe092f9d8a7ea0fb277767",
+          "company-memory/agents/main/miniapps/memory-search-console.json": "41f5a6be2ea52bbf765b61b662ae27847c8a39387c77c253ad850e125416fe61"
         }
       },
       "workflow_actions": {
@@ -306,7 +306,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "f0973d4b5ba354974a0369bc7441e4abfd2211c151a8354e8754b6117cb64cac"
+              "code_sha256": "ad792d77808d417d464be74a35164fd60e7daf26b7434c58b3d7a4c8d6f008b1"
             }
           ]
         },
@@ -368,7 +368,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "b9c500175b4d55695081b62f1fe798368faf97486607fda78a9b51f9eeaaca6b"
+              "code_sha256": "2eeb5e06ff0093b5704b65167ba84307dffe757f8fc513cf95753b04f4f0d66f"
             },
             {
               "path": "/actions/7",
@@ -420,7 +420,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "c034e92de921ac56d0a8d34ee6c304fe31b04d50e6025333b92b1a203f0122fb"
+              "code_sha256": "be9c65c132068e6b6b7f765ff5b766eef8633b4b491e434a08cd45a388ee2a98"
             },
             {
               "path": "/actions/3",
@@ -428,7 +428,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "2887cd97cb167ef3b9a315cbcf0b97909416e37fcb96b4531d33e501eb1ca576"
+              "code_sha256": "463bb000a6abc4602674caba291a2e5cc4dde3c0f4a7b63975dcfed8d5609a60"
             },
             {
               "path": "/actions/4",
@@ -446,7 +446,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "da696950ed0bef866e717ab766ae23ea7e1a8048ea75fc3004b70678dcf3479a"
+              "code_sha256": "209426276911fffd96584b4b02e7aa96838cdc540899ca0f4112cf61af35d8c2"
             }
           ]
         },
@@ -466,76 +466,76 @@
           {
             "key": "capture_source",
             "workflow_id": "memory-capture-source",
-            "workflow_version": "4"
+            "workflow_version": "5"
           },
           {
             "key": "propose_update",
             "workflow_id": "memory-propose-update",
-            "workflow_version": "4"
+            "workflow_version": "5"
           },
           {
             "key": "review_update",
             "workflow_id": "memory-review-update",
-            "workflow_version": "6"
+            "workflow_version": "7"
           },
           {
             "key": "index_revision",
             "workflow_id": "memory-index-revision",
-            "workflow_version": "8"
+            "workflow_version": "9"
           }
         ],
         "queries": [
           {
             "key": "inspect",
             "workflow_id": "memory-inspect",
-            "workflow_version": "4"
+            "workflow_version": "5"
           },
           {
             "key": "query",
             "workflow_id": "memory-query",
-            "workflow_version": "7"
+            "workflow_version": "8"
           },
           {
             "key": "health",
             "workflow_id": "memory-health",
-            "workflow_version": "3"
+            "workflow_version": "4"
           },
           {
             "key": "search",
             "workflow_id": "memory-search",
-            "workflow_version": "9"
+            "workflow_version": "10"
           }
         ],
         "apps": [
           {
             "key": "capture",
             "miniapp_id": "memory-capture",
-            "miniapp_version": "3"
+            "miniapp_version": "4"
           },
           {
             "key": "propose",
             "miniapp_id": "memory-propose",
-            "miniapp_version": "3"
+            "miniapp_version": "4"
           },
           {
             "key": "review",
             "miniapp_id": "memory-review",
-            "miniapp_version": "3"
+            "miniapp_version": "4"
           },
           {
             "key": "query",
             "miniapp_id": "memory-query-console",
-            "miniapp_version": "4"
+            "miniapp_version": "5"
           },
           {
             "key": "index",
             "miniapp_id": "memory-index-console",
-            "miniapp_version": "2"
+            "miniapp_version": "3"
           },
           {
             "key": "search",
             "miniapp_id": "memory-search-console",
-            "miniapp_version": "2"
+            "miniapp_version": "3"
           }
         ]
       },
@@ -571,7 +571,7 @@
     },
     {
       "key": "cib-contenu",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "manifest": "content/module.yaml",
       "workflows": 6,
       "miniapps": 2,
@@ -598,15 +598,15 @@
           "content/agents/main/miniapps/contenu-sharing-console.json"
         ],
         "sha256": {
-          "content/module.yaml": "0089a7cb29ce5c2e332a1f7436d4c60febbb9fda11b0515b8128fd8e6c0d4181",
-          "content/agents/main/workflows/contenu-list.json": "2d89b39e4915e28ca696727a4f9642993462392dd3463e72d35b09bc7c998471",
-          "content/agents/main/workflows/contenu-people.json": "2e4bca151e92e10f0c1f1a11397c9948ff704c0d098be4ff2b7288d256286319",
-          "content/agents/main/workflows/contenu-read.json": "b299b5127d713e29f80f6f7a977e9b5a264e8351b2eb9ae0bbd7c36323a447c5",
-          "content/agents/main/workflows/contenu-save.json": "4de42a963baea177da6148aa723af0436d85a21d79e2601760a1a2895185a6b0",
-          "content/agents/main/workflows/contenu-share.json": "3177bfbc7f88789550453ddeec27865191a6aa8898d1c41a3a67932f8ea863a6",
-          "content/agents/main/workflows/review_completion.json": "b8fd9bdae01cfb475cf9918097077e809ffd275730735ac554936c940eeff838",
-          "content/agents/main/miniapps/contenu-console.json": "4c4bc4eb86c0145d67c37240e7a5676cf2f150138204a5dad3a1adae4bea5de8",
-          "content/agents/main/miniapps/contenu-sharing-console.json": "93e614787e4a65feea9a7e1ef279be3c7b881d0b0e5b1f656d020950f18924f5"
+          "content/module.yaml": "1ad8f1ab416614ad1d2ab17f21112c81d88b2d91496f7a6440a0433c9c740079",
+          "content/agents/main/workflows/contenu-list.json": "75f1b3f67a24fbbf060797e8e27fd8d00edb1421683f358ee2c93d3873a40f61",
+          "content/agents/main/workflows/contenu-people.json": "b53a667892ef2759e15f2bcc8de75cd9d99787a460b770862bd88b55cbc33465",
+          "content/agents/main/workflows/contenu-read.json": "d7f6fd5e358619e0e9505c67595ea2c3127750bacfcb08cb22e2e500a3227e05",
+          "content/agents/main/workflows/contenu-save.json": "406ae63f44aa7ca8e2161572e02d9b9924d90ba22be65ddcb58d72e1a8cc1957",
+          "content/agents/main/workflows/contenu-share.json": "35a57462a1290753ba094f56081cc1963b55b02506319973e177cd41f5e826f9",
+          "content/agents/main/workflows/review_completion.json": "3b0ae711ad2a9ba56fc3f4f6909f3baa702e1ac1bd9421ea935e601cc56fe071",
+          "content/agents/main/miniapps/contenu-console.json": "bbbad59f1ea054d9fb86510d4f5e499056f2e1f14d4939d0d488aee288899ca8",
+          "content/agents/main/miniapps/contenu-sharing-console.json": "4ac23096b36d400e868e3be2a6bbb93cbc2bba9f0fb349769bcf7820b22f97c3"
         }
       },
       "workflow_actions": {
@@ -619,7 +619,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "fda9c90073f5fbe93119b5ff3ab76b83dc3b8e4b24a5fd4f4c5aec03f7f7bfad"
+              "code_sha256": "618cd46b92894b36f2e00d00914a08b2d101eb222f10d5913dd49e68bdc1aa7b"
             }
           ]
         },
@@ -653,7 +653,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "9961b6874fa92bfb31bc55ab4d92c8aa4b2c13f3568ec0c349d98767ac1dd6a3"
+              "code_sha256": "1027e0a23af8aeecdeca0b171b3acd438587931f63e35398f25976cb99ce1884"
             }
           ]
         },
@@ -666,7 +666,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "f0740e776324a43883cba030acbad96687dec51c354b003474772647bc901818"
+              "code_sha256": "ff2efd33ecd55347cade7691f5e607a995e41453c1722172e12df34178a65fea"
             },
             {
               "path": "/actions/1",
@@ -687,7 +687,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "c9558660c3d7d585fe412f81d8c43540b255a9cd33a8ba6fc39ba971d9f6b3e7"
+              "code_sha256": "16eb9349374e7e5945fc730c2931d66655dd0ea67c74a3883f2d22e8483d1486"
             }
           ]
         },
@@ -700,7 +700,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "70939ce7872ded1ae3256c8d9f2ddde703febf0c37c602cfe9935afaac6cab54"
+              "code_sha256": "c59de69f6e849a5ac0a3cf0bae296955796b9460174056eb446bb7b57da18dd3"
             }
           ]
         },
@@ -713,7 +713,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "eccce097445909e8375853f06bcb90569edcf709793a77a5ef1bf19de7ce297c"
+              "code_sha256": "6d10a4faadfcd7d777d19126473ab5fa7a09bf9ad5572af0517103c9d8a26229"
             }
           ]
         }
@@ -723,46 +723,46 @@
           {
             "key": "save",
             "workflow_id": "contenu-save",
-            "workflow_version": "2"
+            "workflow_version": "3"
           },
           {
             "key": "share",
             "workflow_id": "contenu-share",
-            "workflow_version": "1"
+            "workflow_version": "2"
           },
           {
             "key": "review_completion",
             "workflow_id": "review_completion",
-            "workflow_version": "1"
+            "workflow_version": "2"
           }
         ],
         "queries": [
           {
             "key": "list",
             "workflow_id": "contenu-list",
-            "workflow_version": "2"
+            "workflow_version": "3"
           },
           {
             "key": "read",
             "workflow_id": "contenu-read",
-            "workflow_version": "2"
+            "workflow_version": "3"
           },
           {
             "key": "people",
             "workflow_id": "contenu-people",
-            "workflow_version": "1"
+            "workflow_version": "2"
           }
         ],
         "apps": [
           {
             "key": "console",
             "miniapp_id": "contenu-console",
-            "miniapp_version": "6"
+            "miniapp_version": "7"
           },
           {
             "key": "sharing-console",
             "miniapp_id": "contenu-sharing-console",
-            "miniapp_version": "1"
+            "miniapp_version": "2"
           }
         ]
       },
@@ -779,7 +779,7 @@
     },
     {
       "key": "cib-contenu-memory",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "manifest": "content-memory/module.yaml",
       "workflows": 4,
       "miniapps": 4,
@@ -806,15 +806,15 @@
           "content-memory/agents/main/miniapps/contenu-memory-search-console.json"
         ],
         "sha256": {
-          "content-memory/module.yaml": "249e56e9533bece539d2ac0c1d2bfefb0dc65b6d42a7e93cc40022bdc240e2fb",
-          "content-memory/agents/main/workflows/contenu-memory-contribute.json": "0abcec50118ff22b44dd99f555662b46ac72113bd8807b5265b1e1f9eef28deb",
-          "content-memory/agents/main/workflows/contenu-memory-draft.json": "75834d5ef2903963b07969af96d76aef6138f9881bd4204f411b51fc53b0b1fe",
-          "content-memory/agents/main/workflows/contenu-memory-query.json": "904313d2950df181896e3d858dd85a42b882b52f4a9b4002cc6cf7fb69a32a8a",
-          "content-memory/agents/main/workflows/contenu-memory-search.json": "dca97ac214f2ab2c2dc700db8763c8802e1a1487c4b271e96598bddbb40f84af",
-          "content-memory/agents/main/miniapps/contenu-memory-contribute-console.json": "28419dde92dfa83d0c3eca55d29adc30855268b1a9ff135575e35b3e562406f2",
-          "content-memory/agents/main/miniapps/contenu-memory-draft-console.json": "b3055acf957928749c47b024c875234d98cbf89adad6c4a4a6827d1ae6b733c7",
-          "content-memory/agents/main/miniapps/contenu-memory-query-console.json": "8de5c125ba5861395a678bf333f2648b7cbb454e3a5d0ce93e0babb9e18b390c",
-          "content-memory/agents/main/miniapps/contenu-memory-search-console.json": "e86eb8c7deeb1c805f64999be821039a7e6c4f31145ca7443fdbc275d0385d54"
+          "content-memory/module.yaml": "bde7102b6dc519d6c1866b8e4aaf2b8f47b4dad0e9113b079605ca868c6b63e2",
+          "content-memory/agents/main/workflows/contenu-memory-contribute.json": "78892ef319dae9e5d0f9ab7b436b793233337edb7067a90df9a31b77192450da",
+          "content-memory/agents/main/workflows/contenu-memory-draft.json": "1a3d1993f1a1381eeead432fa915e55eb720d95fa6c732e1044fd574eceacef2",
+          "content-memory/agents/main/workflows/contenu-memory-query.json": "486cfb4b14fff725f796e987b2398688dab97c828ff2ee9d240910b93b9d8970",
+          "content-memory/agents/main/workflows/contenu-memory-search.json": "d7ff267529119878ca92c1e12edb63144d91581170f29dfa1ed4b1a2fa2b7554",
+          "content-memory/agents/main/miniapps/contenu-memory-contribute-console.json": "8cf95794e0bf8ec2e224ec96380caee81485e0aff1c1feec8905929a63ca0214",
+          "content-memory/agents/main/miniapps/contenu-memory-draft-console.json": "becdbba8ce1796ed301807c5311d9c05f11cab66e4f64d1ca7689c26d04af24c",
+          "content-memory/agents/main/miniapps/contenu-memory-query-console.json": "d2772700470ea17e43c771eb968b51ad2e53ebccac981708a4cdb5c80568a42e",
+          "content-memory/agents/main/miniapps/contenu-memory-search-console.json": "1dfa382eea8883271446f09b4c09c7d19a67f1e07f50c78ee55822effded80d7"
         }
       },
       "workflow_actions": {
@@ -879,7 +879,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "6ea882fe86337e6cd761f026ee7d16fd8fccc4fbb6e981cac846f36c79a2d11b"
+              "code_sha256": "059dc1022e9aac39e5927ceaf866e457c95550b886d02b9cc63060ccc75fc1c1"
             },
             {
               "path": "/actions/3",
@@ -895,7 +895,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "7d25449baaa54f2e321bda9a0c1d2c48c126e58060921fa01dbecb505383e606"
+              "code_sha256": "d0113bb97ba78e0f2d125e8a4572135e23422b6d2bc05c735709ef7364fcacde"
             },
             {
               "path": "/actions/5",
@@ -946,46 +946,46 @@
           {
             "key": "contenu-memory-contribute",
             "workflow_id": "contenu-memory-contribute",
-            "workflow_version": "2"
+            "workflow_version": "3"
           },
           {
             "key": "contenu-memory-draft",
             "workflow_id": "contenu-memory-draft",
-            "workflow_version": "2"
+            "workflow_version": "3"
           }
         ],
         "queries": [
           {
             "key": "contenu-memory-query",
             "workflow_id": "contenu-memory-query",
-            "workflow_version": "1"
+            "workflow_version": "2"
           },
           {
             "key": "contenu-memory-search",
             "workflow_id": "contenu-memory-search",
-            "workflow_version": "1"
+            "workflow_version": "2"
           }
         ],
         "apps": [
           {
             "key": "contenu-memory-query-console",
             "miniapp_id": "contenu-memory-query-console",
-            "miniapp_version": "1"
+            "miniapp_version": "2"
           },
           {
             "key": "contenu-memory-search-console",
             "miniapp_id": "contenu-memory-search-console",
-            "miniapp_version": "1"
+            "miniapp_version": "2"
           },
           {
             "key": "contenu-memory-contribute-console",
             "miniapp_id": "contenu-memory-contribute-console",
-            "miniapp_version": "2"
+            "miniapp_version": "3"
           },
           {
             "key": "contenu-memory-draft-console",
             "miniapp_id": "contenu-memory-draft-console",
-            "miniapp_version": "1"
+            "miniapp_version": "2"
           }
         ]
       },
@@ -1002,7 +1002,7 @@
     },
     {
       "key": "cib-daily-routine",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "manifest": "daily-routine/module.yaml",
       "workflows": 4,
       "miniapps": 3,
@@ -1029,14 +1029,14 @@
           "daily-routine/agents/main/miniapps/daily-time-console.json"
         ],
         "sha256": {
-          "daily-routine/module.yaml": "8cd81a40c20c0f44a037055785a1e276f64c90082b670df546e0291b1ae4c6bb",
-          "daily-routine/agents/main/workflows/daily-context.json": "c2f566f51b879f88d59ee380d714de645e75521fc2f710617ebacc816b8678f4",
-          "daily-routine/agents/main/workflows/daily-report.json": "16aecba004b55e12de6eddc45676a9018ed494dfd94d48bcfa2dc10a450c644a",
-          "daily-routine/agents/main/workflows/daily-time-read.json": "7987cc9512bede59da140f40828a4a22a1822b27a52a8c1034855fde80d56cb4",
-          "daily-routine/agents/main/workflows/daily-time-save.json": "0dfb749bf36c31535b3c0d2b89cf03bbfc7a654f50a57c4e18a46090aba97a6e",
-          "daily-routine/agents/main/miniapps/daily-context-console.json": "bf969480c463e42e7ad78fe691d68bcdcadda47166f999965052c42a2fe87da6",
-          "daily-routine/agents/main/miniapps/daily-report-console.json": "cbbd4959eeee08da3484e46862c42e44b990438edd71175ed3835bbf1b7e944c",
-          "daily-routine/agents/main/miniapps/daily-time-console.json": "7fc6c9c9123324696ca275ff9f9c9e8d6c516f07bf615621668644c3d615ae11"
+          "daily-routine/module.yaml": "7faef063403065759b6e68f1ba9db7d4e52c5c8fae27f99730450652231d934e",
+          "daily-routine/agents/main/workflows/daily-context.json": "d6f50159619ce952a76cb517036d12f173f16da7dd375650c9bcde5ba1b8cdf6",
+          "daily-routine/agents/main/workflows/daily-report.json": "4cb5d8f687d25b3707640158631a2b1490db0c32fa2fff08ec305f6c17c64335",
+          "daily-routine/agents/main/workflows/daily-time-read.json": "010450158d3319554609ab63374c48b9e6bf94d583c4219095d4008eb0d7e37e",
+          "daily-routine/agents/main/workflows/daily-time-save.json": "e5a86f2ff5b08d80dcaa8cc315622935c7e9b2dc9b31ec2c903edb449e4e6cc3",
+          "daily-routine/agents/main/miniapps/daily-context-console.json": "dd4b7cae507ad2a5f8cbee2ad6978d777c3d96843173711fe486cc294b89fb28",
+          "daily-routine/agents/main/miniapps/daily-report-console.json": "b2fb76eb6c26d84d8e4956dc3919f8daf6df800e37bbab1946daeb8803295fff",
+          "daily-routine/agents/main/miniapps/daily-time-console.json": "2559140d9758355ffb089f4b459f2ca496f3b5ac65784c1cc9d83e10209469c5"
         }
       },
       "workflow_actions": {
@@ -1059,7 +1059,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "67fd261d2b9bdbf9cf2192cf2991ef1076709f7513c4f0094e0c3ec0358559b9"
+              "code_sha256": "a8eccbe32376aa5df3e93459807cca20c2de08a59517cc856c075f197362f6b2"
             }
           ]
         },
@@ -1098,7 +1098,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "7f8ffefc28f76752c29be97597c1fc098388626b870c25efe1908bb3862957ed"
+              "code_sha256": "56dd47b117d0f260432743f26500bb00333cd1b7fbdebe4ab7e8749d7b8611d1"
             }
           ]
         },
@@ -1137,7 +1137,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "3e1b8005e7f9ee703a9a574530e53dad3996a11f967c75706c461f0f1b58c494"
+              "code_sha256": "575b3d76bcacd633450ed3d85167db4e9cf1a7ebf6e86dc45fa501f8bcdd8379"
             },
             {
               "path": "/actions/1",
@@ -1152,41 +1152,41 @@
           {
             "key": "daily-time-save",
             "workflow_id": "daily-time-save",
-            "workflow_version": "1"
+            "workflow_version": "2"
           }
         ],
         "queries": [
           {
             "key": "daily-time-read",
             "workflow_id": "daily-time-read",
-            "workflow_version": "1"
+            "workflow_version": "2"
           },
           {
             "key": "daily-report",
             "workflow_id": "daily-report",
-            "workflow_version": "1"
+            "workflow_version": "2"
           },
           {
             "key": "daily-context",
             "workflow_id": "daily-context",
-            "workflow_version": "1"
+            "workflow_version": "2"
           }
         ],
         "apps": [
           {
             "key": "daily-time-console",
             "miniapp_id": "daily-time-console",
-            "miniapp_version": "1"
+            "miniapp_version": "2"
           },
           {
             "key": "daily-report-console",
             "miniapp_id": "daily-report-console",
-            "miniapp_version": "1"
+            "miniapp_version": "2"
           },
           {
             "key": "daily-context-console",
             "miniapp_id": "daily-context-console",
-            "miniapp_version": "1"
+            "miniapp_version": "2"
           }
         ]
       },
@@ -1205,7 +1205,7 @@
     },
     {
       "key": "cib-enterprise-admin",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "manifest": "enterprise-admin/module.yaml",
       "workflows": 7,
       "miniapps": 3,
@@ -1235,17 +1235,17 @@
           "enterprise-admin/agents/main/miniapps/cib-admin-records-console.json"
         ],
         "sha256": {
-          "enterprise-admin/module.yaml": "b70c51ca0d95f494a49b349a9997ce328f8cd0f73ae9b2db92af57839e49f543",
-          "enterprise-admin/agents/main/workflows/cib-admin-approval-check.json": "c85571946ab004b2c2336b91753360e991dc88bb2e5a673ce4ca051e493af2a8",
-          "enterprise-admin/agents/main/workflows/cib-admin-import-record.json": "be538b17a3ccab818a3f346db3481c10c99a00fd0ed51940476b76f79b0682ca",
-          "enterprise-admin/agents/main/workflows/cib-admin-manage.json": "4f4f81f41e76028e17b74186d81bc00d3652e3ad18d3cfe6a468f6fc94fc5290",
-          "enterprise-admin/agents/main/workflows/cib-admin-overview.json": "e8e0d163dfd4a18ec047e53c54ac4a58c3830f8804a08383562c0fc65d8a50fe",
-          "enterprise-admin/agents/main/workflows/cib-admin-record-people.json": "7aeebd81653b2805a4ceb9adfd1d9e2c4e1a56949da74cf63a13b43392771e7b",
-          "enterprise-admin/agents/main/workflows/cib-admin-record-read.json": "36f2d732708207c631e645deaed4866aeeb7e4dc0314fedb2e6cdfb31c26f8db",
-          "enterprise-admin/agents/main/workflows/cib-admin-record-share.json": "fd589b6b4ab8fc074d859286d6869f7b30dfec919c8d845ed5f4366ab46b3258",
-          "enterprise-admin/agents/main/miniapps/cib-admin-console.json": "f5af65b2c8561fb73db254846e6f72bb95e1fa03909ac13eed9d30d9d01aa56d",
-          "enterprise-admin/agents/main/miniapps/cib-admin-record-share-console.json": "7d25915d7fe535dd6adfbe4b5b18d5102a0f154f6b2b55a608a997e61b82a955",
-          "enterprise-admin/agents/main/miniapps/cib-admin-records-console.json": "4f3b29d179b0381ddba6c8650ddba1b7a0f6d7751b20114667b4a7613f037911"
+          "enterprise-admin/module.yaml": "7cff6f9345fc142250d5653d5115334747c103c4cf22df8763fc7f3dcfb2ac41",
+          "enterprise-admin/agents/main/workflows/cib-admin-approval-check.json": "6101bda7644845a6da708aab6415a56793ad8f8314d0020df672849fa1ac7f86",
+          "enterprise-admin/agents/main/workflows/cib-admin-import-record.json": "8b149ff31b9da0a1deeb1ca3f4343efe539212136478aebd8394fca679631c9d",
+          "enterprise-admin/agents/main/workflows/cib-admin-manage.json": "0575ee37d332f49c9abea9c3fd4479e54490ce49363484483873aa09981b82bc",
+          "enterprise-admin/agents/main/workflows/cib-admin-overview.json": "48da2f0de79cd0deda70b332b4a352bb42a659bc38e406f302d7f077a4926802",
+          "enterprise-admin/agents/main/workflows/cib-admin-record-people.json": "f46e021f94b39cbc63ed3d7d7a8ccfd4fecf50d5be89bf118c583fc70e7dd985",
+          "enterprise-admin/agents/main/workflows/cib-admin-record-read.json": "8f1157fc57b318fa68115310f3dd821252a8b58537081fec1cca06fa52fddf96",
+          "enterprise-admin/agents/main/workflows/cib-admin-record-share.json": "c285276a3f37c5a3723143d6f170bcf7efe66805428ca40ccabf58aa948c20e8",
+          "enterprise-admin/agents/main/miniapps/cib-admin-console.json": "2b049ef01f7a24916df8235a4768e8ec7f27a01e9ab0b316d0f7c11158997ddc",
+          "enterprise-admin/agents/main/miniapps/cib-admin-record-share-console.json": "297ad0bb06cdb42e80c57642c633db9e58825adabca54f3e5c70deecc5f1ec41",
+          "enterprise-admin/agents/main/miniapps/cib-admin-records-console.json": "7d6079fb1957844561203cb7200814b4d3bc9fcd8f85b9228f145de638a0ee34"
         }
       },
       "workflow_actions": {
@@ -1281,7 +1281,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "81624470603590e7af91a96b18cea4f704e30d7d7b9383cedb555358ab08bc70"
+              "code_sha256": "784f10ebe8a5f497bfca71694af595aa1af2dae5acb60d22d9cfc5c7d23a655d"
             }
           ]
         },
@@ -1294,7 +1294,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "0948c4f38de8af7f724344a6fca4162831e1c85e8c315d9da6670657ec0ebe80"
+              "code_sha256": "6b7edeab8793dfc5c44c7cf7cce563c18c4fb6a5f4cc466d81ffa00ed856114c"
             }
           ]
         },
@@ -1307,7 +1307,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "a974bd050c05c443adf65853ad68e9d6360ad02b75ef9670ef13113a94803c97"
+              "code_sha256": "ef8514efd9fac54ac1ceacbde0de865774a5c78237c7630e0b609e30684aa67b"
             }
           ]
         },
@@ -1320,7 +1320,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "604fbb4e82246b204a0e92d01b0645ce55e43979da0e5cf45397eb477fdc7fd6"
+              "code_sha256": "e9fc1561b0d93e7e03891de2716418b4581bd49431fb2fea2a16265707352697"
             }
           ]
         },
@@ -1333,7 +1333,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "6f80dd21ac1311ab7b234ac74f1824aa1ca36cf8b4c61cb96c597c0f940cc6d9"
+              "code_sha256": "27c232d6532593d5e23e48b08ba6fbe0ae6eafef675245cd851feab8583be423"
             }
           ]
         }
@@ -1343,56 +1343,56 @@
           {
             "key": "manage",
             "workflow_id": "cib-admin-manage",
-            "workflow_version": "2"
+            "workflow_version": "3"
           },
           {
             "key": "import-record",
             "workflow_id": "cib-admin-import-record",
-            "workflow_version": "1"
+            "workflow_version": "2"
           },
           {
             "key": "record-share",
             "workflow_id": "cib-admin-record-share",
-            "workflow_version": "1"
+            "workflow_version": "2"
           }
         ],
         "queries": [
           {
             "key": "overview",
             "workflow_id": "cib-admin-overview",
-            "workflow_version": "2"
+            "workflow_version": "3"
           },
           {
             "key": "approval-check",
             "workflow_id": "cib-admin-approval-check",
-            "workflow_version": "1"
+            "workflow_version": "2"
           },
           {
             "key": "record-read",
             "workflow_id": "cib-admin-record-read",
-            "workflow_version": "1"
+            "workflow_version": "2"
           },
           {
             "key": "record-people",
             "workflow_id": "cib-admin-record-people",
-            "workflow_version": "1"
+            "workflow_version": "2"
           }
         ],
         "apps": [
           {
             "key": "admin-console",
             "miniapp_id": "cib-admin-console",
-            "miniapp_version": "2"
+            "miniapp_version": "3"
           },
           {
             "key": "records-console",
             "miniapp_id": "cib-admin-records-console",
-            "miniapp_version": "1"
+            "miniapp_version": "2"
           },
           {
             "key": "record-share-console",
             "miniapp_id": "cib-admin-record-share-console",
-            "miniapp_version": "1"
+            "miniapp_version": "2"
           }
         ]
       },
@@ -1406,7 +1406,7 @@
     },
     {
       "key": "cib-marketing-launch",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "manifest": "marketing-launch/module.yaml",
       "workflows": 9,
       "miniapps": 6,
@@ -1441,22 +1441,22 @@
           "marketing-launch/agents/main/miniapps/cib-launch-support-console.json"
         ],
         "sha256": {
-          "marketing-launch/module.yaml": "d6e2d73144a40d2d4695ec77593949434aa841f9fe9343dc9bdff28a3d22f16f",
-          "marketing-launch/agents/main/workflows/cib-launch-campaign-save.json": "fdb1bb0b0e17db06bc7cc3c0d05f6e4ce2784cfe80393c60e3cea09013d6a25c",
-          "marketing-launch/agents/main/workflows/cib-launch-content-link.json": "bc4ab3d0e8f31b43fbcaf82cc63728d5cb5a95493913f1d85ccfe1ebba699b31",
-          "marketing-launch/agents/main/workflows/cib-launch-list.json": "9827787428dd6218986e595ce15813dcb1f6df10426ea17a43048d854a051d4c",
-          "marketing-launch/agents/main/workflows/cib-launch-people.json": "f716a25ab15091c1bc36129e1d527f90812e1c8c5b93614a2f5a34472e59cbb3",
-          "marketing-launch/agents/main/workflows/cib-launch-progress.json": "bbfc5a07502145545cad6ca2733b82c99241316208c221463e214225aeb0d36f",
-          "marketing-launch/agents/main/workflows/cib-launch-read.json": "fb07acf4cb15816f8cd8f86e0939c503077aa77c5f9f5539afbc9f96a66bbb73",
-          "marketing-launch/agents/main/workflows/cib-launch-request.json": "a4a4f3d9320f85029fb0ab9177b91a7ec4c707dfbaa9d35eabe46af38a34bcbc",
-          "marketing-launch/agents/main/workflows/cib-launch-share.json": "cdd0daa056e8e7239acef8291b56c495524c72c3493c6641ce1ee91a9e9993ec",
-          "marketing-launch/agents/main/workflows/cib-launch-summary.json": "bb16f5003de0cae7833e9ef80592738b0f777089d614392c7939afd8d72a3c7a",
-          "marketing-launch/agents/main/miniapps/cib-launch-campaign-console.json": "1f06cf91b816e8785ce1928cde4cf2110e7537a8c2539e7803ae4afb16218fa9",
-          "marketing-launch/agents/main/miniapps/cib-launch-content-console.json": "8681a6b662860c216ff26a2c3723ce42398203d184f415be5259e767c4806b74",
-          "marketing-launch/agents/main/miniapps/cib-launch-direction-console.json": "fe4cfd08624f5e1202abb60b7a816767e6cb4181f52ecbea8ad6967d077b0109",
-          "marketing-launch/agents/main/miniapps/cib-launch-request-console.json": "c275bb20c9e43e740bbe460cb990833586b955fa04c46bf372294efa4c58172c",
-          "marketing-launch/agents/main/miniapps/cib-launch-sharing-console.json": "be9cb40859b39c77dc873c95eee546068a6f54d939d3173fb08a9b163bf9b10f",
-          "marketing-launch/agents/main/miniapps/cib-launch-support-console.json": "b720594c8983b2334f99d8a420432c9ba8510f9698a0da26a06afd1f7c63092d"
+          "marketing-launch/module.yaml": "cceecebd06580bd395244f34e34c4fe4ef9112ffdaa35377d81011ccca88df14",
+          "marketing-launch/agents/main/workflows/cib-launch-campaign-save.json": "cd1b3b31e707279c069d7bcde2f226799f55ae51c39b069159260f8f7dda4148",
+          "marketing-launch/agents/main/workflows/cib-launch-content-link.json": "b86eef7494eefa0293def0d42ca3a27058f22f70c828e61827db938246d89fe9",
+          "marketing-launch/agents/main/workflows/cib-launch-list.json": "3afac64db52e62f45d643a3e0a6bc789b8cb26e1eda13dadc7eaa9afc133a565",
+          "marketing-launch/agents/main/workflows/cib-launch-people.json": "1a6e6fe5cf283013e17f89d23e1d22ee9f98509c6812c1ba44bca55f53c95b45",
+          "marketing-launch/agents/main/workflows/cib-launch-progress.json": "cec00aec06b673011f9f09416ac2af02fe366e158de322ffc2f7c664c9d31230",
+          "marketing-launch/agents/main/workflows/cib-launch-read.json": "130a167e4aedf1f0a75c7440cd011b830c5f2391757cc4d73f1794b991f95080",
+          "marketing-launch/agents/main/workflows/cib-launch-request.json": "25817939423c4ab6f61e7540bfb615b023c3c2d26af021e1cb776ab0bcea0c3c",
+          "marketing-launch/agents/main/workflows/cib-launch-share.json": "45abb4fb604934c333c4389c774774274f1d5cf9e294ae739f7a4c3872b681a4",
+          "marketing-launch/agents/main/workflows/cib-launch-summary.json": "def439fdd8ab5977acaa8acde206c784606468cb36e52b64a2adbc16e1f5431e",
+          "marketing-launch/agents/main/miniapps/cib-launch-campaign-console.json": "7d9bf1a302ae17b8f2851424e56ee3cfa6be6b77e99253aafc7ec46e534536ec",
+          "marketing-launch/agents/main/miniapps/cib-launch-content-console.json": "d6dae7625e89326de5496c4f28bb4b3c9738d15345aed1269298ed57755b8a33",
+          "marketing-launch/agents/main/miniapps/cib-launch-direction-console.json": "30b9615de81e2f246801530bcc9366eac9213261826b932f1ac90558fb18dc83",
+          "marketing-launch/agents/main/miniapps/cib-launch-request-console.json": "64125190bfa73976debbf9cdc76bfe7bbd9b30032cfbed1e2ba0f7a21acf0964",
+          "marketing-launch/agents/main/miniapps/cib-launch-sharing-console.json": "92f7baf2c718ed2ea3ecd05bc2d7732576251e28b09d6feb9c9acca1b60ccb29",
+          "marketing-launch/agents/main/miniapps/cib-launch-support-console.json": "ffb4db9024054b05eb6114ea90ec110b51437f156c1ba9d73b8714096f4205c8"
         }
       },
       "workflow_actions": {
@@ -1469,7 +1469,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "2ab68c46580ef516d959adfd65d6f395812818239c0fa95b44f067525bf82763"
+              "code_sha256": "8eee273da58185eed6ca709c984de5196da6cdf6a4e96a2a12174701cbe67f60"
             }
           ]
         },
@@ -1482,7 +1482,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "0ebde415f6d76a0fe210c30238476999584280ff29a58148e3ec507e0d0899a7"
+              "code_sha256": "fb6c920074a7168004968d306d58e9d92a4a9cf23a5aa693c496761ec2c604fc"
             }
           ]
         },
@@ -1495,7 +1495,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "dc98711b014725b76dee3b15c5de9677a448a2a92a7e70e8ec5ebd602ed1661c"
+              "code_sha256": "06fb484d644838e7e64b64942bf36739c24f0de43a10b71ccc931290bf31fedd"
             }
           ]
         },
@@ -1508,7 +1508,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "fb544ce4cd9773eb82cfb74eb61b1579bd2c7b29cdd7505c6730bbc63aa264fc"
+              "code_sha256": "ee6f40c94a46d6d5b85b2dd42910f89027fc40ee87b13430686d3ee07e71c8f8"
             }
           ]
         },
@@ -1521,7 +1521,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "3c5762cbdb8913ec2c568a991ab8928523740a44dce9656c65a6070b6a2a9b13"
+              "code_sha256": "7c9917faec31294e3862aeb4ad12fb748f23105344f10ad4b15055b956d35033"
             }
           ]
         },
@@ -1534,7 +1534,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "323b5747549a3af96b57a9234cf5af47cc32eaa86a24675899e272bcb423b6b9"
+              "code_sha256": "591caa2e98993ef0c4a4c6ba02064371d1b7cefe810949e1d40564b53f11efab"
             }
           ]
         },
@@ -1547,7 +1547,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "6516c220f59f4febed00b640091585656bb3c29d736327fea360df89b8d24c73"
+              "code_sha256": "5c35dbf2d6a09f3cb2610caa6e2437bb67628b203b2a04e04bb38c8d9c3493ed"
             }
           ]
         },
@@ -1560,7 +1560,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "6b53fe911b89411e6f8a2f3cc046ad18a0ee13e2615568db805ef985bf9cb8a9"
+              "code_sha256": "32e3e139c45d03d0d7f7477322ae4ca7080e5c403e6e5e3cf6a9b1a2188d1f39"
             }
           ]
         },
@@ -1573,7 +1573,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "c4e0707687046b879838ef896ed076ad3d0c5db180c85be98e818b4d5d8eba4d"
+              "code_sha256": "da93b201f90a2e9d56132abaf759c904bfa376f30e53a27d9369ff2f07275c93"
             }
           ]
         }
@@ -1583,81 +1583,81 @@
           {
             "key": "campaign-save",
             "workflow_id": "cib-launch-campaign-save",
-            "workflow_version": "1"
+            "workflow_version": "2"
           },
           {
             "key": "content-link",
             "workflow_id": "cib-launch-content-link",
-            "workflow_version": "1"
+            "workflow_version": "2"
           },
           {
             "key": "request",
             "workflow_id": "cib-launch-request",
-            "workflow_version": "1"
+            "workflow_version": "2"
           },
           {
             "key": "progress",
             "workflow_id": "cib-launch-progress",
-            "workflow_version": "1"
+            "workflow_version": "2"
           },
           {
             "key": "share",
             "workflow_id": "cib-launch-share",
-            "workflow_version": "1"
+            "workflow_version": "2"
           }
         ],
         "queries": [
           {
             "key": "read",
             "workflow_id": "cib-launch-read",
-            "workflow_version": "1"
+            "workflow_version": "2"
           },
           {
             "key": "list",
             "workflow_id": "cib-launch-list",
-            "workflow_version": "1"
+            "workflow_version": "2"
           },
           {
             "key": "people",
             "workflow_id": "cib-launch-people",
-            "workflow_version": "1"
+            "workflow_version": "2"
           },
           {
             "key": "summary",
             "workflow_id": "cib-launch-summary",
-            "workflow_version": "1"
+            "workflow_version": "2"
           }
         ],
         "apps": [
           {
             "key": "campaign",
             "miniapp_id": "cib-launch-campaign-console",
-            "miniapp_version": "1"
+            "miniapp_version": "2"
           },
           {
             "key": "content",
             "miniapp_id": "cib-launch-content-console",
-            "miniapp_version": "1"
+            "miniapp_version": "2"
           },
           {
             "key": "request",
             "miniapp_id": "cib-launch-request-console",
-            "miniapp_version": "1"
+            "miniapp_version": "2"
           },
           {
             "key": "support",
             "miniapp_id": "cib-launch-support-console",
-            "miniapp_version": "1"
+            "miniapp_version": "2"
           },
           {
             "key": "sharing",
             "miniapp_id": "cib-launch-sharing-console",
-            "miniapp_version": "1"
+            "miniapp_version": "2"
           },
           {
             "key": "direction",
             "miniapp_id": "cib-launch-direction-console",
-            "miniapp_version": "1"
+            "miniapp_version": "2"
           }
         ]
       },
@@ -1671,7 +1671,7 @@
     },
     {
       "key": "cib-accompagnement",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "manifest": "support/module.yaml",
       "workflows": 6,
       "miniapps": 2,
@@ -1698,15 +1698,15 @@
           "support/agents/main/miniapps/accompagnement-sharing-console.json"
         ],
         "sha256": {
-          "support/module.yaml": "26527b3975fa92c8fbf9ea85f9b0531f431037946c101f5413cc01a4db71265c",
-          "support/agents/main/workflows/accompagnement-guard-action.json": "33fa773d67e496a4f1eed76707d1754cb436fdac1d8453e90dd87fba756565f6",
-          "support/agents/main/workflows/accompagnement-list.json": "d35062bc7407d54bc66c52aa34644a861f31ef7b71c8f5ad54d76c5b4cdcaf71",
-          "support/agents/main/workflows/accompagnement-people.json": "797e86fcbeaa50f2b355e98e347d1b6de099556a9e6e07a2615ba89d24e229ed",
-          "support/agents/main/workflows/accompagnement-read.json": "481b6b0a0157f770c425dd5b52181233a0a25ed066773de467ac59e86f635401",
-          "support/agents/main/workflows/accompagnement-save.json": "b0ac3917e558dcad2bdedd9f3ce6b9284922cfdbf3909e15cb7d3f6e773bb661",
-          "support/agents/main/workflows/accompagnement-share.json": "7e15e035e1c44a7dd6d91c70403cc983ca7d470a7e9ba9704512d72c053a7f14",
-          "support/agents/main/miniapps/accompagnement-console.json": "7a5d3360d17ce4d108275081a379a4588b820f4996ab6b0fc44632600f75269f",
-          "support/agents/main/miniapps/accompagnement-sharing-console.json": "e038e67301aadb3a3029c4ea362356106d7da5e811c8a72d9f5b41fb39c29e34"
+          "support/module.yaml": "26ddd4cc9528dfb0afdcb2bb2221f922f3d361cc91bc76901b385ac3f28b8876",
+          "support/agents/main/workflows/accompagnement-guard-action.json": "1e3b4667461b7523cdfa3277e9a5cd4c62646d7786281cdf3f23c79a39e05c41",
+          "support/agents/main/workflows/accompagnement-list.json": "ff860ad2d4cb30a562563cb841fdfd8732a928c65372da9160a8fad8a7c8fff3",
+          "support/agents/main/workflows/accompagnement-people.json": "d4742e3959264909360b17a0e1043576790047114fe40dee0081c3b2eb38b9af",
+          "support/agents/main/workflows/accompagnement-read.json": "6303327bc1765b51d903be249e815de870110065c0ee16152a1e16529f528e5e",
+          "support/agents/main/workflows/accompagnement-save.json": "25543d79b270670eb4dcfe06ff1172cbfd68b259dfdbabea255548d3b4ea2113",
+          "support/agents/main/workflows/accompagnement-share.json": "b8045e18b4fbcf08a83b1063502706a6a6c0cbcb64ace49ca92913f32b221164",
+          "support/agents/main/miniapps/accompagnement-console.json": "f34bb11b96ff59964cf3ecead3c01c4030e88a2d1a02ebbdcf502163285b8c52",
+          "support/agents/main/miniapps/accompagnement-sharing-console.json": "d33aac552417ddd81844389c45e4d3cfbb88a1c85332aab0908626230df337fb"
         }
       },
       "workflow_actions": {
@@ -1732,7 +1732,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "f7b4f413c78c5b856b1969fa84943acb851637de2ac93f6e80ef0012d6454790"
+              "code_sha256": "1411ab8c21125de22f83bef06f5a676ea2b0b4fd6e048fa71afa6df1529aa2c9"
             }
           ]
         },
@@ -1766,7 +1766,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "7751c26d1ff518f7497f00c38e8971d8f8a63a712baed0f4c4b36d832128552b"
+              "code_sha256": "33857db29a52faee06e1bf88cc66dc8badd530d9b15c6ee2c239d82e7ead17ce"
             }
           ]
         },
@@ -1800,7 +1800,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "f9a6dc442a8f84fa78bd63e63a057a2cc440fff504f72539cfb38d23d6a551c5"
+              "code_sha256": "bc26b1fd42600c24c267fdcbea1e06e5adfc28b3aa76aa340dd8c4dd720b0a6e"
             }
           ]
         },
@@ -1813,7 +1813,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "d13231f84ebb0ecf0e2b5b582383411a990fc004445e04435530b51486bad190"
+              "code_sha256": "fa8b23096e79a55f7f48e0e7f33adfbb064df2d70da27869b9ffe25b3f20e9ee"
             }
           ]
         }
@@ -1823,46 +1823,46 @@
           {
             "key": "save",
             "workflow_id": "accompagnement-save",
-            "workflow_version": "3"
+            "workflow_version": "4"
           },
           {
             "key": "share",
             "workflow_id": "accompagnement-share",
-            "workflow_version": "1"
+            "workflow_version": "2"
           },
           {
             "key": "guard_action",
             "workflow_id": "accompagnement-guard-action",
-            "workflow_version": "1"
+            "workflow_version": "2"
           }
         ],
         "queries": [
           {
             "key": "list",
             "workflow_id": "accompagnement-list",
-            "workflow_version": "2"
+            "workflow_version": "3"
           },
           {
             "key": "read",
             "workflow_id": "accompagnement-read",
-            "workflow_version": "2"
+            "workflow_version": "3"
           },
           {
             "key": "people",
             "workflow_id": "accompagnement-people",
-            "workflow_version": "1"
+            "workflow_version": "2"
           }
         ],
         "apps": [
           {
             "key": "console",
             "miniapp_id": "accompagnement-console",
-            "miniapp_version": "7"
+            "miniapp_version": "8"
           },
           {
             "key": "sharing-console",
             "miniapp_id": "accompagnement-sharing-console",
-            "miniapp_version": "1"
+            "miniapp_version": "2"
           }
         ]
       },
@@ -1879,7 +1879,7 @@
     },
     {
       "key": "cib-accompagnement-memory",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "manifest": "support-memory/module.yaml",
       "workflows": 3,
       "miniapps": 3,
@@ -1904,13 +1904,13 @@
           "support-memory/agents/main/miniapps/accompagnement-memory-search-console.json"
         ],
         "sha256": {
-          "support-memory/module.yaml": "9ed65127ed0709ba3a58060c90a3dcd3a9ddbd0c9b34abb12d3c4576394079d3",
-          "support-memory/agents/main/workflows/accompagnement-memory-contribute.json": "ab806d484a6ee58a69c2c2bb2d5c1e46bf11ae87581d4384862c3f1d463c245b",
-          "support-memory/agents/main/workflows/accompagnement-memory-query.json": "7a18e0e3ab5f349d33cb2514833aba5df9b199a3c4aa0b8b251aba5f4b162bc0",
-          "support-memory/agents/main/workflows/accompagnement-memory-search.json": "9021cb3a219ca2bbb8d14664e6291a4be9cc7121bf224c98ab0bacbd3af876f7",
-          "support-memory/agents/main/miniapps/accompagnement-memory-contribute-console.json": "fac7889ffc0b04a3d964aaf464e3deb5741227e0c43bd1c3d60e60cbfeefbf86",
-          "support-memory/agents/main/miniapps/accompagnement-memory-query-console.json": "91eb82e4410bab746c0cac1fb3f5993ab69f8d7aa33ed8eb38b7b9ee9969572c",
-          "support-memory/agents/main/miniapps/accompagnement-memory-search-console.json": "4254c74d577d28b6afff42b7f6c6958a38aa3a7510995b48eec33f96f597ae1a"
+          "support-memory/module.yaml": "c25e25beef583996deda031473ff4ca6ec4aeb9f2d5eea64c1471fbc169d8ff7",
+          "support-memory/agents/main/workflows/accompagnement-memory-contribute.json": "0d8f9029e2275c3ce9bd662acb8a0368dc425e371e0fbde3e39c134112991056",
+          "support-memory/agents/main/workflows/accompagnement-memory-query.json": "b519c9a0c531891689ce2399dedb9cd12ba460d6823bb0c94968345775c20e8d",
+          "support-memory/agents/main/workflows/accompagnement-memory-search.json": "7bd82aa7c7752917a0ddb4ce68f0d7700bf3cccf39b19fe50f7e19d14325122c",
+          "support-memory/agents/main/miniapps/accompagnement-memory-contribute-console.json": "f150ac2cbc7bf1b2e77305c5de49973343c0cfb6bd7660560e5b7847d9d806f8",
+          "support-memory/agents/main/miniapps/accompagnement-memory-query-console.json": "a72778ed6b76f28ce70e15a4332ec5f8f3da2186c425b2965937b066410cb014",
+          "support-memory/agents/main/miniapps/accompagnement-memory-search-console.json": "a47b91d4e19a27d7a676f7c9f950d7bbe7536a51278923b3541a46fc70ecf7a1"
         }
       },
       "workflow_actions": {
@@ -1979,36 +1979,36 @@
           {
             "key": "accompagnement-memory-contribute",
             "workflow_id": "accompagnement-memory-contribute",
-            "workflow_version": "2"
+            "workflow_version": "3"
           }
         ],
         "queries": [
           {
             "key": "accompagnement-memory-query",
             "workflow_id": "accompagnement-memory-query",
-            "workflow_version": "1"
+            "workflow_version": "2"
           },
           {
             "key": "accompagnement-memory-search",
             "workflow_id": "accompagnement-memory-search",
-            "workflow_version": "1"
+            "workflow_version": "2"
           }
         ],
         "apps": [
           {
             "key": "accompagnement-memory-query-console",
             "miniapp_id": "accompagnement-memory-query-console",
-            "miniapp_version": "1"
+            "miniapp_version": "2"
           },
           {
             "key": "accompagnement-memory-search-console",
             "miniapp_id": "accompagnement-memory-search-console",
-            "miniapp_version": "1"
+            "miniapp_version": "2"
           },
           {
             "key": "accompagnement-memory-contribute-console",
             "miniapp_id": "accompagnement-memory-contribute-console",
-            "miniapp_version": "2"
+            "miniapp_version": "3"
           }
         ]
       },
@@ -2025,7 +2025,7 @@
     },
     {
       "key": "cib-veille",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "manifest": "watch/module.yaml",
       "workflows": 7,
       "miniapps": 2,
@@ -2053,16 +2053,16 @@
           "watch/agents/main/miniapps/veille-sharing-console.json"
         ],
         "sha256": {
-          "watch/module.yaml": "f32db870687d26e4763a3d8eb615ad307bd98b8815963b70eb1cbc191f66fc4c",
-          "watch/agents/main/workflows/check_research.json": "afba51399f0f50e9c7a7a92e03be89a15f61a4ead6bd84eae496c08fbc38dad6",
-          "watch/agents/main/workflows/route_worker.json": "cd07b5bdea8253d9666626c45e71bd7d481dccdf77e46426a15b5695e36fa501",
-          "watch/agents/main/workflows/veille-list.json": "0ea7f18ad24cc335ef986f33924649fc3303f0eb58222163968b5cfa20ce5940",
-          "watch/agents/main/workflows/veille-people.json": "5ccd2accac65ed6e745572d687e1b90f6c0684679abffc61d69b1a03a1441842",
-          "watch/agents/main/workflows/veille-read.json": "71c542cd4e16ced7d041a055c0e0105c560e5840977c927696ac6ae83536eda9",
-          "watch/agents/main/workflows/veille-save.json": "0384fdf03165b9eaa10ff311843e4a10784477216b675ee786ffaac5b504e412",
-          "watch/agents/main/workflows/veille-share.json": "7eb012c1c9e22fa939dcd0238e1c69dbf65b6fce5d63c41efe99ee25ff94712c",
-          "watch/agents/main/miniapps/veille-console.json": "bb5e35cddc6505fa5b4f70328749cf121888cefa0683ec73758cb9b23cfe73a2",
-          "watch/agents/main/miniapps/veille-sharing-console.json": "37215a8ea4f8d4bcfb56d682ffca4bfefccafae5a4a4a8a91e4d25fe8edc4055"
+          "watch/module.yaml": "c73592677820ab1e6d7aea4adb551e8ff6e2dfb58d59547a40f61b24c8ae32f9",
+          "watch/agents/main/workflows/check_research.json": "c1f0a90832c3db0f93ceef3e9e1ccb85fbbfedf9e5fff0ab660990b31e697948",
+          "watch/agents/main/workflows/route_worker.json": "0604d8985b0eb353f23b44e0f5c590f6866d7a97aed19e2f3bb5e7d742e9548f",
+          "watch/agents/main/workflows/veille-list.json": "48256f54140a3d6ab3759bc1efb7e2170c07b66e3b8ebcaaadce6de6907ba569",
+          "watch/agents/main/workflows/veille-people.json": "cffec8f4c7277e6ed7117942b70c1031e3a5f9c94e3e6cb2d2b6da8f74567878",
+          "watch/agents/main/workflows/veille-read.json": "636f56112a07eaf72a5896e3dd0e767aae3f3a8f7c3d44b8570aae52e7776ef3",
+          "watch/agents/main/workflows/veille-save.json": "de9d076ae4478e01253849e718d0b24aeedf38ae8c9f174ab0469688689bed4a",
+          "watch/agents/main/workflows/veille-share.json": "9869c956b8ee7124f99c86918d162845649f4bfd55a4e44df36f384504a83153",
+          "watch/agents/main/miniapps/veille-console.json": "6da9f091b0c36e1444773299414af72bd8269daaa97108d50a697186129f1f3a",
+          "watch/agents/main/miniapps/veille-sharing-console.json": "347c0bf9b471db747a4aa2abda6611058b771fa0340d9d63c9bf07d4e1a9b313"
         }
       },
       "workflow_actions": {
@@ -2075,7 +2075,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "f0b90d55fa08e8e40e5e993dcbcb35b36c3d1d78717ea344ebe5ba2500415ea9"
+              "code_sha256": "7d1a46e407268e85be91198ed8229fe3accf0cb5b0f29a04e8c746dda446d6d1"
             }
           ]
         },
@@ -2088,7 +2088,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "66e6e8be1fbafc54c8181e9a9175c87cb87bcdc0f1dd7a4bea6491c1a30f9558"
+              "code_sha256": "a512b4c4d49d42f9a666e1def5ed0f7a753b191c13bf672d883e437efeb81655"
             }
           ]
         },
@@ -2101,7 +2101,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "baef424d61587adb2c798cb2e73dc65be0d60eb701ccac4023673a03b9b93393"
+              "code_sha256": "07933a21b24926e6178f78ab78b15b4c5311297ef0dd0dc26f3027be42d78041"
             }
           ]
         },
@@ -2135,7 +2135,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "59a0cd9276b5336c62da9414fbf056f95c76093f42e796184641cdd71ca3056b"
+              "code_sha256": "25cf107533c1eaa42f178bac90b176e03c96576cf41e3857dc4ac442a4001206"
             }
           ]
         },
@@ -2174,7 +2174,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "6093eb4b16aa9a0ba318ab3129dc52aa1369016cb726e5f4cec7fb1e7496bd0c"
+              "code_sha256": "104a424ee018661bd25efbf6a6d6afe790d53b052b88b38779f986cee3a0f0e9"
             }
           ]
         },
@@ -2187,7 +2187,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "4aebe2f9bb92584c1ceeeb1023cc9dc60194a154ce1a549d455b31669e80c9d7"
+              "code_sha256": "f006c30359abb553382a02da770793b3cc15ba4791c1a7ad234c739423bc31b9"
             }
           ]
         }
@@ -2197,51 +2197,51 @@
           {
             "key": "save",
             "workflow_id": "veille-save",
-            "workflow_version": "2"
+            "workflow_version": "3"
           },
           {
             "key": "share",
             "workflow_id": "veille-share",
-            "workflow_version": "1"
+            "workflow_version": "2"
           },
           {
             "key": "route_worker",
             "workflow_id": "route_worker",
-            "workflow_version": "1"
+            "workflow_version": "2"
           },
           {
             "key": "check_research",
             "workflow_id": "check_research",
-            "workflow_version": "1"
+            "workflow_version": "2"
           }
         ],
         "queries": [
           {
             "key": "list",
             "workflow_id": "veille-list",
-            "workflow_version": "2"
+            "workflow_version": "3"
           },
           {
             "key": "read",
             "workflow_id": "veille-read",
-            "workflow_version": "2"
+            "workflow_version": "3"
           },
           {
             "key": "people",
             "workflow_id": "veille-people",
-            "workflow_version": "1"
+            "workflow_version": "2"
           }
         ],
         "apps": [
           {
             "key": "console",
             "miniapp_id": "veille-console",
-            "miniapp_version": "6"
+            "miniapp_version": "7"
           },
           {
             "key": "sharing-console",
             "miniapp_id": "veille-sharing-console",
-            "miniapp_version": "1"
+            "miniapp_version": "2"
           }
         ]
       },
@@ -2258,7 +2258,7 @@
     },
     {
       "key": "cib-veille-memory",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "manifest": "watch-memory/module.yaml",
       "workflows": 3,
       "miniapps": 3,
@@ -2283,13 +2283,13 @@
           "watch-memory/agents/main/miniapps/veille-memory-search-console.json"
         ],
         "sha256": {
-          "watch-memory/module.yaml": "bf295664b5b9410516edf1c91280d2d4a3199d0b13ecac20c63705a020d9ba59",
-          "watch-memory/agents/main/workflows/veille-memory-contribute.json": "24326955ea68be6de3a453aa30388ce904d02a94e83e0e1cee5e35bbb527949d",
-          "watch-memory/agents/main/workflows/veille-memory-query.json": "9f7993a040f1a258587c0fe08ecc2f1cc47761d1902086e591f66c9239723271",
-          "watch-memory/agents/main/workflows/veille-memory-search.json": "b5496da1111d9a71050a8acf528b2b6e155ae5f72f0a0d7666264547503965d0",
-          "watch-memory/agents/main/miniapps/veille-memory-contribute-console.json": "86b177c8dac8e6e30d9fc9cc1b8a1f61c778e7169b63168b3b7c76ed35140636",
-          "watch-memory/agents/main/miniapps/veille-memory-query-console.json": "46d00956fd457885117b55a24303bb5f4343531cc05244340a7e8dbdfc879a00",
-          "watch-memory/agents/main/miniapps/veille-memory-search-console.json": "06f3a7b48ecee4b5e3b48d2d1157e0e2065cbb7795b9dc68ecef346efafa0c74"
+          "watch-memory/module.yaml": "14b68aba339e312ca915442802c1d9d51c31409c5dff1b57b727b04237799784",
+          "watch-memory/agents/main/workflows/veille-memory-contribute.json": "85e082b33957b5794bf2443bb1f1ab630a01fc4ab13614c0639a10a5bc597f99",
+          "watch-memory/agents/main/workflows/veille-memory-query.json": "cb82fd29f9c0671e262f65ede4173299b9f1a2dab51fd4cbf5c4ae0b23c0b106",
+          "watch-memory/agents/main/workflows/veille-memory-search.json": "a018da1f46001ead0ba8d869e71d37422d592a174053b35ae40bace31cdcc334",
+          "watch-memory/agents/main/miniapps/veille-memory-contribute-console.json": "d3389d680971510b3311dad54108184a750b9bd9a377ae4f2c30ca3a9e74c1a6",
+          "watch-memory/agents/main/miniapps/veille-memory-query-console.json": "2e30b66741895350f8ced84b893beb47f28d44283acf060d91e2a41631947018",
+          "watch-memory/agents/main/miniapps/veille-memory-search-console.json": "fdba9b8894c9a85f4ce5975b53caaa2db225c1c9728cbda40243268e1320eeae"
         }
       },
       "workflow_actions": {
@@ -2358,36 +2358,36 @@
           {
             "key": "veille-memory-contribute",
             "workflow_id": "veille-memory-contribute",
-            "workflow_version": "2"
+            "workflow_version": "3"
           }
         ],
         "queries": [
           {
             "key": "veille-memory-query",
             "workflow_id": "veille-memory-query",
-            "workflow_version": "1"
+            "workflow_version": "2"
           },
           {
             "key": "veille-memory-search",
             "workflow_id": "veille-memory-search",
-            "workflow_version": "1"
+            "workflow_version": "2"
           }
         ],
         "apps": [
           {
             "key": "veille-memory-query-console",
             "miniapp_id": "veille-memory-query-console",
-            "miniapp_version": "1"
+            "miniapp_version": "2"
           },
           {
             "key": "veille-memory-search-console",
             "miniapp_id": "veille-memory-search-console",
-            "miniapp_version": "1"
+            "miniapp_version": "2"
           },
           {
             "key": "veille-memory-contribute-console",
             "miniapp_id": "veille-memory-contribute-console",
-            "miniapp_version": "2"
+            "miniapp_version": "3"
           }
         ]
       },
@@ -2404,7 +2404,7 @@
     },
     {
       "key": "cib-work-dossiers",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "manifest": "work-cases/module.yaml",
       "workflows": 6,
       "miniapps": 2,
@@ -2432,15 +2432,15 @@
           "work-cases/agents/main/miniapps/cib-direction-console.json"
         ],
         "sha256": {
-          "work-cases/module.yaml": "65ef645f3e093cfa5bc68df154e8b762da1e48df14ae5ab94131bf23af4566cf",
-          "work-cases/agents/main/workflows/cib-case-list.json": "a00402ed1c01b944ca3f7f3aa0f65fedeee965c2bd2c8cbd7c1ddb385338c15b",
-          "work-cases/agents/main/workflows/cib-case-people.json": "d5221d2a1d38f455b5d39902c44d84dcdd9d12cd44a590a8a284bfb5399a93ea",
-          "work-cases/agents/main/workflows/cib-case-read.json": "4942514cea90c26ac0ac1c5f630b88671e613adf1b4baad417e77191a07ce6ff",
-          "work-cases/agents/main/workflows/cib-case-save.json": "19c38bd9676c143c73bb9a29b3d74b1dd53fbffc47ad12f412890f8a061ea409",
-          "work-cases/agents/main/workflows/cib-case-share.json": "a314e097122cebf354c26d7fce4ec888ec629cd9612ad202ea9f9ea6e1a3100d",
-          "work-cases/agents/main/workflows/cib-direction-brief.json": "76913010deda18d77e3b0fbfcd925bfa5f249d632a1355940619f23a4c4ad2b6",
-          "work-cases/agents/main/miniapps/cib-case-console.json": "9d3410c5bfa2072d7dadac33f6b8453416f76d3b78155a3fc7072d7a15a0e677",
-          "work-cases/agents/main/miniapps/cib-direction-console.json": "fd2c5ac34d14ef0ce1558f7d8637389db1d685527139f7068ad2a0f6c5a9affe"
+          "work-cases/module.yaml": "48caeb14a2c6a3eb9d4b270ac1e07f5eedae71bb21c5291c86ef837bb27b4a8f",
+          "work-cases/agents/main/workflows/cib-case-list.json": "1bcf1168d5c35e0fdc0431618555191e84adc0c02d077357ff4ff5063b46339c",
+          "work-cases/agents/main/workflows/cib-case-people.json": "879c20df05c945c6ac244e75689de187caa6d336a4b9013bfc33c69f1c7f228f",
+          "work-cases/agents/main/workflows/cib-case-read.json": "84ba99136a265aca68262fed238111a082ececadc383831f6d8e52a524606379",
+          "work-cases/agents/main/workflows/cib-case-save.json": "758bd304bb1dc58227e0079025777938397073f246659a3c021e2123bcd27b20",
+          "work-cases/agents/main/workflows/cib-case-share.json": "88b9013f09fd7c195cc52bcb0a47ba12c1dbf77216c4312c0a6cb129c790349a",
+          "work-cases/agents/main/workflows/cib-direction-brief.json": "cd267299db603ebaf4ae2a204bd686bf213519fe03ade5f5dba5f07855ff994b",
+          "work-cases/agents/main/miniapps/cib-case-console.json": "a0f35d08d4d39c6eff424e774b2d924a64291bd20f7df29e13955dc26f5c72f0",
+          "work-cases/agents/main/miniapps/cib-direction-console.json": "7cf3ee9ef1b1824537bbcda6eb7ecefff90c20c413ad41e7ece80c801322953b"
         }
       },
       "workflow_actions": {
@@ -2461,7 +2461,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "b448be57f10d85047141562f32c407d589bcbb15c707cc5b153aa2821ce0fcf9"
+              "code_sha256": "1bc530cd81888ddeb03bddda852d596d3b34b929317ba0bf55e732e1f8233a62"
             }
           ]
         },
@@ -2503,7 +2503,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "43e4c6995291fa813e8d1e303ed93fe81ddb3523a130373e0d7d5bb52fa3cb68"
+              "code_sha256": "c5756174e3c6ea962add31ace14d9b96590e7e5f794ea733ac6f9f20a1acb323"
             }
           ]
         },
@@ -2524,7 +2524,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "ccac886025fc5294d2ab16961ea14c3993e7502d2b96b38b10c4415342e66a48"
+              "code_sha256": "6948e745110b5afe62514ebed1468b41ebaeb4e27414f2a9153852da5fce9f5c"
             }
           ]
         },
@@ -2537,7 +2537,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "fd3f4bb5a6a3af0967134012e8e97199afe140915c0c8987ae1929e40b039d27"
+              "code_sha256": "863a8c8860c3bc53d63dab1337690a66c8c095887c9841e3d43fc46ce7dd2d30"
             }
           ]
         },
@@ -2550,7 +2550,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "6740d124114fe4256afe9d6be931bc98687b965d509ada6c4087c871704327ff"
+              "code_sha256": "ffcf0b55af0f404059f5e8c4a4ac345c7b82e6c41957de3d534c56533da5f16e"
             },
             {
               "path": "/actions/1",
@@ -2558,7 +2558,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "6788bd4971a4e530d0b609245e85799e22583936cbd5aa2221e0f188930d124c"
+              "code_sha256": "86d49ccffeb390c342b06e5b912b614c73a620a64cd77ec2efcb5688e38e8533"
             }
           ]
         }
@@ -2568,46 +2568,46 @@
           {
             "key": "save",
             "workflow_id": "cib-case-save",
-            "workflow_version": "4"
+            "workflow_version": "5"
           },
           {
             "key": "share",
             "workflow_id": "cib-case-share",
-            "workflow_version": "2"
+            "workflow_version": "3"
           }
         ],
         "queries": [
           {
             "key": "read",
             "workflow_id": "cib-case-read",
-            "workflow_version": "2"
+            "workflow_version": "3"
           },
           {
             "key": "list",
             "workflow_id": "cib-case-list",
-            "workflow_version": "2"
+            "workflow_version": "3"
           },
           {
             "key": "direction-brief",
             "workflow_id": "cib-direction-brief",
-            "workflow_version": "3"
+            "workflow_version": "4"
           },
           {
             "key": "people",
             "workflow_id": "cib-case-people",
-            "workflow_version": "2"
+            "workflow_version": "3"
           }
         ],
         "apps": [
           {
             "key": "case-console",
             "miniapp_id": "cib-case-console",
-            "miniapp_version": "5"
+            "miniapp_version": "6"
           },
           {
             "key": "direction-console",
             "miniapp_id": "cib-direction-console",
-            "miniapp_version": "3"
+            "miniapp_version": "4"
           }
         ]
       },

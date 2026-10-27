@@ -1,31 +1,31 @@
-# Raccordement manuel des trois rôles à la mémoire
+# Manual memory integration for the three roles
 
-Les Modules `cib-veille-memory`, `cib-contenu-memory` et
-`cib-accompagnement-memory` 0.2.0 ajoutent recherche, consultation et proposition
-d’un extrait sélectionné. Contenu peut préparer un brouillon depuis une
-révision validée et citée. La revue et l’indexation restent sur l’Agent mémoire.
+The `cib-veille-memory`, `cib-contenu-memory` and
+`cib-accompagnement-memory` Modules add search, retrieval and contribution of
+a selected excerpt. Content can prepare a draft from a validated, cited
+revision. Review and indexing remain with the memory Agent.
 
 ```sh
-python3 tooling/memory-integration/compose.py --consumer-dir /chemin/consommateur
-python3 tooling/memory-integration/compose.py --consumer-dir /chemin/consommateur --write
+python3 tooling/memory-integration/compose.py --consumer-dir /path/to/consumer
+python3 tooling/memory-integration/compose.py --consumer-dir /path/to/consumer --write
 ```
 
-Préconditions : les quatre Agents `veille`, `contenu`, `accompagnement`, `memory`
-initialisés avec des identifiants distincts ; ressources métier et mémoire
-composées ; capacités inter-Agent avec `allowed_agent_ids` et broker humain
-natifs disponibles. Le composeur lit les identités du consommateur, crée les
-liaisons locales et refuse toute ressource ou permission divergente.
+Prerequisites: four initialized Agents, `veille`, `contenu`, `accompagnement`
+and `memory`, with distinct identities; composed role and memory resources;
+and native inter-Agent capabilities with `allowed_agent_ids` and the human
+broker. The composer reads consumer identities, creates local bindings and
+refuses divergent resources or permissions.
 
-Déployer mémoire puis les trois rôles, vérifier chaque plan et committer son
-lock avant le suivant. `surface.py` prépare un brouillon depuis un `app get`
-récent, avec `--consumer-dir`, `--application-snapshot` et `--output` ; relire ce
-brouillon avant publication de la surface native.
+Deploy memory and then the three roles, review each plan and commit its lock
+before proceeding. `surface.py` prepares a draft from a recent `app get` using
+`--consumer-dir`, `--application-snapshot` and `--output`; review the draft
+before publishing the native surface.
 
-Le propriétaire choisit et confirme l’extrait partagé. Une révocation du
-dossier d’origine ne retire pas une connaissance déjà partagée intentionnellement ;
-son retrait relève du cycle de revue de la mémoire. Aucun dossier privé complet
-n’est indexé automatiquement. Si la capture réussit mais la proposition échoue,
-inspecter l’état avant de rejouer : les sources refusent l’écrasement.
+The owner selects and confirms the shared excerpt. Revoking the original case
+does not remove knowledge intentionally shared earlier; removal follows the
+memory review lifecycle. Complete private cases are never indexed automatically.
+If capture succeeds but proposal fails, inspect state before replay: sources
+refuse overwrites.
 
-Voir [installation](../../docs/INSTALLATION.md),
-[droits et isolation](../../docs/SECURITY.md).
+See [installation](../../docs/INSTALLATION.md) and
+[permissions and isolation](../../docs/SECURITY.md).

@@ -3,8 +3,8 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "veille-memory-search-console",
-  "version": "1",
-  "title": "Veille — Rechercher dans la mémoire",
+  "version": "2",
+  "title": "Watch — Search memory",
   "ui": {
     "renderer": "component",
     "component": "company-in-a-box",
@@ -12,11 +12,11 @@
       "layout": [
         {
           "type": "text",
-          "value": "Mode manuel. Les apports restent proposés jusqu’à la revue dans le Module mémoire."
+          "value": "Manual mode. Contributions remain proposed until reviewed in the memory Module."
         },
         {
           "type": "text",
-          "value": "Résultat"
+          "value": "Result"
         },
         {
           "type": "text",
@@ -26,7 +26,7 @@
         },
         {
           "type": "text",
-          "value": "État"
+          "value": "Status"
         },
         {
           "type": "text",

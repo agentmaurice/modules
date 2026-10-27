@@ -3,8 +3,8 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "accompagnement-memory-query-console",
-  "version": "1",
-  "title": "Accompagnement — Consulter une révision",
+  "version": "2",
+  "title": "Support — View a revision",
   "ui": {
     "renderer": "component",
     "component": "company-in-a-box",
@@ -12,11 +12,11 @@
       "layout": [
         {
           "type": "text",
-          "value": "Mode manuel. Les apports restent proposés jusqu’à la revue dans le Module mémoire."
+          "value": "Manual mode. Contributions remain proposed until reviewed in the memory Module."
         },
         {
           "type": "text",
-          "value": "Résultat"
+          "value": "Result"
         },
         {
           "type": "text",
@@ -26,7 +26,7 @@
         },
         {
           "type": "text",
-          "value": "État"
+          "value": "Status"
         },
         {
           "type": "text",
@@ -36,7 +36,7 @@
         },
         {
           "type": "text",
-          "value": "Sources citées"
+          "value": "Cited sources"
         },
         {
           "type": "text",
@@ -46,7 +46,7 @@
         },
         {
           "type": "text",
-          "value": "À revoir avant"
+          "value": "Review before"
         },
         {
           "type": "text",
@@ -56,7 +56,7 @@
         },
         {
           "type": "text",
-          "value": "Portée de la réponse"
+          "value": "Scope of answer"
         },
         {
           "type": "text",

@@ -119,20 +119,30 @@ def merged_plan(source_root: Path, destination: Path, errors: list[str]) -> tupl
         errors.append(f"invalid existing test plan V2: {destination}")
         return None
     prior_by_id = {case.get("id"): case for case in prior if isinstance(case, dict)}
+    prior_ids = [case.get("id") for case in prior if isinstance(case, dict)]
+    if len(prior_ids) != len(set(prior_ids)):
+        errors.append(f"duplicate existing test case ID: {destination}")
+        return None
+    legacy = load_json(Path(__file__).parent / "legacy-0.1.0-test-plan.json")
+    legacy_by_id = {case['id']: case for case in legacy['cases']}
     incoming_ids = [case.get("id") for case in incoming["cases"] if isinstance(case, dict)]
     if len(incoming_ids) != len(set(incoming_ids)):
         errors.append(f"duplicate incoming test case ID: {source}")
         return None
     additions = []
+    replacements = {}
     for case in incoming["cases"]:
         case_id = case.get("id") if isinstance(case, dict) else None
         if case_id in prior_by_id:
             if prior_by_id[case_id] != case:
-                errors.append(f"test plan case divergence (refusing merge): {destination}#{case_id}")
+                if prior_by_id[case_id] == legacy_by_id.get(case_id):
+                    replacements[case_id] = case
+                else:
+                    errors.append(f"test plan case divergence (refusing merge): {destination}#{case_id}")
         else:
             additions.append(case)
     merged = dict(existing)
-    merged["cases"] = prior + additions
+    merged["cases"] = [replacements.get(case.get('id'), case) if isinstance(case, dict) else case for case in prior] + additions
     return encoded(merged), True
 
 
@@ -157,9 +167,12 @@ def main() -> int:
         content, is_merge = plan
         planned.append((content, agent / "tests" / "test-plan.json", "test-plan-merge" if is_merge else "test-plan"))
     # All validation and conflict checks finish before any write.
+    previous = load_json(Path(__file__).parent / "legacy-0.1.0-hashes.json")
     for content, destination, kind in planned:
         if destination.exists() and kind == "resource" and destination.read_bytes() != content:
-            errors.append(f"destination conflict (refusing overwrite): {destination}")
+            relative = str(destination.relative_to(agent))
+            if previous.get(relative) != sha256(destination.read_bytes()):
+                errors.append(f"destination conflict (refusing overwrite): {destination}")
     if errors:
         for error in errors:
             print(f"ERROR {error}", file=sys.stderr)

@@ -3,18 +3,18 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "veille-memory-query",
-  "version": "1",
-  "title": "Veille — Consulter une révision",
+  "version": "2",
+  "title": "Watch — View a revision",
   "forms": [
     {
       "id": "submit",
-      "title": "Veille — Consulter une révision",
+      "title": "Watch — View a revision",
       "fields": [
         {
           "name": "proposal_id",
           "type": "string",
           "required": true,
-          "title": "Révision mémoire"
+          "title": "Memory revision"
         }
       ],
       "actions_on_submit": [

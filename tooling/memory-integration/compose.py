@@ -51,7 +51,7 @@ def compose(consumer, memory_alias='memory'):
             planned[dest]=file.read_bytes()
         for op,(_,inputs,outputs) in CONTRACTS.items():
             target={'agent_id':memory_id,'capability':'company-memory-'+op,'version':'1'}
-            bridge={'$schema':'agentmaurice.workflow/v2','schema_version':2,'kind':'workflow','workflow_id':'company-memory-'+op,'version':'1','title':'Mémoire — '+op,'actions':[{'id':'call','type':'workflow_call','target':target,'execution':'sync','input':{n:'{{ '+n+' }}' for n in inputs},'output_key':'memory'}],'output':{n:'{{ memory.data.'+n+' }}' for n in outputs}}
+            bridge={'$schema':'agentmaurice.workflow/v2','schema_version':2,'kind':'workflow','workflow_id':'company-memory-'+op,'version':'2','title':'Memory — '+op,'actions':[{'id':'call','type':'workflow_call','target':target,'execution':'sync','input':{n:'{{ '+n+' }}' for n in inputs},'output_key':'memory'}],'output':{n:'{{ memory.data.'+n+' }}' for n in outputs}}
             planned[root/'workflows'/('company-memory-'+op+'.json')]=encoded(bridge)
             deps=specs[role].setdefault('dependencies',[])
             prior=[x for x in deps if x.get('capability')==target['capability']]
@@ -61,9 +61,12 @@ def compose(consumer, memory_alias='memory'):
     grants=[specs[r]['agent_id'] for r in ROLES]
     caps=memory.setdefault('capabilities',[])
     for op,(workflow,_,_) in CONTRACTS.items():
-        cap={'name':'company-memory-'+op,'version':'1','workflow_id':workflow,'description':'Raccordement manuel mémoire : '+op,'allowed_agent_ids':grants}
+        cap={'name':'company-memory-'+op,'version':'1','workflow_id':workflow,'description':'Manual memory integration: '+op,'allowed_agent_ids':grants}
         prior=[x for x in caps if x.get('name')==cap['name']]
-        if prior and prior!=[cap]:raise ValueError('conflicting existing memory capability: '+op)
+        legacy_cap={**cap,'description':'Raccordement manuel mémoire : '+op}
+        if prior==[legacy_cap]:
+            caps[caps.index(prior[0])]=cap
+        elif prior and prior!=[cap]:raise ValueError('conflicting existing memory capability: '+op)
         if not prior:caps.append(cap)
     for dest,data in planned.items():
         if dest.exists() and dest.read_bytes()!=data:
@@ -71,8 +74,17 @@ def compose(consumer, memory_alias='memory'):
             pieces=relative.parts
             source_key=str(Path('modules')/pieces[0]/'agents/main'/Path(*pieces[1:]))
             legacy=read(Path(__file__).parent/'legacy-resource-hashes.json')
-            if legacy.get(source_key)==hashlib.sha256(dest.read_bytes()).hexdigest():
+            known=legacy.get(source_key, [])
+            if isinstance(known,str):known=[known]
+            if hashlib.sha256(dest.read_bytes()).hexdigest() in known:
                 continue
+            # The previous bridge contains consumer-specific Agent IDs. Only
+            # accept its exact old shape, with the same target and permissions.
+            if pieces[-1].startswith('company-memory-') and pieces[-2]=='workflows':
+                current=json.loads(data)
+                old={**current,'version':'1','title':current['title'].replace('Memory — ','Mémoire — ',1)}
+                if dest.read_bytes()==encoded(old):
+                    continue
             raise ValueError('refusing to overwrite divergent resource: '+str(dest))
     for alias,spec in specs.items():planned[consumer/'agents'/alias/'agent-spec.json']=encoded(spec)
     return planned

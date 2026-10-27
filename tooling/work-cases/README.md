@@ -1,25 +1,24 @@
-# Dossiers et Direction — cib-work-dossiers 0.2.2
+# Work cases and Direction — cib-work-dossiers
 
-Module de dossier commun : objectif, responsable opérationnel, références,
-prochaine action, blocage et preuve de clôture interne. La Direction reçoit
-uniquement les fiches accessibles à la personne authentifiée.
+This shared case Module records an objective, operational owner, references,
+next action, blocker and evidence of internal closure. Direction receives only
+records accessible to the authenticated person.
 
 ```sh
-python3 tooling/work-cases/compose.py --consumer-dir /chemin/consommateur --owner-alias veille
-python3 tooling/work-cases/compose.py --consumer-dir /chemin/consommateur --owner-alias veille --write
+python3 tooling/work-cases/compose.py --consumer-dir /path/to/consumer --owner-alias veille
+python3 tooling/work-cases/compose.py --consumer-dir /path/to/consumer --owner-alias veille --write
 ```
 
-L’Agent propriétaire doit être initialisé. Le serveur doit fournir le broker
-humain `recipe--application_data_v1`, les ACL par fiche et le CAS de révision.
-Les données sont dans la partition native `cib-cases`, privées par défaut.
-Les jeux `usage` et `qualification` séparent travail réel et données fictives.
+The owning Agent must be initialized. The server must provide the human broker
+`recipe--application_data_v1`, per-record ACLs and revision CAS. Data is held
+in the native `cib-cases` partition and is private by default. The `usage` and
+`qualification` sets separate real work from synthetic data.
 
-La sélection relit la fiche et préremplit le formulaire ; l’écriture utilise
-la révision attendue. Le propriétaire peut partager une fiche en lecture ou
-modification avec un membre existant, puis retirer ce droit. Le rédacteur ne
-peut pas repartager. Les titres et responsables déclarés ne donnent aucun
-droit. La clôture interne exige une preuve et une revue ; elle n’atteste pas
-une livraison ou un engagement externe.
+Selection rereads the record and prefills the form; writing uses the expected
+revision. The owner can share a record for reading or writing with an existing
+member and revoke that permission. A writer cannot reshare. Declared titles
+and owners confer no permissions. Internal closure requires evidence and
+review; it does not attest external delivery or commitment.
 
-Le composeur refuse les divergences inconnues. Voir [installation](../../docs/INSTALLATION.md),
-[droits](../../docs/SECURITY.md) et [tests](../../docs/TESTING.md).
+The composer refuses unknown divergence. See [installation](../../docs/INSTALLATION.md),
+[permissions](../../docs/SECURITY.md) and [tests](../../docs/TESTING.md).

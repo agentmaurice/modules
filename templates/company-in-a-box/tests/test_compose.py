@@ -78,6 +78,23 @@ class TemplateComposeTests(unittest.TestCase):
             destination.write_text('{"operator":"divergent"}\n', encoding="utf-8")
             self.assertEqual(self.run_main(source, consumer), 2)
 
+    def test_upgrade_exact_024_console_and_reject_modified_copy(self):
+        with tempfile.TemporaryDirectory(prefix="cib-template-compose-") as directory:
+            source, consumer = self.make_source_and_consumer(Path(directory))
+            destination = consumer / "agents/veille/miniapps/veille-console.json"
+            destination.parent.mkdir(parents=True)
+            fixture = ROOT / "templates/company-in-a-box/tests/fixtures/veille-console-0.2.4.json"
+            destination.write_bytes(fixture.read_bytes())
+            old_plan = ROOT / "templates/company-in-a-box/tests/fixtures/veille-test-plan-0.2.4.json"
+            plan_destination = consumer / "agents/veille/tests/test-plan.json"
+            plan_destination.parent.mkdir(parents=True)
+            plan_destination.write_bytes(old_plan.read_bytes())
+            self.assertEqual(self.run_main(source, consumer, "--write"), 0)
+            self.assertEqual(destination.read_bytes(), (source / "watch/agents/main/miniapps/veille-console.json").read_bytes())
+            self.assertEqual(plan_destination.read_bytes(), (source / "templates/company-in-a-box/tests/veille.json").read_bytes())
+            destination.write_bytes(fixture.read_bytes() + b" ")
+            self.assertEqual(self.run_main(source, consumer), 2)
+
     def test_consumer_6421_share_surface_hashes_are_known(self):
         expected = {
             "modules/veille/agents/main/miniapps/veille-console.json": "e5babbb162c68e4dcedcb58545c0481e9daf34215279f2c8d54e06e9d8e0a7e9",
@@ -99,13 +116,13 @@ class TemplateComposeTests(unittest.TestCase):
         for path, digest in expected.items():
             self.assertIn(digest, compose.KNOWN_UPGRADE_HASHES[path])
 
-    def test_v024_composes_three_dedicated_sharing_consoles(self):
-        self.assertEqual(compose.MODULE_VERSION, "0.2.4")
+    def test_v025_composes_three_dedicated_sharing_consoles(self):
+        self.assertEqual(compose.MODULE_VERSION, "0.2.5")
         for role in compose.ROLES:
             module = json.loads((ROOT / compose.MODULE_DIRS[role] / "module.yaml").read_text(encoding="utf-8"))
-            self.assertEqual(module["version"], "0.2.4")
+            self.assertEqual(module["version"], "0.2.5")
             apps = {app["miniapp_id"]: app for app in module["provides"]["apps"]}
-            self.assertEqual(apps[f"{role}-sharing-console"]["miniapp_version"], "1")
+            self.assertEqual(apps[f"{role}-sharing-console"]["miniapp_version"], "2")
             mini = json.loads((ROOT / compose.MODULE_DIRS[role] / "agents/main/miniapps" / f"{role}-sharing-console.json").read_text(encoding="utf-8"))
             self.assertEqual(
                 [event["event_id"] for event in mini["events"] if event["trigger"] == "form.submit"],
@@ -119,6 +136,15 @@ class TemplateComposeTests(unittest.TestCase):
             tmp = Path(directory)
             source, consumer = self.make_source_and_consumer(tmp)
             self.assertEqual(self.run_main(source, consumer), 0)
+
+    def test_example_surface_uses_current_packaged_versions(self):
+        surface = json.loads((ROOT / 'templates/company-in-a-box/surface.example.json').read_text())['public_surface']
+        for kind, id_key in [('workflows', 'workflow_id'), ('miniapps', 'miniapp_id')]:
+            for ref in surface[kind]:
+                resource_id = ref[id_key]
+                role = resource_id.split('-', 1)[0]
+                path = ROOT / compose.MODULE_DIRS[role] / 'agents/main' / kind / (resource_id + '.json')
+                self.assertEqual(ref['version'], json.loads(path.read_text())['version'], resource_id)
 
 
 if __name__ == "__main__":

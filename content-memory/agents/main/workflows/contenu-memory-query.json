@@ -3,18 +3,18 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "contenu-memory-query",
-  "version": "1",
-  "title": "Contenu — Consulter une révision",
+  "version": "2",
+  "title": "Content — View a revision",
   "forms": [
     {
       "id": "submit",
-      "title": "Contenu — Consulter une révision",
+      "title": "Content — View a revision",
       "fields": [
         {
           "name": "proposal_id",
           "type": "string",
           "required": true,
-          "title": "Révision mémoire"
+          "title": "Memory revision"
         }
       ],
       "actions_on_submit": [

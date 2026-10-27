@@ -72,6 +72,17 @@ class ComposeTest(unittest.TestCase):
             COMPOSE.compose(consumer)
         self.assertEqual(target.read_text(), "sentinel")
 
+    def test_upgrade_known_consumer_context_and_refuse_divergence(self):
+        consumer = self.consumer()
+        target = consumer / "agents/veille/workflows/daily-context.json"
+        target.write_bytes((ROOT / "tests/fixtures/daily-context-0.1.0-veille.json").read_bytes())
+        upgraded = COMPOSE.compose(consumer)
+        self.assertEqual(json.loads(upgraded[target])["version"], "3")
+        self.assertEqual(json.loads(upgraded[consumer / "agents/veille/workflows/daily-role-read.json"])["version"], "3")
+        target.write_bytes(target.read_bytes() + b" ")
+        with self.assertRaisesRegex(ValueError, "refusing divergent resource"):
+            COMPOSE.compose(consumer)
+
     def test_module_contains_only_bounded_local_primitives(self):
         forbidden = ("llm", "http", "cron", "schedule", "grant", "mcp")
         for path in ((ROOT.parents[1] / "daily-routine")).rglob("*.json"):

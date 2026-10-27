@@ -38,11 +38,12 @@ def compose(consumer, owner_alias="veille"):
                for p in sorted(source.rglob("*.json"))}
     if len(planned) != 8:
         raise ValueError("expected six Workflows and two MiniApps")
+    migration_hashes = json.loads((ROOT / "legacy-0.2.2-hashes.json").read_text())
     for dest, content in planned.items():
         if dest.exists() and dest.read_bytes() != content:
             relative = dest.relative_to(agent)
             digest = hashlib.sha256(dest.read_bytes()).hexdigest()
-            if PREVIOUS_SHA256.get(relative) != digest and ADDITIONAL_PREVIOUS_SHA256.get(str(relative)) != digest and ACL_PREFILL_PREVIOUS_SHA256.get(str(relative)) != digest:
+            if PREVIOUS_SHA256.get(relative) != digest and ADDITIONAL_PREVIOUS_SHA256.get(str(relative)) != digest and ACL_PREFILL_PREVIOUS_SHA256.get(str(relative)) != digest and migration_hashes.get(str(relative)) != digest:
                 raise ValueError("refusing divergent resource: " + str(dest))
     return planned
 

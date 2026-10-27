@@ -5,13 +5,13 @@
   "cases": [
     {
       "id": "contenu-save-create",
-      "description": "Exécution technique sans preuve humaine : le broker ACL doit refuser cet accès. Les cas positifs sont vérifiés avec les comptes existants depuis la surface CIB.",
+      "description": "Technical execution without human identity: the ACL broker must refuse access. Positive cases are verified with existing accounts from the CIB surface.",
       "workflow": {
         "workflow_id": "contenu-save",
         "input": {
           "dossier_id": "acme-demo",
           "entreprise": "Acme",
-          "sujet": "Démo produit",
+          "sujet": "Product demo",
           "faits": "Prospect entrant.",
           "source_ref": "fixture:p0",
           "brouillon": "",
@@ -27,7 +27,7 @@
     },
     {
       "id": "contenu-read-existing",
-      "description": "Exécution technique sans preuve humaine : le broker ACL doit refuser cet accès. Les cas positifs sont vérifiés avec les comptes existants depuis la surface CIB.",
+      "description": "Technical execution without human identity: the ACL broker must refuse access. Positive cases are verified with existing accounts from the CIB surface.",
       "workflow": {
         "workflow_id": "contenu-read",
         "input": {
@@ -43,7 +43,7 @@
     },
     {
       "id": "contenu-invalid-dossier-id",
-      "description": "Exécution technique sans preuve humaine : le broker ACL doit refuser cet accès. Les cas positifs sont vérifiés avec les comptes existants depuis la surface CIB.",
+      "description": "Technical execution without human identity: the ACL broker must refuse access. Positive cases are verified with existing accounts from the CIB surface.",
       "workflow": {
         "workflow_id": "contenu-read",
         "input": {
@@ -88,7 +88,7 @@
         "input": {
           "dossier_id": "acme-demo",
           "entreprise": "Acme",
-          "sujet": "Démo produit",
+          "sujet": "Product demo",
           "faits": "Prospect entrant.",
           "source_ref": "fixture:p0",
           "brouillon": "",
@@ -101,7 +101,7 @@
           "expected": "failed"
         }
       ],
-      "description": "Exécution technique sans preuve humaine : le broker ACL doit refuser cet accès. Les cas positifs sont vérifiés avec les comptes existants depuis la surface CIB."
+      "description": "Technical execution without human identity: the ACL broker must refuse access. Positive cases are verified with existing accounts from the CIB surface."
     }
   ]
 }

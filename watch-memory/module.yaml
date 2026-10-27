@@ -2,43 +2,43 @@
   "$schema": "agentmaurice.module/v2",
   "schema_version": 2,
   "key": "cib-veille-memory",
-  "name": "Company-in-a-Box — Veille — raccordement mémoire",
-  "version": "0.2.0",
+  "name": "Company-in-a-Box — Watch — memory integration",
+  "version": "0.2.1",
   "provides": {
     "actions": [
       {
         "key": "veille-memory-contribute",
         "workflow_id": "veille-memory-contribute",
-        "workflow_version": "2"
+        "workflow_version": "3"
       }
     ],
     "queries": [
       {
         "key": "veille-memory-query",
         "workflow_id": "veille-memory-query",
-        "workflow_version": "1"
+        "workflow_version": "2"
       },
       {
         "key": "veille-memory-search",
         "workflow_id": "veille-memory-search",
-        "workflow_version": "1"
+        "workflow_version": "2"
       }
     ],
     "apps": [
       {
         "key": "veille-memory-query-console",
         "miniapp_id": "veille-memory-query-console",
-        "miniapp_version": "1"
+        "miniapp_version": "2"
       },
       {
         "key": "veille-memory-search-console",
         "miniapp_id": "veille-memory-search-console",
-        "miniapp_version": "1"
+        "miniapp_version": "2"
       },
       {
         "key": "veille-memory-contribute-console",
         "miniapp_id": "veille-memory-contribute-console",
-        "miniapp_version": "2"
+        "miniapp_version": "3"
       }
     ]
   },

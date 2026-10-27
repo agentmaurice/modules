@@ -12,7 +12,7 @@ SPEC.loader.exec_module(BUILD)
 class GenerationTest(unittest.TestCase):
     def test_generator_contract_is_native_acl(self):
         module = BUILD.MODULE / "module.yaml"
-        self.assertEqual("0.2.2", json.loads(module.read_text())["version"])
+        self.assertEqual("0.2.3", json.loads(module.read_text())["version"])
         workflows = sorted((BUILD.MODULE / "agents/main/workflows").glob("*.json"))
         miniapps = sorted((BUILD.MODULE / "agents/main/miniapps").glob("*.json"))
         self.assertEqual(6, len(workflows))

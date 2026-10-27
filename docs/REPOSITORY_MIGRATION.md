@@ -47,13 +47,14 @@ remain compatible; English directory names do not rename these contracts.
 ## Source reconciliation
 
 The original library snapshot is commit
-`dc935630764b24c819defd03cc487bddf8f87399`. The ten Modules other than Company
-Memory retain their manifest and Workflow/MiniApp bytes. Their generated
-builders are checked on temporary copies against the committed artifacts.
+`dc935630764b24c819defd03cc487bddf8f87399`. The initial import retained the other ten Modules’ manifest and resource bytes.
+Subsequent versions change those resources; generated builders are checked on
+temporary copies against the committed artifacts.
 
 Company Memory carries the separately versioned 0.3.0 source from commit
 `8cb35a14b825dcdae4515d46e3b4c5149c154901` of the internal canonical pilot.
-Its package resources are preserved exactly from that source. The previous
+The initial 0.3.0 import preserved its package resources exactly; later versions
+are separate revisions. The previous
 0.2.0 remains in the library's original Git history and is never overwritten
 at its historical commit. Version 0.3.0 adds supersession Workflows and retires
 `memory-resolve-candidate`; its composer reports a retained retired Workflow

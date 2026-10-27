@@ -1,8 +1,8 @@
-# Installer dans une autre entreprise
+# Install in another company
 
-## Préparer le consommateur
+## Prepare the consumer
 
-Cloner le dépôt privé avec un compte autorisé :
+Clone the private repository with an authorized account:
 
 ```sh
 git clone https://github.com/agentmaurice/modules.git
@@ -10,295 +10,285 @@ cd modules
 git rev-parse HEAD
 ```
 
-Conserver ce commit dans le dossier d’installation et utiliser cette même
-révision pour toute la composition. Pour rejouer une qualification, utiliser
-un clone propre, vérifier `git status --porcelain`, puis faire
-`git checkout <COMMIT_QUALIFIE>` avant de composer. Conserver tout travail local
-existant dans son checkout.
+Record this commit in the installation folder and use the same revision for
+all composition. To replay qualification, use a clean clone, check
+`git status --porcelain`, and run `git checkout <QUALIFIED_COMMIT>` before
+composition. Preserve any existing local work in its checkout.
 
-Il faut un One opérationnel, son MauriceCLI compatible Agent Spec V2 et un
-projet consommateur séparé. Ce dépôt ne contient ni binaire One ni configuration
-d’authentification. Utiliser les commandes de connexion et d’initialisation
-retournées par votre instance, avec ses identifiants réels ; ne pas inventer
-les identifiants ni copier ceux d’un autre environnement.
+You need an operational One, its Agent Spec V2-compatible MauriceCLI and a
+separate consumer project. This repository contains neither the One binary nor
+authentication configuration. Use connection and initialization commands from
+your instance with its real identifiers; do not invent IDs or copy them from
+another environment.
 
-Le profil complet utilise quatre Agents initialisés dans ce projet :
-`veille`, `contenu`, `accompagnement` et `memory`. Un Module autonome peut être
-composé seulement dans l’Agent dont il a besoin. Le consommateur doit disposer
-de `agentmaurice.project.json`, ses environnements et ses Agent Specs V2.
-La configuration CLI reste à l’extérieur de ce dépôt.
+The complete profile uses four initialized Agents: `veille`, `contenu`,
+`accompagnement` and `memory`. A standalone Module can be composed only into
+the Agent it needs. The consumer needs `agentmaurice.project.json`, its
+environments and Agent Specs V2. CLI configuration remains outside this repo.
 
-## Compatibilité à contrôler
+## Check compatibility
 
-- Workflows V2, MiniApps/forms et `code_execution` disponibles.
-- Pour les rôles, dossiers, Marketing et administration des fiches : broker
-  humain `recipe--application_data_v1`, ACL par donnée et révisions CAS natives.
-- Pour l’administration : `recipe--company_admin_v1`, annuaire et rôles natifs.
-- Pour la mémoire : stockage persistant, Agent et sidecars dédiés par entreprise,
-  outils Memory/Brain déclarés dans le manifest et disponibles au déploiement.
-- Pour le raccordement mémoire : capacités inter-Agent et `allowed_agent_ids`
-  natifs, identité humaine conservée par le runtime.
+- Workflows V2, MiniApps/forms and `code_execution` are available.
+- Roles, cases, Marketing and record administration require the human broker
+  `recipe--application_data_v1`, per-record ACLs and native revision CAS.
+- Administration requires `recipe--company_admin_v1`, native directory and roles.
+- Memory requires persistent storage, a dedicated Agent and sidecars per company,
+  and the Memory/Brain tools declared in the manifest and available at deployment.
+- Memory integration requires native inter-Agent capabilities and
+  `allowed_agent_ids`, with human identity retained by the runtime.
 
-Cette liste exprime des capacités à vérifier, pas une promesse de compatibilité
-avec toute ancienne version du One. Le contrôle `spec check` natif et la
-vérification du déploiement restent obligatoires.
+These are capabilities to verify, not a promise of compatibility with every
+older One. Native `spec check` and deployment verification remain required.
 
-## Initialiser le premier administrateur
+## Initialize the first administrator
 
-Cette étape utilise le **control plane natif** de l’organisation, avec une
-connexion d’auteur habilitée (`orga-admin` pour ces routes). Le Module Administration ne crée pas de compte,
-n’invite pas de personne et ne peut pas initialiser lui-même son premier admin.
-`orga-admin` est un rôle de la plateforme ; `cib_admin` est un grant métier
-du Module. Attribuer le second ne confère pas le premier. La confirmation
-d’un formulaire ne remplace jamais une autorisation native.
+Use the organization's **native control plane** with an authorized author
+connection (`orga-admin` for these routes). The Administration Module does not
+create accounts, invite people or initialize its own first administrator.
+`orga-admin` is a platform role; `cib_admin` is a Module business grant.
+Granting the latter does not confer the former. Form confirmation never
+replaces native authorization.
 
-1. Vérifier l’instance, l’organisation et l’identité de la connexion avec
-   `maurice --config /chemin/config.yaml whoami --json`. Utiliser une
-   configuration propre au nouveau One ; ne pas sélectionner le contexte global
-   d’une autre entreprise. Ne pas exposer son bearer dans le terminal, Git ou une URL.
-2. Avec ce client authentifié, lire `GET /api/v1/user/me`, puis
-   `GET /api/v1/organization/<ORGANIZATION_ID>/directory`. Le premier retourne
-   l’identité sous `user.id` ; le second retourne `people` et `grants`.
-3. Si la personne active correspondant à cette identité possède déjà
-   `cib_admin`, **ne rien écrire** : passer au contrôle ci-dessous. Si l’annuaire
-   est non vide sans ce rattachement, arrêter le bootstrap automatique et faire
-   examiner ses personnes et grants par l’admin habilité. Ne jamais remplacer
-   l’annuaire existant par l’exemple qui suit.
-4. Sur un **annuaire vide seulement**, un auteur habilité peut appliquer
-   `PUT /api/v1/organization/<ORGANIZATION_ID>/directory` avec le document
-   suivant, après avoir remplacé les placeholders par ses valeurs vérifiées :
+1. Verify instance, organization and connection identity with
+   `maurice --config /path/config.yaml whoami --json`. Use configuration for
+   the new One, not another company's global context. Do not expose the bearer
+   in the terminal, Git or a URL.
+2. With this authenticated client, read `GET /api/v1/user/me` and
+   `GET /api/v1/organization/<ORGANIZATION_ID>/directory`. The first returns
+   `user.id`; the second returns `people` and `grants`.
+3. If the active person linked to that identity already has `cib_admin`, write
+   nothing and proceed to verification. If the directory is nonempty without
+   that link, stop automatic bootstrap and have an authorized administrator
+   review its people and grants. Never replace an existing directory with the
+   example below.
+4. **Only on an empty directory**, an authorized author may apply
+   `PUT /api/v1/organization/<ORGANIZATION_ID>/directory` with the following
+   document after replacing placeholders with verified values:
 
 ```json
 {
   "people": [{
-    "person_id": "<PERSON_ID_LOCAL_CHOISI>",
-    "display_name": "Administration locale",
-    "platform_user_id": "<USER_ID_VERIFIE>",
+    "person_id": "<CHOSEN_LOCAL_PERSON_ID>",
+    "display_name": "Local administration",
+    "platform_user_id": "<VERIFIED_USER_ID>",
     "status": "active"
   }],
   "grants": [{
-    "person_id": "<PERSON_ID_LOCAL_CHOISI>",
+    "person_id": "<CHOSEN_LOCAL_PERSON_ID>",
     "role_key": "cib_admin"
   }]
 }
 ```
 
-Dans un One local, le principal d’auteur peut être `local-operator` : l’utiliser
-uniquement si `/user/me` le confirme. Ne jamais y substituer l’identité d’un
-humain pour exécuter ou approuver à sa place. Le PUT est un remplacement global,
-sans CAS dans ce contrat : réserver une fenêtre d’administration sans auteur
-concurrent, relire juste avant d’écrire et arrêter si l’annuaire n’est plus vide.
-Conserver un snapshot privé et vérifier la réponse avant de poursuivre.
+On a local One the author principal may be `local-operator`; use it only if
+`/user/me` confirms it. Never substitute a human identity to execute or approve
+for that person. This PUT replaces the entire directory without CAS: reserve
+an administration window without concurrent authors, reread immediately before
+writing and stop if it is no longer empty. Keep a private snapshot and verify
+the response before continuing.
 
-Après publication de la surface, exécuter `cib-admin-overview` avec l’admin
-habilité, via la console Administration ou le point d’entrée natif suivant :
+After surface publication, execute `cib-admin-overview` as the authorized
+administrator through the Administration console or this native entrypoint:
 
 ```text
 POST /api/v1/organization/<ORGANIZATION_ID>/applications/<APPLICATION_ID>/workflows/cib-admin-overview/executions
 {"input": {}, "timeout_seconds": 30}
 ```
 
-Exiger HTTP 200, `state=completed`, puis vérifier dans `data.people` et
-`data.grants` l’identité active liée et son rôle `cib_admin`. Une seconde
-exécution de cette procédure doit être une lecture sans réécriture de l’annuaire.
-Une clé sans compétence ou HTTP 401/403 ne constitue pas un bootstrap réussi.
+Require HTTP 200 and `state=completed`; verify the linked active identity and
+`cib_admin` role in `data.people` and `data.grants`. A second execution of the
+procedure must only read, not rewrite the directory. An unprivileged key or
+HTTP 401/403 is not successful bootstrap.
 
-Pour les humains, faire accepter l’accès à l’organisation par le parcours AM
-natif, puis utiliser Administration pour rattacher les identités existantes à
-leurs personnes et à l’Application : `directory_upsert_person`,
-`directory_link_user`, `application_people_add` et `directory_grant_role`.
-Vérifier les accès depuis Home avec les comptes réels prévus. Ne pas attribuer
-un rôle administrateur global aux comptes de test pour contourner un refus.
-Les rôles de service restent distincts des ACL de chaque fiche.
+For humans, use the native AM organization access flow, then Administration to
+link existing identities to people and the Application with
+`directory_upsert_person`, `directory_link_user`, `application_people_add` and
+`directory_grant_role`. Verify Home access with intended real accounts. Do not
+grant global administrator to test accounts to bypass a refusal. Service roles
+remain distinct from each record's ACL.
 
-## Composer en preview puis écrire après revue
+## Preview composition, then write after review
 
-Exécuter depuis la racine de ce dépôt. Remplacer `/chemin/consommateur` par le
-projet de votre entreprise. Chaque commande est une preview sans écriture ;
-relire le résultat puis relancer avec `--write` pour composer les fichiers.
-
-```sh
-# Les trois rôles
-python3 templates/company-in-a-box/compose.py --consumer-dir /chemin/consommateur
-# Mémoire autonome
-python3 tooling/company-memory/compose.py --consumer-dir /chemin/consommateur --agent-alias memory
-# Liaison des rôles à la mémoire, après composition des quatre Agents
-python3 tooling/memory-integration/compose.py --consumer-dir /chemin/consommateur
-# Routine quotidienne, après les liaisons mémoire
-python3 tooling/daily-routine/compose.py --consumer-dir /chemin/consommateur
-# Services optionnels sur l’Agent Veille existant
-python3 tooling/work-cases/compose.py --consumer-dir /chemin/consommateur --owner-alias veille
-python3 tooling/enterprise-admin/compose.py --consumer-dir /chemin/consommateur --owner-alias veille
-python3 tooling/marketing-launch/compose.py --consumer-dir /chemin/consommateur --agent-alias veille
-```
-
-Une divergence inconnue provoque un refus ; conserver les modifications locales
-et résoudre le conflit avant d’écrire. Aucun composeur ne déploie à votre place.
-Relire les guides de chaque Module, notamment les limites mémoire.
-
-## Attendre Memory et Brain sans modifier leurs données
-
-Installer les connecteurs existants dans le Registry du **nouveau One** et
-provisionner des sidecars avec des volumes persistants propres à l’entreprise,
-par les plans natifs applicables. Conserver tags et digests d’images dans le
-dossier privé d’installation ; ne pas réutiliser une base ou un volume client.
-Le manuel Aurore du 19 octobre 2026 a utilisé Memory 1.0.17 et Brain 1.1.8 ;
-ces versions observées ne garantissent pas la compatibilité de toute version AM.
-
-Découvrir le catalogue avec les identifiants réels du consommateur :
+Run from this repository root. Replace `/path/to/consumer` with the company
+project. Each command is a read-only preview; review it, then add `--write` to
+compose files.
 
 ```sh
-maurice --config /chemin/config.yaml tools list --organization <ORGANIZATION_ID> --deployment <MEMORY_AGENT_ID> --json
+# Three roles
+python3 templates/company-in-a-box/compose.py --consumer-dir /path/to/consumer
+# Standalone memory
+python3 tooling/company-memory/compose.py --consumer-dir /path/to/consumer --agent-alias memory
+# Role-to-memory links, after composing all four Agents
+python3 tooling/memory-integration/compose.py --consumer-dir /path/to/consumer
+# Daily routine, after memory links
+python3 tooling/daily-routine/compose.py --consumer-dir /path/to/consumer
+# Optional services on the existing Watch Agent
+python3 tooling/work-cases/compose.py --consumer-dir /path/to/consumer --owner-alias veille
+python3 tooling/enterprise-admin/compose.py --consumer-dir /path/to/consumer --owner-alias veille
+python3 tooling/marketing-launch/compose.py --consumer-dir /path/to/consumer --agent-alias veille
 ```
 
-Vérifier les outils déclarés dans le manifest du Module :
-`memory.entities.upsert`, `memory.query`, `brain.document.upsert` et
-`brain.keyword`. Le catalogue CLI retourne leur nom métier sous `display_name`
-et le nom d’appel sous `name` ; vérifier aussi `mcp_server_id` et
-`availability=available`. Ne pas copier un suffixe de nom d’outil d’un autre One.
-Respecter la pagination de la CLI si l’inventaire est tronqué.
+Unknown divergence is refused: preserve local changes and resolve the conflict
+before writing. No composer deploys for you. Review each Module guide, including
+memory limits.
 
-Lorsque le Registry est provisionné par le premier `spec deploy`, il est normal
-que ce contrôle ne soit possible qu’après ce provisionnement ; un catalogue
-vide avant déploiement n’autorise pas à annoncer la mémoire opérationnelle.
+## Wait for Memory and Brain without changing their data
 
-Si le catalogue expose aussi `memory.health` et `brain.health`, utiliser ces
-diagnostics facultatifs en appelant les **noms retournés** :
+Install existing connectors in the **new One's** Registry and provision
+sidecars with company-specific persistent volumes through applicable native
+plans. Record image tags and digests in the private installation folder; do not
+reuse a customer's database or volume. The manual Aurore run on 19 October 2026
+used Memory 1.0.17 and Brain 1.1.8; these observations do not guarantee
+compatibility with all AM versions.
+
+Discover the catalog with the consumer's real identifiers:
 
 ```sh
-maurice --config /chemin/config.yaml tools call <MEMORY_HEALTH_CALL_NAME> --organization <ORGANIZATION_ID> --deployment <MEMORY_AGENT_ID> --timeout 15 --json
-maurice --config /chemin/config.yaml tools call <BRAIN_HEALTH_CALL_NAME> --organization <ORGANIZATION_ID> --deployment <MEMORY_AGENT_ID> --timeout 15 --json
+maurice --config /path/config.yaml tools list --organization <ORGANIZATION_ID> --deployment <MEMORY_AGENT_ID> --json
 ```
 
-Pour chaque health exposé, exiger une réponse native sans erreur, `status=ok`
-et `result.status=ok`. L’absence d’un health non déclaré par le manifest ne
-bloque pas à elle seule l’installation : la noter, puis tester le parcours
-mémoire effectif. `memory-health` du Module est un inventaire de fichiers : il ne
-remplace pas `memory.health`. La version renvoyée par un health peut être une
-chaîne ancienne ; vérifier l’image réellement déployée par son digest.
+Verify the Module manifest tools: `memory.entities.upsert`, `memory.query`,
+`brain.document.upsert` and `brain.keyword`. The CLI catalog provides business
+names in `display_name` and call names in `name`; also verify `mcp_server_id`
+and `availability=available`. Do not copy a tool-name suffix from another One.
+Follow CLI pagination if the inventory is truncated.
 
-**Attente bornée :** pendant au plus cinq minutes, relire le catalogue et refaire
-seulement ces appels de lecture si les outils sont encore absents, marqués
-`not ready`, ou en cas de timeout de préparation du catalogue ou de transport
-MCP au démarrage. Attendre
-dix secondes entre essais ; borner chaque requête HTTP à quinze secondes
-côté client et ne pas démarrer un appel au-delà de la durée restante. Le
-`--timeout` de `tools call` borne l’exécution demandée ; la CLI peut attendre
-plus longtemps pour la préparation/HTTP. La borne globale de 300 secondes et celle de 15 secondes par requête
-nécessitent donc un client HTTP ainsi borné ou un superviseur externe de la CLI.
-Conserver heure, résultat et cause de chaque essai dans les preuves privées.
-Les routes équivalentes sont `GET /api/v1/organization/<ORGANIZATION_ID>/deployment/<MEMORY_AGENT_ID>/tools?format=verbose`
-et `POST /api/v1/organization/<ORGANIZATION_ID>/deployment/<MEMORY_AGENT_ID>/tools/call` ;
-pour ce dernier, envoyer `{"tool_name":"<CALL_NAME>","arguments":{},"timeout_sec":15}`.
-Ne transmettre ce bearer qu’à l’instance vérifiée, par le client authentifié ;
-ne pas l’afficher ni le stocker dans les preuves.
-Arrêter sur expiration, identité/instance incohérente, HTTP 401/403, refus
-d’approbation ou erreur métier ; ne pas traiter ces erreurs comme une attente MCP.
-Ne pas rejouer automatiquement une écriture, une indexation ou un déploiement.
+If the Registry is provisioned by the first `spec deploy`, this check can only
+be performed after provisioning. An empty pre-deployment catalog is not proof
+that memory is operational.
 
-Le `/ready` du One, un heartbeat MQTT et les health ne suffisent pas : le
-catalogue peut encore être en synchronisation. Après déploiement et publication,
-qualifier également le **parcours mémoire complet** ci-dessous.
-
-## Vérifier et déployer par le contrat natif
-
-Après composition, vérifier et committer les fichiers dans le consommateur.
-Pour chaque Agent concerné, avec la configuration de votre instance :
+If the catalog also exposes `memory.health` and `brain.health`, use their
+**returned call names** for these optional diagnostics:
 
 ```sh
-maurice --config /chemin/config.yaml spec check --dir /chemin/consommateur --env local --agent-alias memory --json
-# Revue, git diff et commit dans le consommateur avant déploiement.
-maurice --config /chemin/config.yaml spec deploy --dir /chemin/consommateur --env local --agent-alias memory --tests auto --json
+maurice --config /path/config.yaml tools call <MEMORY_HEALTH_CALL_NAME> --organization <ORGANIZATION_ID> --deployment <MEMORY_AGENT_ID> --timeout 15 --json
+maurice --config /path/config.yaml tools call <BRAIN_HEALTH_CALL_NAME> --organization <ORGANIZATION_ID> --deployment <MEMORY_AGENT_ID> --timeout 15 --json
 ```
 
-Déployer mémoire, puis veille, contenu et accompagnement en changeant
-`--agent-alias`. Vérifier le résultat et committer le lock après chaque Agent.
-Si la vérification échoue parce que les outils MCP ne sont pas prêts, conserver
-le plan et ses diagnostics, vérifier le rollback natif et l’état réellement
-restant, puis terminer l’attente bornée. Si le rollback est confirmé sans dérive,
-l’opérateur peut décider explicitement de relancer le déploiement depuis les
-mêmes sources committées et relire le nouveau plan, **hors de la boucle
-readiness** ; appliquer une nouvelle approbation si le nouveau plan l’exige. Ne pas réutiliser une approbation attachée à un ancien plan ni
-réinitialiser les volumes ; arrêter sur rollback incomplet ou état inconnu.
+For each exposed health tool, require a native response without error,
+`status=ok` and `result.status=ok`. Absence of a health tool not declared in
+the manifest is not itself a blocker: record it and test the actual memory
+journey. The Module's `memory-health` inventories files; it does not replace
+`memory.health`. A health version string can be old: verify the deployed image
+digest.
 
-Si AM demande une approbation, la personne compétente décide dans AM ; aucune
-commande ou clé de service ne doit la remplacer.
+**Bounded wait:** for at most five minutes, reread the catalog and repeat only
+these reads if tools are absent or `not ready`, or catalog preparation or MCP
+transport times out during startup. Wait ten seconds between attempts; bound
+each client HTTP request to fifteen seconds and do not start one beyond the
+remaining overall time. `tools call --timeout` bounds requested execution but
+the CLI may wait longer for preparation/HTTP. The 300-second overall and
+15-second per-request limits therefore require a suitably bounded HTTP client
+or external CLI supervisor. Keep each attempt's time, result and cause in
+private evidence. Equivalent routes are
+`GET /api/v1/organization/<ORGANIZATION_ID>/deployment/<MEMORY_AGENT_ID>/tools?format=verbose`
+and `POST /api/v1/organization/<ORGANIZATION_ID>/deployment/<MEMORY_AGENT_ID>/tools/call`;
+for the latter send `{"tool_name":"<CALL_NAME>","arguments":{},"timeout_sec":15}`.
+Send the bearer only to the verified instance through the authenticated client;
+do not display it or store it in evidence. Stop on timeout, inconsistent
+identity or instance, HTTP 401/403, approval refusal or business error; do not
+treat those errors as MCP readiness waits. Never automatically replay a write,
+indexing or deployment.
 
-## Publier la surface et les accès
+One `/ready`, an MQTT heartbeat and health checks are insufficient because the
+catalog may still be syncing. After deployment and publication, qualify the
+complete memory journey below as well.
 
-Déployer les ressources et les rendre accessibles sont deux étapes distinctes.
-Récupérer la surface récente de l’Application avec les commandes `maurice app`
-de votre CLI. Ajouter uniquement les nouvelles ressources, aux versions natives
-retournées par le déploiement, en conservant les ressources et entrypoints
-existants. Ne pas confondre version déclarée et version runtime.
+## Check and deploy through the native contract
 
-`template/surface.example.json` est un exemple documentaire à placeholders,
-**pas un fichier prêt à appliquer**. `memory-integration/surface.py` et
-`enterprise-admin/service_roles.py` préparent des brouillons selon leur `--help`.
-Le Marketing fournit `service-gates.json` pour ses neuf Workflows.
-
-Le fichier relu doit contenir `public_surface` et les entrypoints conservés :
+After composition, review and commit consumer files. For each affected Agent,
+using your instance configuration:
 
 ```sh
-maurice --config /chemin/config.yaml app surface set <APPLICATION_ID> --organization <ORGANIZATION_ID> --file /chemin/surface-relue.json --json
-maurice --config /chemin/config.yaml app surface publish <APPLICATION_ID> --organization <ORGANIZATION_ID> --bump minor --json
+maurice --config /path/config.yaml spec check --dir /path/to/consumer --env local --agent-alias memory --json
+# Review, git diff and commit in the consumer before deployment.
+maurice --config /path/config.yaml spec deploy --dir /path/to/consumer --env local --agent-alias memory --tests auto --json
 ```
 
-Relier les personnes existantes aux services appropriés. Marketing utilise
-`cib_marketing`, Accompagnement `cib_service_client`, Dossiers `cib_dossiers`,
-Direction `cib_direction`, administration `cib_admin`. Aucun rôle ne donne
-implicitement accès à une fiche privée : partager cette fiche explicitement.
+Deploy memory, then `veille`, `contenu` and `accompagnement` by changing
+`--agent-alias`. Verify the result and commit the lock after each Agent. If
+verification fails because MCP tools are not ready, preserve the plan and
+diagnostics, check native rollback and actual remaining state, then complete
+the bounded wait. If rollback is confirmed without drift, the operator may
+explicitly decide to rerun deployment from the same committed sources and
+review the new plan **outside the readiness loop**; obtain a new approval if
+required. Do not reuse an approval tied to an old plan or reset volumes; stop
+on incomplete rollback or unknown state.
 
-Depuis Home, ouvrir l’Application avec les comptes prévus, tester un parcours
-synthétique, les refus, le partage unitaire et son retrait. Un appel par clé
-machine refusé ne constitue pas une qualification des parcours humains.
-Aucun envoi, publication, paiement ou campagne réelle ne découle du clonage.
+If AM requests approval, the authorized person decides in AM; no command or
+service key substitutes for that decision.
 
+## Publish the surface and access
 
-## Valider la mémoire après installation ou redémarrage
+Deploying resources and making them accessible are separate steps. Retrieve the
+recent Application surface with your CLI's `maurice app` commands. Add only new
+resources at the native versions returned by deployment, preserving existing
+resources and entrypoints. Do not confuse declared and runtime versions.
 
-Depuis Home, avec les comptes de chaque service :
+`templates/company-in-a-box/surface.example.json` is a documentary example
+with placeholders, **not a ready-to-apply file**. `memory-integration/surface.py`
+and `enterprise-admin/service_roles.py` prepare drafts as described in their
+`--help`; Marketing provides `service-gates.json` for its nine Workflows.
 
-1. Créer une fiche synthétique propre à cette entreprise, proposer un extrait
-   explicitement partageable à la mémoire, puis faire sa revue et son indexation
-   manuellement avec le rôle habilité. Garder l’identifiant exact de la révision.
-   Si ce jeu existe déjà, le réutiliser en lecture ; ne pas le réindexer à chaque essai.
-2. Pour Veille, Contenu et Accompagnement, exécuter leurs requêtes mémoire et
-   leurs recherches, via les MiniApps du bon Agent. Exiger une révision
-   `validated`, non périmée et citée, puis que la recherche retourne cette
-   révision attendue. Une recherche vide ne prouve pas la récupération du jeu.
-3. Pour un client HTTP authentifié autorisé sur la surface publiée, les lectures
-   équivalentes utilisent le contrat suivant :
+The reviewed file must retain `public_surface` and existing entrypoints:
+
+```sh
+maurice --config /path/config.yaml app surface set <APPLICATION_ID> --organization <ORGANIZATION_ID> --file /path/reviewed-surface.json --json
+maurice --config /path/config.yaml app surface publish <APPLICATION_ID> --organization <ORGANIZATION_ID> --bump minor --json
+```
+
+Link existing people to appropriate services. Marketing uses `cib_marketing`,
+Support `cib_service_client`, Cases `cib_dossiers`, Management `cib_direction`
+and administration `cib_admin`. A role does not implicitly grant access to a
+private record: explicitly share that record.
+
+From Home, open the Application with intended accounts and test a synthetic
+journey, refusals, individual sharing and revocation. A refused machine-key call
+does not qualify human journeys. Cloning causes no real sending, publication,
+payment or campaign.
+
+## Validate memory after installation or restart
+
+From Home, with each service's account:
+
+1. Create a synthetic company-specific record, explicitly propose a shareable
+   excerpt to memory, then manually review and index it with the authorized
+   role. Retain the exact revision ID. If this set already exists, reuse it for
+   reads; do not reindex on every attempt.
+2. For Watch, Content and Support, run their memory queries and searches through
+   the right Agent's MiniApps. Require a cited, unexpired `validated` revision
+   and then the expected revision in search results. An empty search does not
+   prove retrieval of the set.
+3. For an authorized authenticated HTTP client on the published surface,
+   equivalent reads use:
 
 ```text
 POST /api/v1/organization/<ORGANIZATION_ID>/applications/<APPLICATION_ID>/workflows/<WORKFLOW_ID>/executions
-{"input": {"proposal_id": "<REVISION_SYNTHETIQUE_VALIDEE>"}, "timeout_seconds": 15}
+{"input": {"proposal_id": "<VALIDATED_SYNTHETIC_REVISION>"}, "timeout_seconds": 15}
 ```
 
-Pour les trois rôles, remplacer `<WORKFLOW_ID>` par `veille-memory-query`,
-`contenu-memory-query` ou `accompagnement-memory-query`. Exiger HTTP 200,
-`state=completed`, `data.status=validated` et des `data.citations` non vides.
-Pour `veille-memory-search`, `contenu-memory-search` ou
-`accompagnement-memory-search`, envoyer `input: {"query": "<MOT_CLE_DU_JEU>"}`
-et vérifier la présence de la révision attendue dans `data.results`.
-Répéter seulement ces lectures lors d’un `mcp servers not ready`, dans la même
-borne de cinq minutes que le catalogue et les health. Une erreur métier ou un
-refus de droits arrête l’essai. Ne jamais élargir un rôle pour obtenir un vert.
+For the three roles, replace `<WORKFLOW_ID>` with `veille-memory-query`,
+`contenu-memory-query` or `accompagnement-memory-query`. Require HTTP 200,
+`state=completed`, `data.status=validated` and nonempty `data.citations`. For
+`veille-memory-search`, `contenu-memory-search` or
+`accompagnement-memory-search`, send `input: {"query": "<SET_KEYWORD>"}` and
+verify the expected revision in `data.results`. Repeat only these reads for
+`mcp servers not ready`, within the same five-minute catalog/health bound. A
+business error or permission refusal stops the test. Never broaden a role to
+obtain a green result.
 
-En cas de redémarrage de qualification, capturer les données et ACL avant,
-redémarrer **seulement ce One** par ses commandes natives et son `--data-dir`
-explicite, puis refaire ces lectures et l’accès depuis Home. Vérifier que les
-révocations subsistent, que les données sont conservées et que les volumes
-restent distincts des autres entreprises. Un démarrage du One ne prouve pas la
-reconnexion effective des deux MCP.
+For a qualification restart, capture data and ACLs first, restart **only this
+One** using its native commands and explicit `--data-dir`, then repeat these
+reads and Home access. Verify revocations persist, data is retained and volumes
+remain separate from other companies. Starting One does not prove the two MCPs
+have reconnected.
 
-Les IDs `daily-context`, `daily-time-save` et `daily-report` existent sur trois
-Agents : les qualifier via leurs MiniApps contextualisées par Agent, sans
-lookup global par le seul ID de Workflow ni filtre API inventé.
+`daily-context`, `daily-time-save` and `daily-report` IDs exist on three Agents:
+qualify them through their Agent-contextualized MiniApps, without a global
+lookup by Workflow ID alone or an invented API filter.
 
-L’essai manuel Aurore a vérifié le bootstrap initial, puis sa réutilisation sans
-réécriture de l’annuaire et les lectures mémoire des trois rôles après attente.
-Le dossier consommateur conserve les preuves privées ; aucune identité réelle,
-session, donnée d’entreprise ou capture n’est fournie dans ce dépôt. Cette
-procédure ne qualifie pas une installation automatique par URL/Module Catalog,
-une nouvelle approbation humaine réelle, ni des effets métier externes.
+The manual Aurore test checked initial bootstrap, reuse without directory
+rewrite, and all three role memory reads after waiting. The consumer folder
+holds private evidence; this repo provides no real identity, session, company
+data or screenshot. This procedure does not qualify automatic URL/Module
+Catalog installation, a new real human approval or external business effects.

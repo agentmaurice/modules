@@ -5,19 +5,19 @@
   "cases": [
     {
       "id": "launch-technical-denied-campaign-save",
-      "description": "Le broker doit refuser une exécution technique sans identité humaine ; cas positifs par sessions CIB.",
+      "description": "The broker must refuse technical execution without human identity; positive cases use CIB sessions.",
       "workflow": {
         "workflow_id": "cib-launch-campaign-save",
         "input": {
           "jeu": "qualification",
           "campaign_id": "mkt-technical-denied",
           "objectif": "Qualification",
-          "audience": "Fictive",
-          "promesse": "Aucune promesse publique",
+          "audience": "Synthetic",
+          "promesse": "No public promise",
           "canal": "interne",
           "responsable": "test",
           "echeance": "2026-12-31",
-          "critere_fin": "Qualification interne",
+          "critere_fin": "Internal qualification",
           "expected_revision": "0",
           "confirmation_manuelle": "oui"
         }
@@ -31,7 +31,7 @@
     },
     {
       "id": "launch-technical-denied-read",
-      "description": "Le broker doit refuser une exécution technique sans identité humaine ; cas positifs par sessions CIB.",
+      "description": "The broker must refuse technical execution without human identity; positive cases use CIB sessions.",
       "workflow": {
         "workflow_id": "cib-launch-read",
         "input": {
@@ -50,7 +50,7 @@
     },
     {
       "id": "launch-technical-denied-list",
-      "description": "Le broker doit refuser une exécution technique sans identité humaine ; cas positifs par sessions CIB.",
+      "description": "The broker must refuse technical execution without human identity; positive cases use CIB sessions.",
       "workflow": {
         "workflow_id": "cib-launch-list",
         "input": {
@@ -67,7 +67,7 @@
     },
     {
       "id": "launch-technical-denied-summary",
-      "description": "Le broker doit refuser une exécution technique sans identité humaine ; cas positifs par sessions CIB.",
+      "description": "The broker must refuse technical execution without human identity; positive cases use CIB sessions.",
       "workflow": {
         "workflow_id": "cib-launch-summary",
         "input": {

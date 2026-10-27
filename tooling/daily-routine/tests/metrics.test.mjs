@@ -7,7 +7,7 @@ const { summarize, validateEntry } = await import(`data:text/javascript,${encode
 const base = (overrides = {}) => ({
   session_id: "session-1", comparaison_id: "cmp-1", dossier_id: "dossier-1",
   jeu: "qualification", phase: "reference", date: "2026-10-11",
-  categorie: "onboarding", complexite: "standard", critere_qualite: "résultat validé",
+  categorie: "onboarding", complexite: "standard", critere_qualite: "validated result",
   qualite: "valide", mesure_ref: "clock-manuel", prochaine_etape: "relecture",
   confirmation_manuelle: "oui", temps_observe: "oui",
   execution_minutes: 20, relecture_minutes: 5, correction_minutes: 2,
@@ -58,6 +58,11 @@ const duplicate = { ...assist, session_id: ref.session_id, dossier_id: "dossier-
 result = summarize([ref, assist, duplicate]);
 assert.equal(result.items.length, 2);
 assert.equal(result.exclusions.at(-1).reason, "session_id_dupliqué");
+assert.equal(result.exclusions.at(-1).reason_label, "Duplicate measurement ID");
+assert.equal(result.items[1].phase, "assiste");
+assert.equal(result.items[1].phase_label, "Assisted");
+assert.equal(result.items[1].qualite, "valide");
+assert.equal(result.items[1].quality_label, "Validated");
 
 const noPair = record({ session_id: "session-4", comparaison_id: "cmp-no-pair", dossier_id: "dossier-no-pair", installation_minutes: 7 });
 result = summarize([ref, assist, noPair]);

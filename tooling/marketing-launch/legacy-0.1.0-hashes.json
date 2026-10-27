@@ -1,0 +1,17 @@
+{
+  "miniapps/cib-launch-campaign-console.json": "1f06cf91b816e8785ce1928cde4cf2110e7537a8c2539e7803ae4afb16218fa9",
+  "miniapps/cib-launch-content-console.json": "8681a6b662860c216ff26a2c3723ce42398203d184f415be5259e767c4806b74",
+  "miniapps/cib-launch-direction-console.json": "fe4cfd08624f5e1202abb60b7a816767e6cb4181f52ecbea8ad6967d077b0109",
+  "miniapps/cib-launch-request-console.json": "c275bb20c9e43e740bbe460cb990833586b955fa04c46bf372294efa4c58172c",
+  "miniapps/cib-launch-sharing-console.json": "be9cb40859b39c77dc873c95eee546068a6f54d939d3173fb08a9b163bf9b10f",
+  "miniapps/cib-launch-support-console.json": "b720594c8983b2334f99d8a420432c9ba8510f9698a0da26a06afd1f7c63092d",
+  "workflows/cib-launch-campaign-save.json": "fdb1bb0b0e17db06bc7cc3c0d05f6e4ce2784cfe80393c60e3cea09013d6a25c",
+  "workflows/cib-launch-content-link.json": "bc4ab3d0e8f31b43fbcaf82cc63728d5cb5a95493913f1d85ccfe1ebba699b31",
+  "workflows/cib-launch-list.json": "9827787428dd6218986e595ce15813dcb1f6df10426ea17a43048d854a051d4c",
+  "workflows/cib-launch-people.json": "f716a25ab15091c1bc36129e1d527f90812e1c8c5b93614a2f5a34472e59cbb3",
+  "workflows/cib-launch-progress.json": "bbfc5a07502145545cad6ca2733b82c99241316208c221463e214225aeb0d36f",
+  "workflows/cib-launch-read.json": "fb07acf4cb15816f8cd8f86e0939c503077aa77c5f9f5539afbc9f96a66bbb73",
+  "workflows/cib-launch-request.json": "a4a4f3d9320f85029fb0ab9177b91a7ec4c707dfbaa9d35eabe46af38a34bcbc",
+  "workflows/cib-launch-share.json": "cdd0daa056e8e7239acef8291b56c495524c72c3493c6641ce1ee91a9e9993ec",
+  "workflows/cib-launch-summary.json": "bb16f5003de0cae7833e9ef80592738b0f777089d614392c7939afd8d72a3c7a"
+}

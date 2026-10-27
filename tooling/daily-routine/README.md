@@ -1,26 +1,24 @@
-# Routine quotidienne — cib-daily-routine 0.1.0
+# Daily routine — cib-daily-routine
 
-Module composé dans chacun des trois rôles. Il prépare le contexte du jour,
-consulte une révision mémoire choisie, relit une fiche et enregistre le temps
-actif déclaré. Le temps humain, l’attente machine et l’assistance restent
-séparés. Aucun gain n’est calculé sans référence comparable.
+This Module is composed into each of the three roles. It prepares the daily
+context, retrieves a selected memory revision and a case, and records declared
+active time. Human time, machine waiting time and assistance remain separate.
+No gain is calculated without a comparable baseline.
 
 ```sh
-python3 tooling/daily-routine/compose.py --consumer-dir /chemin/consommateur
-python3 tooling/daily-routine/compose.py --consumer-dir /chemin/consommateur --write
+python3 tooling/daily-routine/compose.py --consumer-dir /path/to/consumer
+python3 tooling/daily-routine/compose.py --consumer-dir /path/to/consumer --write
 ```
 
-Les ressources `<role>-read` et `company-memory-query` doivent déjà exister dans
-chaque rôle : composer le socle, la mémoire et leur intégration avant la routine.
-Le composeur préserve les autres fichiers et refuse une divergence inconnue.
-Le propriétaire du stockage natif, les accès aux relevés et la surface publiée
-restent à configurer dans le consommateur ; la présence d’un formulaire ne crée
-aucun droit. Ne pas présenter les fichiers de mesure comme un registre multi-
-rédacteurs doté d’ACL par ligne ou d’une synchronisation transactionnelle.
+Each role must already have `<role>-read` and `company-memory-query`: compose
+the role, memory and their integration before the routine. The composer
+preserves unrelated files and refuses unknown divergence. The native storage
+owner, access to measurements and the published surface must be configured in
+the consumer; a form does not grant permission. Measurement files are not a
+multi-writer ledger with row ACLs or transactional synchronization.
 
-Depuis Home, ouvrir l’Application puis les consoles `daily-context-console`,
-`daily-report-console` et `daily-time-console` du rôle autorisé. Consigner une
-durée observée et les difficultés ; une durée absente reste non renseignée.
-Le Module ne planifie aucune tâche et ne produit aucun effet métier externe.
-Voir [installation](../../docs/INSTALLATION.md) et
-[tests](../../docs/TESTING.md).
+From Home, open the Application and the authorized role's
+`daily-context-console`, `daily-report-console` and `daily-time-console`.
+Record observed duration and difficulties; an absent duration remains unset.
+The Module schedules no task and produces no external business effect.
+See [installation](../../docs/INSTALLATION.md) and [tests](../../docs/TESTING.md).

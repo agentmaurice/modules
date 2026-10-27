@@ -3,77 +3,77 @@
   "modules": [
     {
       "key": "company-memory",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "manifest": "company-memory/module.yaml",
       "workflows": 10,
       "miniapps": 6
     },
     {
       "key": "cib-contenu",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "manifest": "content/module.yaml",
       "workflows": 6,
       "miniapps": 2
     },
     {
       "key": "cib-contenu-memory",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "manifest": "content-memory/module.yaml",
       "workflows": 4,
       "miniapps": 4
     },
     {
       "key": "cib-daily-routine",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "manifest": "daily-routine/module.yaml",
       "workflows": 4,
       "miniapps": 3
     },
     {
       "key": "cib-enterprise-admin",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "manifest": "enterprise-admin/module.yaml",
       "workflows": 7,
       "miniapps": 3
     },
     {
       "key": "cib-marketing-launch",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "manifest": "marketing-launch/module.yaml",
       "workflows": 9,
       "miniapps": 6
     },
     {
       "key": "cib-accompagnement",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "manifest": "support/module.yaml",
       "workflows": 6,
       "miniapps": 2
     },
     {
       "key": "cib-accompagnement-memory",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "manifest": "support-memory/module.yaml",
       "workflows": 3,
       "miniapps": 3
     },
     {
       "key": "cib-veille",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "manifest": "watch/module.yaml",
       "workflows": 7,
       "miniapps": 2
     },
     {
       "key": "cib-veille-memory",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "manifest": "watch-memory/module.yaml",
       "workflows": 3,
       "miniapps": 3
     },
     {
       "key": "cib-work-dossiers",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "manifest": "work-cases/module.yaml",
       "workflows": 6,
       "miniapps": 2

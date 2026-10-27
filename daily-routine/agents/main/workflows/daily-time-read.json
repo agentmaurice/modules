@@ -3,8 +3,8 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "daily-time-read",
-  "version": "1",
-  "title": "Relire une mesure",
+  "version": "2",
+  "title": "Review a measurement",
   "actions": [
     {
       "id": "validate",

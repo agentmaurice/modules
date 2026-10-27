@@ -5,64 +5,64 @@
       {
         "agent_id": "<AGENT_ID_VEILLE>",
         "miniapp_id": "veille-console",
-        "version": "4"
+        "version": "7"
       },
       {
         "agent_id": "<AGENT_ID_CONTENU>",
         "miniapp_id": "contenu-console",
-        "version": "4"
+        "version": "7"
       },
       {
         "agent_id": "<AGENT_ID_ACCOMPAGNEMENT>",
         "miniapp_id": "accompagnement-console",
-        "version": "5"
+        "version": "8"
       }
     ],
     "workflows": [
       {
         "agent_id": "<AGENT_ID_VEILLE>",
         "workflow_id": "veille-save",
-        "version": "1"
+        "version": "3"
       },
       {
         "agent_id": "<AGENT_ID_VEILLE>",
         "workflow_id": "veille-list",
-        "version": "1"
+        "version": "3"
       },
       {
         "agent_id": "<AGENT_ID_VEILLE>",
         "workflow_id": "veille-read",
-        "version": "1"
+        "version": "3"
       },
       {
         "agent_id": "<AGENT_ID_CONTENU>",
         "workflow_id": "contenu-save",
-        "version": "1"
+        "version": "3"
       },
       {
         "agent_id": "<AGENT_ID_CONTENU>",
         "workflow_id": "contenu-list",
-        "version": "1"
+        "version": "3"
       },
       {
         "agent_id": "<AGENT_ID_CONTENU>",
         "workflow_id": "contenu-read",
-        "version": "1"
+        "version": "3"
       },
       {
         "agent_id": "<AGENT_ID_ACCOMPAGNEMENT>",
         "workflow_id": "accompagnement-save",
-        "version": "2"
+        "version": "4"
       },
       {
         "agent_id": "<AGENT_ID_ACCOMPAGNEMENT>",
         "workflow_id": "accompagnement-list",
-        "version": "1"
+        "version": "3"
       },
       {
         "agent_id": "<AGENT_ID_ACCOMPAGNEMENT>",
         "workflow_id": "accompagnement-read",
-        "version": "1"
+        "version": "3"
       }
     ]
   },

@@ -73,6 +73,18 @@ class ComposeTest(unittest.TestCase):
             COMPOSE.main()
         self.assertEqual(b"new", target.read_bytes())
 
+    def test_upgrade_exact_022_resource_and_reject_modified_copy(self):
+        root = self.consumer()
+        target = root / "agents/veille/workflows/cib-case-read.json"
+        target.parent.mkdir(parents=True)
+        fixture = ROOT / "tests/fixtures/cib-case-read-0.2.2.json"
+        target.write_bytes(fixture.read_bytes())
+        planned = COMPOSE.compose(root)
+        self.assertEqual(json.loads(planned[target])["version"], "3")
+        target.write_bytes(fixture.read_bytes() + b" ")
+        with self.assertRaisesRegex(ValueError, "divergent"):
+            COMPOSE.compose(root)
+
     def test_owner_path_and_identity_are_validated(self):
         root = self.consumer()
         with self.assertRaisesRegex(ValueError, "invalid owner"):

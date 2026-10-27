@@ -1,20 +1,19 @@
-# Services Company in a Box
+# Company in a Box services
 
-Les Modules de base sont [Veille](../watch/module.yaml),
-[Contenu](../content/module.yaml) et
-[Accompagnement](../support/module.yaml), version 0.2.4.
-Le composeur [template/compose.py](../templates/company-in-a-box/compose.py) les copie dans les trois
-Agents préinitialisés du projet consommateur, en preview par défaut.
+The base Modules are [Watch](../watch/module.yaml),
+[Content](../content/module.yaml) and [Support](../support/module.yaml). The
+[template composer](../templates/company-in-a-box/compose.py) copies them into
+three initialized Agents in the consumer project, in preview mode by default.
 
-La [mémoire autonome](../tooling/company-memory/README.md), son
-[intégration](../tooling/memory-integration/README.md), la
-[routine quotidienne](../tooling/daily-routine/README.md), les
-[dossiers et Direction](../tooling/work-cases/README.md),
-[l’administration](../tooling/enterprise-admin/README.md) et le
-[Marketing de lancement](../tooling/marketing-launch/README.md) sont composables selon
-les besoins de l’entreprise.
+[Standalone memory](../tooling/company-memory/README.md), its
+[integration](../tooling/memory-integration/README.md), the
+[daily routine](../tooling/daily-routine/README.md),
+[work cases and Direction](../tooling/work-cases/README.md),
+[administration](../tooling/enterprise-admin/README.md) and
+[launch Marketing](../tooling/marketing-launch/README.md) can be composed to
+meet the company's needs.
 
-Voir [installation](INSTALLATION.md),
-[droits](SECURITY.md) et [tests](TESTING.md).
-Les données, comptes et droits sont ceux de l’instance destinataire, jamais
-ceux d’une entreprise source. Le mode initial est manuel, sans effet externe.
+See [installation](INSTALLATION.md), [permissions](SECURITY.md) and
+[tests](TESTING.md). Data, accounts and permissions belong to the destination
+instance, never to a source company. The initial mode is manual, without
+external effects.

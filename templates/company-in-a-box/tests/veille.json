@@ -9,11 +9,11 @@
         "workflow_id": "veille-save",
         "input": {
           "dossier_id": "test-veille-p1",
-          "entreprise": "Entreprise synthétique",
+          "entreprise": "Synthetic company",
           "source_ref": "https://example.test/produit",
           "source_date": "2026-10-09",
           "date_revue": "2026-10-10",
-          "faits": "Une démonstration synthétique est disponible.",
+          "faits": "A synthetic demonstration is available.",
           "preuve_ref": "fixture:p1/veille",
           "role_demande": "contenu",
           "contradiction": false,
@@ -26,7 +26,7 @@
           "expected": "failed"
         }
       ],
-      "description": "Exécution technique sans preuve humaine : le broker ACL doit refuser cet accès. Les cas positifs sont vérifiés avec les comptes existants depuis la surface CIB."
+      "description": "Technical execution without human identity: the ACL broker must refuse access. Positive cases are verified with existing accounts from the CIB surface."
     },
     {
       "id": "read",
@@ -42,7 +42,7 @@
           "expected": "failed"
         }
       ],
-      "description": "Exécution technique sans preuve humaine : le broker ACL doit refuser cet accès. Les cas positifs sont vérifiés avec les comptes existants depuis la surface CIB."
+      "description": "Technical execution without human identity: the ACL broker must refuse access. Positive cases are verified with existing accounts from the CIB surface."
     },
     {
       "id": "route-unknown",
@@ -105,11 +105,11 @@
         "workflow_id": "check_research",
         "input": {
           "dossier_id": "test-veille-p1",
-          "entreprise": "Entreprise synthétique",
+          "entreprise": "Synthetic company",
           "source_ref": "https://example.test/produit",
           "source_date": "2026-10-09",
           "date_revue": "2026-10-10",
-          "faits": "Une démonstration synthétique est disponible.",
+          "faits": "A synthetic demonstration is available.",
           "preuve_ref": "fixture:p1/veille",
           "role_demande": "contenu",
           "contradiction": true,
@@ -135,11 +135,11 @@
         "workflow_id": "check_research",
         "input": {
           "dossier_id": "test-veille-p1",
-          "entreprise": "Entreprise synthétique",
+          "entreprise": "Synthetic company",
           "source_ref": "https://example.test/produit",
           "source_date": "2026-01-01",
           "date_revue": "2026-10-10",
-          "faits": "Une démonstration synthétique est disponible.",
+          "faits": "A synthetic demonstration is available.",
           "preuve_ref": "fixture:p1/veille",
           "role_demande": "contenu",
           "contradiction": false,
@@ -165,11 +165,11 @@
         "workflow_id": "veille-save",
         "input": {
           "dossier_id": "../secret",
-          "entreprise": "Entreprise synthétique",
+          "entreprise": "Synthetic company",
           "source_ref": "https://example.test/produit",
           "source_date": "2026-10-09",
           "date_revue": "2026-10-10",
-          "faits": "Une démonstration synthétique est disponible.",
+          "faits": "A synthetic demonstration is available.",
           "preuve_ref": "fixture:p1/veille",
           "role_demande": "contenu",
           "contradiction": false,
@@ -182,7 +182,7 @@
           "expected": "failed"
         }
       ],
-      "description": "Exécution technique sans preuve humaine : le broker ACL doit refuser cet accès. Les cas positifs sont vérifiés avec les comptes existants depuis la surface CIB."
+      "description": "Technical execution without human identity: the ACL broker must refuse access. Positive cases are verified with existing accounts from the CIB surface."
     },
     {
       "id": "no-confirmation",
@@ -190,11 +190,11 @@
         "workflow_id": "veille-save",
         "input": {
           "dossier_id": "test-veille-p1",
-          "entreprise": "Entreprise synthétique",
+          "entreprise": "Synthetic company",
           "source_ref": "https://example.test/produit",
           "source_date": "2026-10-09",
           "date_revue": "2026-10-10",
-          "faits": "Une démonstration synthétique est disponible.",
+          "faits": "A synthetic demonstration is available.",
           "preuve_ref": "fixture:p1/veille",
           "role_demande": "contenu",
           "contradiction": false,
@@ -207,7 +207,7 @@
           "expected": "failed"
         }
       ],
-      "description": "Exécution technique sans preuve humaine : le broker ACL doit refuser cet accès. Les cas positifs sont vérifiés avec les comptes existants depuis la surface CIB."
+      "description": "Technical execution without human identity: the ACL broker must refuse access. Positive cases are verified with existing accounts from the CIB surface."
     }
   ]
 }

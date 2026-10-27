@@ -3,9 +3,9 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "daily-context-console",
-  "version": "1",
-  "title": "Ma routine — dossier et mémoire",
-  "description": "Routine manuelle interne ; aucun envoi ni publication.",
+  "version": "2",
+  "title": "My routine — case and memory",
+  "description": "Internal manual routine; no sending or publication.",
   "ui": {
     "renderer": "component",
     "component": "daily-routine",
@@ -15,23 +15,23 @@
           "type": "steps",
           "items": [
             {
-              "title": "Choisir un dossier",
-              "description": "Veille : source datée. Contenu : brouillon interne. Accompagnement : prochaine aide à préparer.",
+              "title": "Choose a case",
+              "description": "Watch: dated source. Content: internal draft. Support: next assistance to prepare.",
               "status": "todo"
             },
             {
-              "title": "Consulter la mémoire",
-              "description": "Chercher une révision, vérifier sa date et ses citations.",
+              "title": "View memory",
+              "description": "Find a revision and check its date and citations.",
               "status": "todo"
             },
             {
-              "title": "Préparer et relire",
-              "description": "Utiliser les écrans du rôle. Un brouillon préparé ne prouve ni publication ni essai réussi.",
+              "title": "Prepare and review",
+              "description": "Use the role screens. A prepared draft does not prove publication or a successful trial.",
               "status": "todo"
             },
             {
-              "title": "Noter le temps et le retour",
-              "description": "Journal de temps, puis extrait proposé à la mémoire. La revue mémoire reste distincte.",
+              "title": "Record time and feedback",
+              "description": "Record time, then propose an excerpt to memory. Memory review remains separate.",
               "status": "todo"
             }
           ]
@@ -44,7 +44,7 @@
         },
         {
           "type": "text",
-          "value": "Dossier local"
+          "value": "Local case"
         },
         {
           "type": "text",
@@ -54,7 +54,7 @@
         },
         {
           "type": "text",
-          "value": "Mémoire"
+          "value": "Memory"
         },
         {
           "type": "text",
@@ -70,7 +70,7 @@
         },
         {
           "type": "text",
-          "value": "Révision"
+          "value": "Revision"
         },
         {
           "type": "text",
@@ -90,7 +90,7 @@
         },
         {
           "type": "text",
-          "value": "À revoir avant"
+          "value": "Review before"
         },
         {
           "type": "text",
@@ -125,7 +125,7 @@
     "dossier_id": "",
     "proposal_id": "",
     "result": {
-      "message": "Aucune saisie effectuée."
+      "message": "No entry recorded."
     },
     "listing": {
       "items": []

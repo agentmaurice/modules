@@ -1,0 +1,76 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "daily-context",
+  "version": "2",
+  "title": "Préparer mon dossier avec la mémoire",
+  "actions": [
+    {
+      "id": "dossier",
+      "type": "code_execution",
+      "context": {
+        "allowed_tools": [
+          "recipe--application_data_v1"
+        ]
+      },
+      "code": "import { callTool } from './tools/nats_bridge.ts';\nconst x={{ json . }}; if(typeof x.dossier_id!==\"string\"||!/^[a-z0-9][a-z0-9-]{0,63}$/.test(x.dossier_id)) throw Error(\"invalid_dossier_id\"); const value=await callTool(\"recipe--application_data_v1\",{operation:\"read\",namespace:\"cib-veille\",record_key:x.dossier_id}); return {data:{record:value.record.data}};",
+      "output_key": "local"
+    },
+    {
+      "id": "memory",
+      "type": "workflow_call",
+      "workflow_id": "company-memory-query",
+      "workflow_version": "1",
+      "execution": "sync",
+      "input": {
+        "proposal_id": "{{ proposal_id }}"
+      },
+      "output_key": "memory"
+    },
+    {
+      "id": "context",
+      "type": "code_execution",
+      "code": "const r=({{ json .local }}).data.record;const m=({{ json .memory }}).data;const valid=m.status===\"validated\"&&typeof m.answer===\"string\"&&m.answer.trim()&&Array.isArray(m.citations)&&m.citations.length>0&&Number.isFinite(Date.parse(m.expires_at))&&Date.parse(m.expires_at)>Date.now();return {dossier:r,content:JSON.stringify(r,null,2),memory_status:m.status,memory_answer:valid?m.answer:\"Mémoire non utilisable : une revue est nécessaire.\",citations:valid?m.citations:[],proposal_id:m.proposal_id,expires_at:m.expires_at||\"\",ready:!!valid,message:valid?\"Contexte disponible. Préparez le livrable interne, puis relisez-le avant de noter le temps.\":\"Mémoire non validée ou périmée : ne pas utiliser comme fait. Revenir à la collecte ou à la revue mémoire.\"};",
+      "output_key": "context"
+    }
+  ],
+  "output": {
+    "dossier": "{{ context.dossier }}",
+    "content": "{{ context.content }}",
+    "memory_status": "{{ context.memory_status }}",
+    "memory_answer": "{{ context.memory_answer }}",
+    "citations": "{{ context.citations }}",
+    "proposal_id": "{{ context.proposal_id }}",
+    "expires_at": "{{ context.expires_at }}",
+    "ready": "{{ context.ready }}",
+    "message": "{{ context.message }}",
+    "manual_only": true,
+    "external_effect": false
+  },
+  "forms": [
+    {
+      "id": "submit",
+      "title": "Préparer mon dossier avec la mémoire",
+      "fields": [
+        {
+          "name": "dossier_id",
+          "title": "Dossier local",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "proposal_id",
+          "title": "Révision mémoire à consulter",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "actions_on_submit": [
+        "dossier",
+        "memory",
+        "context"
+      ]
+    }
+  ]
+}

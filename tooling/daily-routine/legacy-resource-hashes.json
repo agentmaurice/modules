@@ -1,8 +1,80 @@
 {
-  "agents/veille/workflows/daily-role-read.json": "93ba3ad2fd3416f1cce337a80a508833ae7651c5ae635b75ed04e2948fcd7637",
-  "agents/veille/workflows/daily-context.json": "c2f566f51b879f88d59ee380d714de645e75521fc2f710617ebacc816b8678f4",
-  "agents/contenu/workflows/daily-role-read.json": "1e85aec057d79567c9dde1400cb4650d56e7a31bc4bc2daa1b08c244157da536",
-  "agents/contenu/workflows/daily-context.json": "c2f566f51b879f88d59ee380d714de645e75521fc2f710617ebacc816b8678f4",
-  "agents/accompagnement/workflows/daily-role-read.json": "6d4955e8e912d88a7b1896610d1ed5e345e78be8fa369f301bb389fb6d7d3037",
-  "agents/accompagnement/workflows/daily-context.json": "c2f566f51b879f88d59ee380d714de645e75521fc2f710617ebacc816b8678f4"
+  "agents/veille/workflows/daily-role-read.json": [
+    "93ba3ad2fd3416f1cce337a80a508833ae7651c5ae635b75ed04e2948fcd7637",
+    "1d9e2aad9db6a03713ed3ed730a5c28dfda05ba53b0446b04f49e2f67c0f68eb"
+  ],
+  "agents/veille/workflows/daily-context.json": [
+    "c2f566f51b879f88d59ee380d714de645e75521fc2f710617ebacc816b8678f4",
+    "8e5f98de20fe09090e777b757f411658d5f4ed7b3fb884bce9c35b63714fa329"
+  ],
+  "agents/contenu/workflows/daily-role-read.json": [
+    "1e85aec057d79567c9dde1400cb4650d56e7a31bc4bc2daa1b08c244157da536",
+    "85da59931c3e8e5781214b35488a46fd822841c2d8a494373c0cf242ba015fe7"
+  ],
+  "agents/contenu/workflows/daily-context.json": [
+    "c2f566f51b879f88d59ee380d714de645e75521fc2f710617ebacc816b8678f4",
+    "f321b5cb52308376c1d83a31aec2c67bb0e9629977f6cb4a8ec45683fc4984e4"
+  ],
+  "agents/accompagnement/workflows/daily-role-read.json": [
+    "6d4955e8e912d88a7b1896610d1ed5e345e78be8fa369f301bb389fb6d7d3037",
+    "942dd80146b836e274f7f547e8c10d84d4f89828ae5f12f75f4588877552f0a9"
+  ],
+  "agents/accompagnement/workflows/daily-context.json": [
+    "c2f566f51b879f88d59ee380d714de645e75521fc2f710617ebacc816b8678f4",
+    "3da7e3e5c880646778fd0ebe85fc3821092b994bcc02721d6770d2b009762f43"
+  ],
+  "agents/veille/miniapps/daily-context-console.json": [
+    "bf969480c463e42e7ad78fe691d68bcdcadda47166f999965052c42a2fe87da6"
+  ],
+  "agents/veille/miniapps/daily-report-console.json": [
+    "cbbd4959eeee08da3484e46862c42e44b990438edd71175ed3835bbf1b7e944c"
+  ],
+  "agents/veille/miniapps/daily-time-console.json": [
+    "7fc6c9c9123324696ca275ff9f9c9e8d6c516f07bf615621668644c3d615ae11"
+  ],
+  "agents/veille/workflows/daily-report.json": [
+    "16aecba004b55e12de6eddc45676a9018ed494dfd94d48bcfa2dc10a450c644a"
+  ],
+  "agents/veille/workflows/daily-time-read.json": [
+    "7987cc9512bede59da140f40828a4a22a1822b27a52a8c1034855fde80d56cb4"
+  ],
+  "agents/veille/workflows/daily-time-save.json": [
+    "0dfb749bf36c31535b3c0d2b89cf03bbfc7a654f50a57c4e18a46090aba97a6e"
+  ],
+  "agents/contenu/miniapps/daily-context-console.json": [
+    "bf969480c463e42e7ad78fe691d68bcdcadda47166f999965052c42a2fe87da6"
+  ],
+  "agents/contenu/miniapps/daily-report-console.json": [
+    "cbbd4959eeee08da3484e46862c42e44b990438edd71175ed3835bbf1b7e944c"
+  ],
+  "agents/contenu/miniapps/daily-time-console.json": [
+    "7fc6c9c9123324696ca275ff9f9c9e8d6c516f07bf615621668644c3d615ae11"
+  ],
+  "agents/contenu/workflows/daily-report.json": [
+    "16aecba004b55e12de6eddc45676a9018ed494dfd94d48bcfa2dc10a450c644a"
+  ],
+  "agents/contenu/workflows/daily-time-read.json": [
+    "7987cc9512bede59da140f40828a4a22a1822b27a52a8c1034855fde80d56cb4"
+  ],
+  "agents/contenu/workflows/daily-time-save.json": [
+    "0dfb749bf36c31535b3c0d2b89cf03bbfc7a654f50a57c4e18a46090aba97a6e"
+  ],
+  "agents/accompagnement/miniapps/daily-context-console.json": [
+    "bf969480c463e42e7ad78fe691d68bcdcadda47166f999965052c42a2fe87da6"
+  ],
+  "agents/accompagnement/miniapps/daily-report-console.json": [
+    "cbbd4959eeee08da3484e46862c42e44b990438edd71175ed3835bbf1b7e944c"
+  ],
+  "agents/accompagnement/miniapps/daily-time-console.json": [
+    "7fc6c9c9123324696ca275ff9f9c9e8d6c516f07bf615621668644c3d615ae11"
+  ],
+  "agents/accompagnement/workflows/daily-report.json": [
+    "16aecba004b55e12de6eddc45676a9018ed494dfd94d48bcfa2dc10a450c644a"
+  ],
+  "agents/accompagnement/workflows/daily-time-read.json": [
+    "7987cc9512bede59da140f40828a4a22a1822b27a52a8c1034855fde80d56cb4"
+  ],
+  "agents/accompagnement/workflows/daily-time-save.json": [
+    "0dfb749bf36c31535b3c0d2b89cf03bbfc7a654f50a57c4e18a46090aba97a6e"
+  ]
 }

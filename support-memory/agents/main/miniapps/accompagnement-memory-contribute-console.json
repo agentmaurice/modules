@@ -3,8 +3,8 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "accompagnement-memory-contribute-console",
-  "version": "2",
-  "title": "Accompagnement — Proposer un extrait à la mémoire",
+  "version": "3",
+  "title": "Support — Propose an excerpt to memory",
   "ui": {
     "renderer": "component",
     "component": "company-in-a-box",
@@ -12,11 +12,11 @@
       "layout": [
         {
           "type": "text",
-          "value": "Mode manuel. Seul le propriétaire peut proposer un extrait explicitement autorisé à la mémoire commune. Le dossier privé complet n’est pas partagé."
+          "value": "Manual mode. Only the owner may propose an explicitly authorized excerpt to shared memory. The complete private case is not shared."
         },
         {
           "type": "text",
-          "value": "État"
+          "value": "Status"
         },
         {
           "type": "text",
@@ -26,7 +26,7 @@
         },
         {
           "type": "text",
-          "value": "Révision proposée"
+          "value": "Proposed revision"
         },
         {
           "type": "text",
@@ -36,7 +36,7 @@
         },
         {
           "type": "text",
-          "value": "Seul cet extrait est partagé"
+          "value": "Only this excerpt is shared"
         },
         {
           "type": "text",

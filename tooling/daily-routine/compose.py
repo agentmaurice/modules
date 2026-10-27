@@ -17,17 +17,19 @@ def compose(consumer):
         for path in sorted(source.rglob('*.json')):planned[root/path.relative_to(source)]=path.read_bytes()
         code = "import { callTool } from './tools/nats_bridge.ts';\n" + 'const x={{ json . }}; if(typeof x.dossier_id!=="string"||!/^[a-z0-9][a-z0-9-]{0,63}$/.test(x.dossier_id)) throw Error("invalid_dossier_id"); const value=await callTool("recipe--application_data_v1",{operation:"read",namespace:"cib-'+role+'",record_key:x.dossier_id}); return {data:{record:value.record.data}};'
         action={'id':'read','type':'code_execution','context':{'allowed_tools':['recipe--application_data_v1']},'code':code,'output_key':'local'}
-        bridge={'$schema':'agentmaurice.workflow/v2','schema_version':2,'kind':'workflow','workflow_id':'daily-role-read','version':'2','title':'Routine — consulter le dossier local','actions':[action],'output':{'record':'{{ local.data.record }}'}}
+        bridge={'$schema':'agentmaurice.workflow/v2','schema_version':2,'kind':'workflow','workflow_id':'daily-role-read','version':'3','title':'Routine — view local case','actions':[action],'output':{'record':'{{ local.data.record }}'}}
         planned[root/'workflows/daily-role-read.json']=encoded(bridge)
         context=json.loads((source/'workflows/daily-context.json').read_text())
-        context['version']='2'
+        context['version']='3'
         context['actions'][0]={**action,'id':'dossier'}
         planned[root/'workflows/daily-context.json']=encoded(context)
     legacy=json.loads((ROOT/'legacy-resource-hashes.json').read_text())
     for dest,data in planned.items():
         if dest.exists() and dest.read_bytes()!=data:
             relative=str(dest.relative_to(consumer))
-            if legacy.get(relative)!=hashlib.sha256(dest.read_bytes()).hexdigest():
+            known=legacy.get(relative, [])
+            if isinstance(known,str):known=[known]
+            if hashlib.sha256(dest.read_bytes()).hexdigest() not in known:
                 raise ValueError('refusing divergent resource '+str(dest))
     return planned
 
