@@ -1,0 +1,36 @@
+{
+  "name": "company_memory",
+  "description": "Company Memory — pilote manuel",
+  "version": "1.1.0",
+  "image": "rg.fr-par.scw.cloud/agent-maurice/memory/memory-sidecar@sha256:10ec6f7ebd498127137edf9007b06286b9395ef92a89dc5ffa9a6ec7fa3cae7f",
+  "sidecar_compatible": true,
+  "source": "builtin",
+  "tools": [
+    {
+      "name": "memory.health",
+      "description": "memory.health"
+    },
+    {
+      "name": "memory.entities.upsert",
+      "description": "memory.entities.upsert"
+    },
+    {
+      "name": "memory.facts.append",
+      "description": "memory.facts.append"
+    },
+    {
+      "name": "memory.documents.register",
+      "description": "memory.documents.register"
+    },
+    {
+      "name": "memory.query",
+      "description": "memory.query"
+    }
+  ],
+  "tags": [
+    "company-memory"
+  ],
+  "metadata": {
+    "qualification": "published image v1.1.0 pinned by digest (AGENT-1050, pipeline vert)"
+  }
+}

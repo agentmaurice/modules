@@ -1,0 +1,154 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "kind": "workflow",
+  "workflow_id": "memory-propose-update",
+  "version": "4",
+  "title": "Proposer une mise à jour mémoire",
+  "forms": [
+    {
+      "id": "submit",
+      "title": "Saisie manuelle",
+      "fields": [
+        {
+          "name": "proposal_id",
+          "type": "string",
+          "required": true,
+          "title": "Identifiant proposition"
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "required": true,
+          "title": "Titre"
+        },
+        {
+          "name": "content",
+          "type": "text",
+          "required": true,
+          "title": "Texte proposé"
+        },
+        {
+          "name": "source_id",
+          "type": "string",
+          "required": true,
+          "title": "Source"
+        },
+        {
+          "name": "evidence_quote",
+          "type": "text",
+          "required": true,
+          "title": "Citation exacte"
+        },
+        {
+          "name": "review_due",
+          "type": "string",
+          "required": true,
+          "title": "Date limite ISO"
+        },
+        {
+          "name": "previous_revision",
+          "type": "string",
+          "required": false,
+          "title": "Révision précédente"
+        },
+        {
+          "name": "confirmation_manuelle",
+          "type": "select",
+          "required": true,
+          "title": "Confirmer l’écriture",
+          "options": [
+            {
+              "value": "non",
+              "label": "Non"
+            },
+            {
+              "value": "oui",
+              "label": "Oui"
+            }
+          ]
+        }
+      ],
+      "actions_on_submit": [
+        "propose-validate",
+        "propose-read-source",
+        "propose-check-evidence",
+        "propose-list-files",
+        "propose-check-absent",
+        "propose-write"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "propose-validate",
+      "type": "code_execution",
+      "code": "if (typeof proposal_id !== \"string\" || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(proposal_id)) throw new Error(\"invalid_slug\");\nif (typeof source_id !== \"string\" || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(source_id)) throw new Error(\"invalid_slug\");\nif (confirmation_manuelle !== \"oui\") throw new Error(\"manual_confirmation_required\");\nconst texts = {title: title, content: content, evidence_quote: evidence_quote};\nfor (const f of [\"title\", \"content\", \"evidence_quote\"]) {\n  const v = texts[f];\n  if (typeof v !== \"string\" || !v.trim() || v.length > (f === \"content\" ? 20000 : f === \"evidence_quote\" ? 4000 : 200)) throw new Error(\"invalid_\" + f);\n}\nif (typeof review_due !== \"string\" || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.\\d{3}Z)?$/.test(review_due) || Number.isNaN(Date.parse(review_due)) || (review_due.length === 10 ? new Date(review_due + \"T00:00:00Z\").toISOString().slice(0, 10) !== review_due : new Date(review_due).toISOString() !== review_due)) throw new Error(\"invalid_review_due\");\nconst prev = previous_revision === \"\" ? null : previous_revision;\nif (prev != null && (typeof prev !== \"string\" || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(prev))) throw new Error(\"invalid_previous_revision\");\nreturn {proposal_id, title, content, source_id, evidence_quote, review_due, previous_revision: prev, status: \"proposed\", confirmation_manuelle: true};",
+      "context": {
+        "proposal_id": "{{ proposal_id }}",
+        "source_id": "{{ source_id }}",
+        "title": "{{ title }}",
+        "content": "{{ content }}",
+        "evidence_quote": "{{ evidence_quote }}",
+        "review_due": "{{ review_due }}",
+        "previous_revision": "{{ default \"\" .previous_revision }}",
+        "confirmation_manuelle": "{{ confirmation_manuelle }}"
+      },
+      "output_key": "proposal"
+    },
+    {
+      "id": "propose-read-source",
+      "type": "tool_call",
+      "tool": "read_file",
+      "params": {
+        "path": "/company-memory/source-{{ proposal.source_id }}.json"
+      },
+      "output_key": "source_file"
+    },
+    {
+      "id": "propose-check-evidence",
+      "type": "code_execution",
+      "code": "const raw = typeof source_file === \"string\" ? source_file : (source_file && typeof source_file.content === \"string\" ? source_file.content : JSON.stringify(source_file));\nlet d;\ntry { d = JSON.parse(raw); } catch (e) { throw new Error(\"source_invalid\"); }\nif (d.source_id !== proposal.source_id || typeof d.content !== \"string\" || !d.content.includes(proposal.evidence_quote)) throw new Error(\"evidence_or_source_mismatch\");\nreturn {ok: true};",
+      "context": {
+        "proposal": "{{ proposal }}",
+        "source_file": "{{ source_file }}"
+      },
+      "output_key": "evidence"
+    },
+    {
+      "id": "propose-list-files",
+      "type": "tool_call",
+      "tool": "list_files",
+      "params": {
+        "path": "/company-memory"
+      },
+      "output_key": "files"
+    },
+    {
+      "id": "propose-check-absent",
+      "type": "code_execution",
+      "code": "if (!Array.isArray(files)) throw new Error(\"storage_listing_unavailable\");\nconst p = \"/company-memory/proposal-\" + proposal.proposal_id + \".json\";\nif (files.some(f => f && f.path === p)) throw new Error(\"proposal_already_exists\");\nif (proposal.previous_revision && !files.some(f => f && f.path === \"/company-memory/proposal-\" + proposal.previous_revision + \".json\")) throw new Error(\"previous_revision_missing\");\nreturn {path: p};",
+      "context": {
+        "files": "{{ files }}",
+        "proposal": "{{ proposal }}"
+      },
+      "output_key": "target"
+    },
+    {
+      "id": "propose-write",
+      "type": "tool_call",
+      "tool": "write_file",
+      "params": {
+        "path": "{{ target.path }}",
+        "content": "{{ json .proposal }}",
+        "overwrite": false
+      },
+      "output_key": "saved"
+    }
+  ],
+  "output": {
+    "proposal": "{{ proposal }}",
+    "path": "{{ saved.path }}",
+    "status": "proposed"
+  }
+}

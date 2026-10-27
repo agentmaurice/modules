@@ -1,0 +1,2623 @@
+{
+  "schema_version": 1,
+  "description": "Documentary inventory, not a runtime contract.",
+  "discovery": "top-level */module.yaml; no numerical cap",
+  "exclusions": [
+    "fixtures",
+    "cache",
+    "_archive",
+    "worktrees",
+    "artifacts and private replays"
+  ],
+  "modules": [
+    {
+      "key": "company-memory",
+      "version": "0.3.0",
+      "manifest": "company-memory/module.yaml",
+      "workflows": 10,
+      "miniapps": 6,
+      "source": {
+        "repository": "gitlab.com/mcpchatui/pilote-maurice",
+        "commit": "8cb35a14b825dcdae4515d46e3b4c5149c154901",
+        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+        "old_path": "solutions/company-memory/module"
+      },
+      "generators_and_composers": [
+        "tooling/company-memory/compose.py"
+      ],
+      "resources": {
+        "workflows": [
+          "company-memory/agents/main/workflows/memory-capture-source.json",
+          "company-memory/agents/main/workflows/memory-health.json",
+          "company-memory/agents/main/workflows/memory-index-revision.json",
+          "company-memory/agents/main/workflows/memory-inspect.json",
+          "company-memory/agents/main/workflows/memory-propose-update.json",
+          "company-memory/agents/main/workflows/memory-query.json",
+          "company-memory/agents/main/workflows/memory-read-supersession.json",
+          "company-memory/agents/main/workflows/memory-review-update.json",
+          "company-memory/agents/main/workflows/memory-search.json",
+          "company-memory/agents/main/workflows/memory-write-supersession.json"
+        ],
+        "miniapps": [
+          "company-memory/agents/main/miniapps/memory-capture.json",
+          "company-memory/agents/main/miniapps/memory-index-console.json",
+          "company-memory/agents/main/miniapps/memory-propose.json",
+          "company-memory/agents/main/miniapps/memory-query-console.json",
+          "company-memory/agents/main/miniapps/memory-review.json",
+          "company-memory/agents/main/miniapps/memory-search-console.json"
+        ],
+        "sha256": {
+          "company-memory/module.yaml": "a26d8495505180a3d75be3ef6b6ea017aaf2467e87e0da0f2e653a4da719314e",
+          "company-memory/agents/main/workflows/memory-capture-source.json": "164543b7b03469ae9e39c540b65c60db4e9ca7e1834eb4747ade52e53742b873",
+          "company-memory/agents/main/workflows/memory-health.json": "409035a9dd3e14fc5e3ce71f8134dfc0dd1b191749057d501ed3a877db36cdd6",
+          "company-memory/agents/main/workflows/memory-index-revision.json": "b41c6693382f72dedebc92d01510bae214829fde62d2b4f797c7f6a28930218f",
+          "company-memory/agents/main/workflows/memory-inspect.json": "a4385ef6e3114e4ed81341677df60b20ac41f391f3e7a599649f44a689c05cc9",
+          "company-memory/agents/main/workflows/memory-propose-update.json": "03fa7810676ccc42ade3a0688d3d97aa218c4b5bbc21449f38e05bb6061d7501",
+          "company-memory/agents/main/workflows/memory-query.json": "bec7547cb51d4bcb4d5ec4ff7336835a8c277def2b1f753379bfa85423600332",
+          "company-memory/agents/main/workflows/memory-read-supersession.json": "74117679bc1c20869d1b6a7ea623e2a2d07bf16ad0c9e708bef1741f012c30a1",
+          "company-memory/agents/main/workflows/memory-review-update.json": "6db84c0a7ecd21db91295752866543015d621ece0bbcbb2324be0947b322408f",
+          "company-memory/agents/main/workflows/memory-search.json": "e8435ab9ffcbc1e347447b7de15bf6555b0923402c412071e1c5c08de800509b",
+          "company-memory/agents/main/workflows/memory-write-supersession.json": "5c4de7536b07e592c65861254f59205454ddb8a98286ab26395a9f979f5ddb8f",
+          "company-memory/agents/main/miniapps/memory-capture.json": "348e426342b2e052548358e184f55f189bded72892008dc145a6fa085b8633a6",
+          "company-memory/agents/main/miniapps/memory-index-console.json": "b42eae5e4627d93fa6a810c3d09ae80d948301851150ccf17cf6c256d0cc6104",
+          "company-memory/agents/main/miniapps/memory-propose.json": "3e3c56aa7019669d685bf29b377d9403cff25992e9fe3f92ec522a0a8d66bb2f",
+          "company-memory/agents/main/miniapps/memory-query-console.json": "7d4ef4fdec7cc04bf8eb4441d79de89643787edfbe9ad626e485a53f8de287e7",
+          "company-memory/agents/main/miniapps/memory-review.json": "c6e79989427c85f8358cd38701dc4c1c6462efae256ab2317e49b09c410f3893",
+          "company-memory/agents/main/miniapps/memory-search-console.json": "ebeb996d4088e706e782918573096afdd748c8e37637c0720e10b61e37e0b93b"
+        }
+      },
+      "workflow_actions": {
+        "company-memory/agents/main/workflows/memory-capture-source.json": {
+          "workflow_id": "memory-capture-source",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "capture-validate",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "a088967353db0b80be2fb68d8ab90eefdcfdc0629484787ed971e09be989a6bf"
+            },
+            {
+              "path": "/actions/1",
+              "id": "capture-write",
+              "type": "tool_call"
+            }
+          ]
+        },
+        "company-memory/agents/main/workflows/memory-health.json": {
+          "workflow_id": "memory-health",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "list",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/1",
+              "id": "health",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "20c26a230a8d58b1192b1d9fe6ab9ed9bf94fc1673841f699c1c9e2ff44d1cf8"
+            }
+          ]
+        },
+        "company-memory/agents/main/workflows/memory-index-revision.json": {
+          "workflow_id": "memory-index-revision",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "index-validate",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "e8df5ad1b48f27a8f2f699df005f9dae83397fff41325c804decc1b2a0dfef12"
+            },
+            {
+              "path": "/actions/1",
+              "id": "revalidate-revision",
+              "type": "workflow_call"
+            },
+            {
+              "path": "/actions/2",
+              "id": "prepare",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "3b477c0ab588ab065f0aa381a17994c7792ade850fbca37380103b2fab0013a4"
+            },
+            {
+              "path": "/actions/3",
+              "id": "store-memory",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/4",
+              "id": "read-back",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/5",
+              "id": "check-copy",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "28c6412e19d2e6c412059ed43f6b3da8035a71c09414d25ea6a914178aa0ac47"
+            },
+            {
+              "path": "/actions/6",
+              "id": "index-brain",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/7",
+              "id": "finish",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "4248db2a540a04dbbb9422b7585885db6f45e6bd47874f6a70f9ef52a2c4820f"
+            }
+          ]
+        },
+        "company-memory/agents/main/workflows/memory-inspect.json": {
+          "workflow_id": "memory-inspect",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "inspect-validate",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "b64f2191b03d81f203f0bccb12dcc9fabdc39c1dbe8dc3c99ff3b9a325ef72bb"
+            },
+            {
+              "path": "/actions/1",
+              "id": "inspect-read-proposal",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/2",
+              "id": "inspect-parse-proposal",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "cb11b562affefa1b33af8f719af8950573db8c451ac1a1349ce39cedc40dab9b"
+            },
+            {
+              "path": "/actions/3",
+              "id": "inspect-read-source",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/4",
+              "id": "inspect",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "7bdf372f970969c166b1f75a893ba72eb668846066d5243f612d2baaf1185466"
+            }
+          ]
+        },
+        "company-memory/agents/main/workflows/memory-propose-update.json": {
+          "workflow_id": "memory-propose-update",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "propose-validate",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "dce027efc1e0eed042cf9076f3a1bc7d0bac8e64c178328d7a9a9b7083f89eaf"
+            },
+            {
+              "path": "/actions/1",
+              "id": "propose-read-source",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/2",
+              "id": "propose-check-evidence",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "5994085fb03974a71176cd0a18cc71c276a6cd8d59becf5efbbf02255d506dae"
+            },
+            {
+              "path": "/actions/3",
+              "id": "propose-list-files",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/4",
+              "id": "propose-check-absent",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "db043ce20302035634ea9abe2b3a3f0ad99fba30f8ebefc0c80c71a8698f371b"
+            },
+            {
+              "path": "/actions/5",
+              "id": "propose-write",
+              "type": "tool_call"
+            }
+          ]
+        },
+        "company-memory/agents/main/workflows/memory-query.json": {
+          "workflow_id": "memory-query",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "query-validate",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "b64f2191b03d81f203f0bccb12dcc9fabdc39c1dbe8dc3c99ff3b9a325ef72bb"
+            },
+            {
+              "path": "/actions/1",
+              "id": "query-read-proposal",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/2",
+              "id": "query-parse-proposal",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "cb11b562affefa1b33af8f719af8950573db8c451ac1a1349ce39cedc40dab9b"
+            },
+            {
+              "path": "/actions/3",
+              "id": "query-read-source",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/4",
+              "id": "read-review",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/5",
+              "id": "read-successors",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/6",
+              "id": "query-list-files",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/7",
+              "id": "find-marker",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "483b53db514c14c61cb82fb3b968f2954572e207ce1f9ca3f4ada9a9d1576dc7"
+            },
+            {
+              "path": "/actions/8",
+              "id": "read-marker",
+              "type": "for_each"
+            },
+            {
+              "path": "/actions/9",
+              "id": "query-answer",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "f0973d4b5ba354974a0369bc7441e4abfd2211c151a8354e8754b6117cb64cac"
+            }
+          ]
+        },
+        "company-memory/agents/main/workflows/memory-read-supersession.json": {
+          "workflow_id": "memory-read-supersession",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "read",
+              "type": "tool_call"
+            }
+          ]
+        },
+        "company-memory/agents/main/workflows/memory-review-update.json": {
+          "workflow_id": "memory-review-update",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "review-validate",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "41bdd7023ca7f2cbb3c6955351ad9f696b9ff71ad0f350a6073e6dac83ec225e"
+            },
+            {
+              "path": "/actions/1",
+              "id": "review-read-proposal",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/2",
+              "id": "review-parse-proposal",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "36e535c582d00927fb24cda1d2652842ee97b37fc236ea5827cdd5fdbe71d359"
+            },
+            {
+              "path": "/actions/3",
+              "id": "review-read-source",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/4",
+              "id": "review-check-evidence",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "b9087f3c00f204ec6e4b6626f10fd6e4c22f39ab90935c2adbb37de3125beaa9"
+            },
+            {
+              "path": "/actions/5",
+              "id": "review-list-files",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/6",
+              "id": "review-check-absent",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "b9c500175b4d55695081b62f1fe798368faf97486607fda78a9b51f9eeaaca6b"
+            },
+            {
+              "path": "/actions/7",
+              "id": "assemble",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "513f4afd58905d1826ef10404bea269abb923d42b13cac8fd6da081062ffa4c7"
+            },
+            {
+              "path": "/actions/8",
+              "id": "plan-supersession",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "573606f17cd6c1dbb66d2d27f6d11c7f9bbbf0f6b5b3760804abe339e5b334d3"
+            },
+            {
+              "path": "/actions/9",
+              "id": "review-write",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/10",
+              "id": "write-supersession",
+              "type": "for_each"
+            }
+          ]
+        },
+        "company-memory/agents/main/workflows/memory-search.json": {
+          "workflow_id": "memory-search",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "search-validate",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "40cd066d801fa5744f8d177f10f853da481775ae7b4e33e26834c2933f7b491c"
+            },
+            {
+              "path": "/actions/1",
+              "id": "search",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/2",
+              "id": "candidates",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "c034e92de921ac56d0a8d34ee6c304fe31b04d50e6025333b92b1a203f0122fb"
+            },
+            {
+              "path": "/actions/3",
+              "id": "build-revision-query",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "2887cd97cb167ef3b9a315cbcf0b97909416e37fcb96b4531d33e501eb1ca576"
+            },
+            {
+              "path": "/actions/4",
+              "id": "read-revisions",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/5",
+              "id": "list-markers",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/6",
+              "id": "search-answer",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "da696950ed0bef866e717ab766ae23ea7e1a8048ea75fc3004b70678dcf3479a"
+            }
+          ]
+        },
+        "company-memory/agents/main/workflows/memory-write-supersession.json": {
+          "workflow_id": "memory-write-supersession",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "write-marker",
+              "type": "tool_call"
+            }
+          ]
+        }
+      },
+      "provides": {
+        "actions": [
+          {
+            "key": "capture_source",
+            "workflow_id": "memory-capture-source",
+            "workflow_version": "4"
+          },
+          {
+            "key": "propose_update",
+            "workflow_id": "memory-propose-update",
+            "workflow_version": "4"
+          },
+          {
+            "key": "review_update",
+            "workflow_id": "memory-review-update",
+            "workflow_version": "6"
+          },
+          {
+            "key": "index_revision",
+            "workflow_id": "memory-index-revision",
+            "workflow_version": "8"
+          }
+        ],
+        "queries": [
+          {
+            "key": "inspect",
+            "workflow_id": "memory-inspect",
+            "workflow_version": "4"
+          },
+          {
+            "key": "query",
+            "workflow_id": "memory-query",
+            "workflow_version": "7"
+          },
+          {
+            "key": "health",
+            "workflow_id": "memory-health",
+            "workflow_version": "3"
+          },
+          {
+            "key": "search",
+            "workflow_id": "memory-search",
+            "workflow_version": "9"
+          }
+        ],
+        "apps": [
+          {
+            "key": "capture",
+            "miniapp_id": "memory-capture",
+            "miniapp_version": "3"
+          },
+          {
+            "key": "propose",
+            "miniapp_id": "memory-propose",
+            "miniapp_version": "3"
+          },
+          {
+            "key": "review",
+            "miniapp_id": "memory-review",
+            "miniapp_version": "3"
+          },
+          {
+            "key": "query",
+            "miniapp_id": "memory-query-console",
+            "miniapp_version": "4"
+          },
+          {
+            "key": "index",
+            "miniapp_id": "memory-index-console",
+            "miniapp_version": "2"
+          },
+          {
+            "key": "search",
+            "miniapp_id": "memory-search-console",
+            "miniapp_version": "2"
+          }
+        ]
+      },
+      "requires": {
+        "mcp": [
+          {
+            "name": "company_memory",
+            "required_tools": [
+              "memory.entities.upsert",
+              "memory.query"
+            ]
+          },
+          {
+            "name": "brain",
+            "required_tools": [
+              "brain.document.upsert",
+              "brain.keyword"
+            ]
+          }
+        ]
+      },
+      "composition_dependencies": [],
+      "known_consumers": [
+        "content-memory",
+        "daily-routine",
+        "support-memory",
+        "watch-memory"
+      ],
+      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
+      "publication": "historical GitHub 0.2.0; 0.3.0 from GitLab source, local integration",
+      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+    },
+    {
+      "key": "cib-contenu",
+      "version": "0.2.4",
+      "manifest": "content/module.yaml",
+      "workflows": 6,
+      "miniapps": 2,
+      "source": {
+        "repository": "github.com/agentmaurice/company-in-a-box",
+        "commit": "dc935630764b24c819defd03cc487bddf8f87399",
+        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+        "old_path": "solutions/company-in-a-box/modules/contenu"
+      },
+      "generators_and_composers": [
+        "templates/company-in-a-box/compose.py"
+      ],
+      "resources": {
+        "workflows": [
+          "content/agents/main/workflows/contenu-list.json",
+          "content/agents/main/workflows/contenu-people.json",
+          "content/agents/main/workflows/contenu-read.json",
+          "content/agents/main/workflows/contenu-save.json",
+          "content/agents/main/workflows/contenu-share.json",
+          "content/agents/main/workflows/review_completion.json"
+        ],
+        "miniapps": [
+          "content/agents/main/miniapps/contenu-console.json",
+          "content/agents/main/miniapps/contenu-sharing-console.json"
+        ],
+        "sha256": {
+          "content/module.yaml": "0089a7cb29ce5c2e332a1f7436d4c60febbb9fda11b0515b8128fd8e6c0d4181",
+          "content/agents/main/workflows/contenu-list.json": "2d89b39e4915e28ca696727a4f9642993462392dd3463e72d35b09bc7c998471",
+          "content/agents/main/workflows/contenu-people.json": "2e4bca151e92e10f0c1f1a11397c9948ff704c0d098be4ff2b7288d256286319",
+          "content/agents/main/workflows/contenu-read.json": "b299b5127d713e29f80f6f7a977e9b5a264e8351b2eb9ae0bbd7c36323a447c5",
+          "content/agents/main/workflows/contenu-save.json": "4de42a963baea177da6148aa723af0436d85a21d79e2601760a1a2895185a6b0",
+          "content/agents/main/workflows/contenu-share.json": "3177bfbc7f88789550453ddeec27865191a6aa8898d1c41a3a67932f8ea863a6",
+          "content/agents/main/workflows/review_completion.json": "b8fd9bdae01cfb475cf9918097077e809ffd275730735ac554936c940eeff838",
+          "content/agents/main/miniapps/contenu-console.json": "4c4bc4eb86c0145d67c37240e7a5676cf2f150138204a5dad3a1adae4bea5de8",
+          "content/agents/main/miniapps/contenu-sharing-console.json": "93e614787e4a65feea9a7e1ef279be3c7b881d0b0e5b1f656d020950f18924f5"
+        }
+      },
+      "workflow_actions": {
+        "content/agents/main/workflows/contenu-list.json": {
+          "workflow_id": "contenu-list",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "list",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "fda9c90073f5fbe93119b5ff3ab76b83dc3b8e4b24a5fd4f4c5aec03f7f7bfad"
+            }
+          ]
+        },
+        "content/agents/main/workflows/contenu-people.json": {
+          "workflow_id": "contenu-people",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "people",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "e049b4843bef550b733525c8741c8ca0e08716107d1e81558d74421e34c5c634"
+            }
+          ]
+        },
+        "content/agents/main/workflows/contenu-read.json": {
+          "workflow_id": "contenu-read",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "validate",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "12642454c03d92b628a116ecd358af62f7a434ba9f78e119e418203e02b04816"
+            },
+            {
+              "path": "/actions/1",
+              "id": "read",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "9961b6874fa92bfb31bc55ab4d92c8aa4b2c13f3568ec0c349d98767ac1dd6a3"
+            }
+          ]
+        },
+        "content/agents/main/workflows/contenu-save.json": {
+          "workflow_id": "contenu-save",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "prepare",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "f0740e776324a43883cba030acbad96687dec51c354b003474772647bc901818"
+            },
+            {
+              "path": "/actions/1",
+              "id": "review",
+              "type": "workflow_call"
+            },
+            {
+              "path": "/actions/2",
+              "id": "attach-review",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "73998c5215c1190d6243c2b8ddb83c949aced70476fb054a2e6d040949fac05f"
+            },
+            {
+              "path": "/actions/3",
+              "id": "save",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "c9558660c3d7d585fe412f81d8c43540b255a9cd33a8ba6fc39ba971d9f6b3e7"
+            }
+          ]
+        },
+        "content/agents/main/workflows/contenu-share.json": {
+          "workflow_id": "contenu-share",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "share",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "70939ce7872ded1ae3256c8d9f2ddde703febf0c37c602cfe9935afaac6cab54"
+            }
+          ]
+        },
+        "content/agents/main/workflows/review_completion.json": {
+          "workflow_id": "review_completion",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "review-dossier",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "eccce097445909e8375853f06bcb90569edcf709793a77a5ef1bf19de7ce297c"
+            }
+          ]
+        }
+      },
+      "provides": {
+        "actions": [
+          {
+            "key": "save",
+            "workflow_id": "contenu-save",
+            "workflow_version": "2"
+          },
+          {
+            "key": "share",
+            "workflow_id": "contenu-share",
+            "workflow_version": "1"
+          },
+          {
+            "key": "review_completion",
+            "workflow_id": "review_completion",
+            "workflow_version": "1"
+          }
+        ],
+        "queries": [
+          {
+            "key": "list",
+            "workflow_id": "contenu-list",
+            "workflow_version": "2"
+          },
+          {
+            "key": "read",
+            "workflow_id": "contenu-read",
+            "workflow_version": "2"
+          },
+          {
+            "key": "people",
+            "workflow_id": "contenu-people",
+            "workflow_version": "1"
+          }
+        ],
+        "apps": [
+          {
+            "key": "console",
+            "miniapp_id": "contenu-console",
+            "miniapp_version": "6"
+          },
+          {
+            "key": "sharing-console",
+            "miniapp_id": "contenu-sharing-console",
+            "miniapp_version": "1"
+          }
+        ]
+      },
+      "requires": {},
+      "composition_dependencies": [],
+      "known_consumers": [
+        "content-memory",
+        "daily-routine"
+      ],
+      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
+      "publication": "present in historical GitHub source at specified commit",
+      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+    },
+    {
+      "key": "cib-contenu-memory",
+      "version": "0.2.0",
+      "manifest": "content-memory/module.yaml",
+      "workflows": 4,
+      "miniapps": 4,
+      "source": {
+        "repository": "github.com/agentmaurice/company-in-a-box",
+        "commit": "dc935630764b24c819defd03cc487bddf8f87399",
+        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+        "old_path": "solutions/company-in-a-box/memory-integration/modules/contenu"
+      },
+      "generators_and_composers": [
+        "tooling/memory-integration/compose.py"
+      ],
+      "resources": {
+        "workflows": [
+          "content-memory/agents/main/workflows/contenu-memory-contribute.json",
+          "content-memory/agents/main/workflows/contenu-memory-draft.json",
+          "content-memory/agents/main/workflows/contenu-memory-query.json",
+          "content-memory/agents/main/workflows/contenu-memory-search.json"
+        ],
+        "miniapps": [
+          "content-memory/agents/main/miniapps/contenu-memory-contribute-console.json",
+          "content-memory/agents/main/miniapps/contenu-memory-draft-console.json",
+          "content-memory/agents/main/miniapps/contenu-memory-query-console.json",
+          "content-memory/agents/main/miniapps/contenu-memory-search-console.json"
+        ],
+        "sha256": {
+          "content-memory/module.yaml": "249e56e9533bece539d2ac0c1d2bfefb0dc65b6d42a7e93cc40022bdc240e2fb",
+          "content-memory/agents/main/workflows/contenu-memory-contribute.json": "0abcec50118ff22b44dd99f555662b46ac72113bd8807b5265b1e1f9eef28deb",
+          "content-memory/agents/main/workflows/contenu-memory-draft.json": "75834d5ef2903963b07969af96d76aef6138f9881bd4204f411b51fc53b0b1fe",
+          "content-memory/agents/main/workflows/contenu-memory-query.json": "904313d2950df181896e3d858dd85a42b882b52f4a9b4002cc6cf7fb69a32a8a",
+          "content-memory/agents/main/workflows/contenu-memory-search.json": "dca97ac214f2ab2c2dc700db8763c8802e1a1487c4b271e96598bddbb40f84af",
+          "content-memory/agents/main/miniapps/contenu-memory-contribute-console.json": "28419dde92dfa83d0c3eca55d29adc30855268b1a9ff135575e35b3e562406f2",
+          "content-memory/agents/main/miniapps/contenu-memory-draft-console.json": "b3055acf957928749c47b024c875234d98cbf89adad6c4a4a6827d1ae6b733c7",
+          "content-memory/agents/main/miniapps/contenu-memory-query-console.json": "8de5c125ba5861395a678bf333f2648b7cbb454e3a5d0ce93e0babb9e18b390c",
+          "content-memory/agents/main/miniapps/contenu-memory-search-console.json": "e86eb8c7deeb1c805f64999be821039a7e6c4f31145ca7443fdbc275d0385d54"
+        }
+      },
+      "workflow_actions": {
+        "content-memory/agents/main/workflows/contenu-memory-contribute.json": {
+          "workflow_id": "contenu-memory-contribute",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "validate",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "1b3dfb5c62ebd26c919de919e8d2c24dff44c60f443eb3998680688418295856"
+            },
+            {
+              "path": "/actions/1",
+              "id": "read-local",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "d555690411414a6f5909283daf900d4f9f1b515408e3bc6c918d5c108cfbe7ad"
+            },
+            {
+              "path": "/actions/2",
+              "id": "select-excerpt",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "bc4ed6a48da5fb058c39a048aef68a2c81c719499f4b930d64e21033e08143aa"
+            },
+            {
+              "path": "/actions/3",
+              "id": "capture",
+              "type": "workflow_call"
+            },
+            {
+              "path": "/actions/4",
+              "id": "propose",
+              "type": "workflow_call"
+            }
+          ]
+        },
+        "content-memory/agents/main/workflows/contenu-memory-draft.json": {
+          "workflow_id": "contenu-memory-draft",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "validate",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "47772afd8fb550abec9e9f99512360442916b94d21f6036386a6dca60d92728d"
+            },
+            {
+              "path": "/actions/1",
+              "id": "consult",
+              "type": "workflow_call"
+            },
+            {
+              "path": "/actions/2",
+              "id": "require-validated",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "6ea882fe86337e6cd761f026ee7d16fd8fccc4fbb6e981cac846f36c79a2d11b"
+            },
+            {
+              "path": "/actions/3",
+              "id": "draft-input",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "06007cd25607259909850650b61f387e1e35520d8df3062eee33a1299c9a5fd7"
+            },
+            {
+              "path": "/actions/4",
+              "id": "prepare",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "7d25449baaa54f2e321bda9a0c1d2c48c126e58060921fa01dbecb505383e606"
+            },
+            {
+              "path": "/actions/5",
+              "id": "review",
+              "type": "workflow_call"
+            },
+            {
+              "path": "/actions/6",
+              "id": "attach-review",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "73998c5215c1190d6243c2b8ddb83c949aced70476fb054a2e6d040949fac05f"
+            },
+            {
+              "path": "/actions/7",
+              "id": "save",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "2a6034621d90c089419966b5b88eec2f5e44bde15eb960dee4028b2352bdc76b"
+            }
+          ]
+        },
+        "content-memory/agents/main/workflows/contenu-memory-query.json": {
+          "workflow_id": "contenu-memory-query",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "consult",
+              "type": "workflow_call"
+            }
+          ]
+        },
+        "content-memory/agents/main/workflows/contenu-memory-search.json": {
+          "workflow_id": "contenu-memory-search",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "consult",
+              "type": "workflow_call"
+            }
+          ]
+        }
+      },
+      "provides": {
+        "actions": [
+          {
+            "key": "contenu-memory-contribute",
+            "workflow_id": "contenu-memory-contribute",
+            "workflow_version": "2"
+          },
+          {
+            "key": "contenu-memory-draft",
+            "workflow_id": "contenu-memory-draft",
+            "workflow_version": "2"
+          }
+        ],
+        "queries": [
+          {
+            "key": "contenu-memory-query",
+            "workflow_id": "contenu-memory-query",
+            "workflow_version": "1"
+          },
+          {
+            "key": "contenu-memory-search",
+            "workflow_id": "contenu-memory-search",
+            "workflow_version": "1"
+          }
+        ],
+        "apps": [
+          {
+            "key": "contenu-memory-query-console",
+            "miniapp_id": "contenu-memory-query-console",
+            "miniapp_version": "1"
+          },
+          {
+            "key": "contenu-memory-search-console",
+            "miniapp_id": "contenu-memory-search-console",
+            "miniapp_version": "1"
+          },
+          {
+            "key": "contenu-memory-contribute-console",
+            "miniapp_id": "contenu-memory-contribute-console",
+            "miniapp_version": "2"
+          },
+          {
+            "key": "contenu-memory-draft-console",
+            "miniapp_id": "contenu-memory-draft-console",
+            "miniapp_version": "1"
+          }
+        ]
+      },
+      "requires": {},
+      "composition_dependencies": [
+        "content",
+        "company-memory"
+      ],
+      "known_consumers": [],
+      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
+      "publication": "present in historical GitHub source at specified commit",
+      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+    },
+    {
+      "key": "cib-daily-routine",
+      "version": "0.1.0",
+      "manifest": "daily-routine/module.yaml",
+      "workflows": 4,
+      "miniapps": 3,
+      "source": {
+        "repository": "github.com/agentmaurice/company-in-a-box",
+        "commit": "dc935630764b24c819defd03cc487bddf8f87399",
+        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+        "old_path": "solutions/company-in-a-box/daily-routine/module"
+      },
+      "generators_and_composers": [
+        "tooling/daily-routine/build.py",
+        "tooling/daily-routine/compose.py"
+      ],
+      "resources": {
+        "workflows": [
+          "daily-routine/agents/main/workflows/daily-context.json",
+          "daily-routine/agents/main/workflows/daily-report.json",
+          "daily-routine/agents/main/workflows/daily-time-read.json",
+          "daily-routine/agents/main/workflows/daily-time-save.json"
+        ],
+        "miniapps": [
+          "daily-routine/agents/main/miniapps/daily-context-console.json",
+          "daily-routine/agents/main/miniapps/daily-report-console.json",
+          "daily-routine/agents/main/miniapps/daily-time-console.json"
+        ],
+        "sha256": {
+          "daily-routine/module.yaml": "8cd81a40c20c0f44a037055785a1e276f64c90082b670df546e0291b1ae4c6bb",
+          "daily-routine/agents/main/workflows/daily-context.json": "c2f566f51b879f88d59ee380d714de645e75521fc2f710617ebacc816b8678f4",
+          "daily-routine/agents/main/workflows/daily-report.json": "16aecba004b55e12de6eddc45676a9018ed494dfd94d48bcfa2dc10a450c644a",
+          "daily-routine/agents/main/workflows/daily-time-read.json": "7987cc9512bede59da140f40828a4a22a1822b27a52a8c1034855fde80d56cb4",
+          "daily-routine/agents/main/workflows/daily-time-save.json": "0dfb749bf36c31535b3c0d2b89cf03bbfc7a654f50a57c4e18a46090aba97a6e",
+          "daily-routine/agents/main/miniapps/daily-context-console.json": "bf969480c463e42e7ad78fe691d68bcdcadda47166f999965052c42a2fe87da6",
+          "daily-routine/agents/main/miniapps/daily-report-console.json": "cbbd4959eeee08da3484e46862c42e44b990438edd71175ed3835bbf1b7e944c",
+          "daily-routine/agents/main/miniapps/daily-time-console.json": "7fc6c9c9123324696ca275ff9f9c9e8d6c516f07bf615621668644c3d615ae11"
+        }
+      },
+      "workflow_actions": {
+        "daily-routine/agents/main/workflows/daily-context.json": {
+          "workflow_id": "daily-context",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "dossier",
+              "type": "workflow_call"
+            },
+            {
+              "path": "/actions/1",
+              "id": "memory",
+              "type": "workflow_call"
+            },
+            {
+              "path": "/actions/2",
+              "id": "context",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "67fd261d2b9bdbf9cf2192cf2991ef1076709f7513c4f0094e0c3ec0358559b9"
+            }
+          ]
+        },
+        "daily-routine/agents/main/workflows/daily-report.json": {
+          "workflow_id": "daily-report",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "validate",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "05dd5b5d0469d68ec4a824f2bff33f3bfbd5392849b27472a994a4e7640d37c0"
+            },
+            {
+              "path": "/actions/1",
+              "id": "list",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/2",
+              "id": "entries",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "8d5bff6b0b01f16f875a6dd85ebbc02724b3ecd11f180ea4545ee7bfd0b7d6ae"
+            },
+            {
+              "path": "/actions/3",
+              "id": "read",
+              "type": "for_each"
+            },
+            {
+              "path": "/actions/4",
+              "id": "summary",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "7f8ffefc28f76752c29be97597c1fc098388626b870c25efe1908bb3862957ed"
+            }
+          ]
+        },
+        "daily-routine/agents/main/workflows/daily-time-read.json": {
+          "workflow_id": "daily-time-read",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "validate",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "986a1935abd6a7605f473f519df19ce6f2d2e6da1e4eabbac24a478d7c7b83c5"
+            },
+            {
+              "path": "/actions/1",
+              "id": "read",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/2",
+              "id": "decode",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "fe26e421b9b112e09320829e307ea07c963085ddaa5d43dc969817ede03539c0"
+            }
+          ]
+        },
+        "daily-routine/agents/main/workflows/daily-time-save.json": {
+          "workflow_id": "daily-time-save",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "validate",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "3e1b8005e7f9ee703a9a574530e53dad3996a11f967c75706c461f0f1b58c494"
+            },
+            {
+              "path": "/actions/1",
+              "id": "save",
+              "type": "tool_call"
+            }
+          ]
+        }
+      },
+      "provides": {
+        "actions": [
+          {
+            "key": "daily-time-save",
+            "workflow_id": "daily-time-save",
+            "workflow_version": "1"
+          }
+        ],
+        "queries": [
+          {
+            "key": "daily-time-read",
+            "workflow_id": "daily-time-read",
+            "workflow_version": "1"
+          },
+          {
+            "key": "daily-report",
+            "workflow_id": "daily-report",
+            "workflow_version": "1"
+          },
+          {
+            "key": "daily-context",
+            "workflow_id": "daily-context",
+            "workflow_version": "1"
+          }
+        ],
+        "apps": [
+          {
+            "key": "daily-time-console",
+            "miniapp_id": "daily-time-console",
+            "miniapp_version": "1"
+          },
+          {
+            "key": "daily-report-console",
+            "miniapp_id": "daily-report-console",
+            "miniapp_version": "1"
+          },
+          {
+            "key": "daily-context-console",
+            "miniapp_id": "daily-context-console",
+            "miniapp_version": "1"
+          }
+        ]
+      },
+      "requires": {},
+      "composition_dependencies": [
+        "watch",
+        "content",
+        "support",
+        "company-memory"
+      ],
+      "known_consumers": [],
+      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
+      "publication": "present in historical GitHub source at specified commit",
+      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+    },
+    {
+      "key": "cib-enterprise-admin",
+      "version": "0.2.2",
+      "manifest": "enterprise-admin/module.yaml",
+      "workflows": 7,
+      "miniapps": 3,
+      "source": {
+        "repository": "github.com/agentmaurice/company-in-a-box",
+        "commit": "dc935630764b24c819defd03cc487bddf8f87399",
+        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+        "old_path": "solutions/company-in-a-box/enterprise-admin/module"
+      },
+      "generators_and_composers": [
+        "tooling/enterprise-admin/build.py",
+        "tooling/enterprise-admin/compose.py"
+      ],
+      "resources": {
+        "workflows": [
+          "enterprise-admin/agents/main/workflows/cib-admin-approval-check.json",
+          "enterprise-admin/agents/main/workflows/cib-admin-import-record.json",
+          "enterprise-admin/agents/main/workflows/cib-admin-manage.json",
+          "enterprise-admin/agents/main/workflows/cib-admin-overview.json",
+          "enterprise-admin/agents/main/workflows/cib-admin-record-people.json",
+          "enterprise-admin/agents/main/workflows/cib-admin-record-read.json",
+          "enterprise-admin/agents/main/workflows/cib-admin-record-share.json"
+        ],
+        "miniapps": [
+          "enterprise-admin/agents/main/miniapps/cib-admin-console.json",
+          "enterprise-admin/agents/main/miniapps/cib-admin-record-share-console.json",
+          "enterprise-admin/agents/main/miniapps/cib-admin-records-console.json"
+        ],
+        "sha256": {
+          "enterprise-admin/module.yaml": "b70c51ca0d95f494a49b349a9997ce328f8cd0f73ae9b2db92af57839e49f543",
+          "enterprise-admin/agents/main/workflows/cib-admin-approval-check.json": "c85571946ab004b2c2336b91753360e991dc88bb2e5a673ce4ca051e493af2a8",
+          "enterprise-admin/agents/main/workflows/cib-admin-import-record.json": "be538b17a3ccab818a3f346db3481c10c99a00fd0ed51940476b76f79b0682ca",
+          "enterprise-admin/agents/main/workflows/cib-admin-manage.json": "4f4f81f41e76028e17b74186d81bc00d3652e3ad18d3cfe6a468f6fc94fc5290",
+          "enterprise-admin/agents/main/workflows/cib-admin-overview.json": "e8e0d163dfd4a18ec047e53c54ac4a58c3830f8804a08383562c0fc65d8a50fe",
+          "enterprise-admin/agents/main/workflows/cib-admin-record-people.json": "7aeebd81653b2805a4ceb9adfd1d9e2c4e1a56949da74cf63a13b43392771e7b",
+          "enterprise-admin/agents/main/workflows/cib-admin-record-read.json": "36f2d732708207c631e645deaed4866aeeb7e4dc0314fedb2e6cdfb31c26f8db",
+          "enterprise-admin/agents/main/workflows/cib-admin-record-share.json": "fd589b6b4ab8fc074d859286d6869f7b30dfec919c8d845ed5f4366ab46b3258",
+          "enterprise-admin/agents/main/miniapps/cib-admin-console.json": "f5af65b2c8561fb73db254846e6f72bb95e1fa03909ac13eed9d30d9d01aa56d",
+          "enterprise-admin/agents/main/miniapps/cib-admin-record-share-console.json": "7d25915d7fe535dd6adfbe4b5b18d5102a0f154f6b2b55a608a997e61b82a955",
+          "enterprise-admin/agents/main/miniapps/cib-admin-records-console.json": "4f3b29d179b0381ddba6c8650ddba1b7a0f6d7751b20114667b4a7613f037911"
+        }
+      },
+      "workflow_actions": {
+        "enterprise-admin/agents/main/workflows/cib-admin-approval-check.json": {
+          "workflow_id": "cib-admin-approval-check",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "read_only",
+              "type": "tool_call"
+            }
+          ]
+        },
+        "enterprise-admin/agents/main/workflows/cib-admin-import-record.json": {
+          "workflow_id": "cib-admin-import-record",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "import",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "c5aa603e03f8f1f0baa0c5748b6e1a3aee2d0cf36330ce614be84ae6fbe74be2"
+            }
+          ]
+        },
+        "enterprise-admin/agents/main/workflows/cib-admin-manage.json": {
+          "workflow_id": "cib-admin-manage",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "invoke",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "81624470603590e7af91a96b18cea4f704e30d7d7b9383cedb555358ab08bc70"
+            }
+          ]
+        },
+        "enterprise-admin/agents/main/workflows/cib-admin-overview.json": {
+          "workflow_id": "cib-admin-overview",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "read",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "0948c4f38de8af7f724344a6fca4162831e1c85e8c315d9da6670657ec0ebe80"
+            }
+          ]
+        },
+        "enterprise-admin/agents/main/workflows/cib-admin-record-people.json": {
+          "workflow_id": "cib-admin-record-people",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "people",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "a974bd050c05c443adf65853ad68e9d6360ad02b75ef9670ef13113a94803c97"
+            }
+          ]
+        },
+        "enterprise-admin/agents/main/workflows/cib-admin-record-read.json": {
+          "workflow_id": "cib-admin-record-read",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "read",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "604fbb4e82246b204a0e92d01b0645ce55e43979da0e5cf45397eb477fdc7fd6"
+            }
+          ]
+        },
+        "enterprise-admin/agents/main/workflows/cib-admin-record-share.json": {
+          "workflow_id": "cib-admin-record-share",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "share",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "6f80dd21ac1311ab7b234ac74f1824aa1ca36cf8b4c61cb96c597c0f940cc6d9"
+            }
+          ]
+        }
+      },
+      "provides": {
+        "actions": [
+          {
+            "key": "manage",
+            "workflow_id": "cib-admin-manage",
+            "workflow_version": "2"
+          },
+          {
+            "key": "import-record",
+            "workflow_id": "cib-admin-import-record",
+            "workflow_version": "1"
+          },
+          {
+            "key": "record-share",
+            "workflow_id": "cib-admin-record-share",
+            "workflow_version": "1"
+          }
+        ],
+        "queries": [
+          {
+            "key": "overview",
+            "workflow_id": "cib-admin-overview",
+            "workflow_version": "2"
+          },
+          {
+            "key": "approval-check",
+            "workflow_id": "cib-admin-approval-check",
+            "workflow_version": "1"
+          },
+          {
+            "key": "record-read",
+            "workflow_id": "cib-admin-record-read",
+            "workflow_version": "1"
+          },
+          {
+            "key": "record-people",
+            "workflow_id": "cib-admin-record-people",
+            "workflow_version": "1"
+          }
+        ],
+        "apps": [
+          {
+            "key": "admin-console",
+            "miniapp_id": "cib-admin-console",
+            "miniapp_version": "2"
+          },
+          {
+            "key": "records-console",
+            "miniapp_id": "cib-admin-records-console",
+            "miniapp_version": "1"
+          },
+          {
+            "key": "record-share-console",
+            "miniapp_id": "cib-admin-record-share-console",
+            "miniapp_version": "1"
+          }
+        ]
+      },
+      "requires": {},
+      "composition_dependencies": [],
+      "known_consumers": [],
+      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
+      "publication": "present in historical GitHub source at specified commit",
+      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+    },
+    {
+      "key": "cib-marketing-launch",
+      "version": "0.1.0",
+      "manifest": "marketing-launch/module.yaml",
+      "workflows": 9,
+      "miniapps": 6,
+      "source": {
+        "repository": "github.com/agentmaurice/company-in-a-box",
+        "commit": "dc935630764b24c819defd03cc487bddf8f87399",
+        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+        "old_path": "solutions/company-in-a-box/marketing-launch/module"
+      },
+      "generators_and_composers": [
+        "tooling/marketing-launch/build.py",
+        "tooling/marketing-launch/compose.py"
+      ],
+      "resources": {
+        "workflows": [
+          "marketing-launch/agents/main/workflows/cib-launch-campaign-save.json",
+          "marketing-launch/agents/main/workflows/cib-launch-content-link.json",
+          "marketing-launch/agents/main/workflows/cib-launch-list.json",
+          "marketing-launch/agents/main/workflows/cib-launch-people.json",
+          "marketing-launch/agents/main/workflows/cib-launch-progress.json",
+          "marketing-launch/agents/main/workflows/cib-launch-read.json",
+          "marketing-launch/agents/main/workflows/cib-launch-request.json",
+          "marketing-launch/agents/main/workflows/cib-launch-share.json",
+          "marketing-launch/agents/main/workflows/cib-launch-summary.json"
+        ],
+        "miniapps": [
+          "marketing-launch/agents/main/miniapps/cib-launch-campaign-console.json",
+          "marketing-launch/agents/main/miniapps/cib-launch-content-console.json",
+          "marketing-launch/agents/main/miniapps/cib-launch-direction-console.json",
+          "marketing-launch/agents/main/miniapps/cib-launch-request-console.json",
+          "marketing-launch/agents/main/miniapps/cib-launch-sharing-console.json",
+          "marketing-launch/agents/main/miniapps/cib-launch-support-console.json"
+        ],
+        "sha256": {
+          "marketing-launch/module.yaml": "d6e2d73144a40d2d4695ec77593949434aa841f9fe9343dc9bdff28a3d22f16f",
+          "marketing-launch/agents/main/workflows/cib-launch-campaign-save.json": "fdb1bb0b0e17db06bc7cc3c0d05f6e4ce2784cfe80393c60e3cea09013d6a25c",
+          "marketing-launch/agents/main/workflows/cib-launch-content-link.json": "bc4ab3d0e8f31b43fbcaf82cc63728d5cb5a95493913f1d85ccfe1ebba699b31",
+          "marketing-launch/agents/main/workflows/cib-launch-list.json": "9827787428dd6218986e595ce15813dcb1f6df10426ea17a43048d854a051d4c",
+          "marketing-launch/agents/main/workflows/cib-launch-people.json": "f716a25ab15091c1bc36129e1d527f90812e1c8c5b93614a2f5a34472e59cbb3",
+          "marketing-launch/agents/main/workflows/cib-launch-progress.json": "bbfc5a07502145545cad6ca2733b82c99241316208c221463e214225aeb0d36f",
+          "marketing-launch/agents/main/workflows/cib-launch-read.json": "fb07acf4cb15816f8cd8f86e0939c503077aa77c5f9f5539afbc9f96a66bbb73",
+          "marketing-launch/agents/main/workflows/cib-launch-request.json": "a4a4f3d9320f85029fb0ab9177b91a7ec4c707dfbaa9d35eabe46af38a34bcbc",
+          "marketing-launch/agents/main/workflows/cib-launch-share.json": "cdd0daa056e8e7239acef8291b56c495524c72c3493c6641ce1ee91a9e9993ec",
+          "marketing-launch/agents/main/workflows/cib-launch-summary.json": "bb16f5003de0cae7833e9ef80592738b0f777089d614392c7939afd8d72a3c7a",
+          "marketing-launch/agents/main/miniapps/cib-launch-campaign-console.json": "1f06cf91b816e8785ce1928cde4cf2110e7537a8c2539e7803ae4afb16218fa9",
+          "marketing-launch/agents/main/miniapps/cib-launch-content-console.json": "8681a6b662860c216ff26a2c3723ce42398203d184f415be5259e767c4806b74",
+          "marketing-launch/agents/main/miniapps/cib-launch-direction-console.json": "fe4cfd08624f5e1202abb60b7a816767e6cb4181f52ecbea8ad6967d077b0109",
+          "marketing-launch/agents/main/miniapps/cib-launch-request-console.json": "c275bb20c9e43e740bbe460cb990833586b955fa04c46bf372294efa4c58172c",
+          "marketing-launch/agents/main/miniapps/cib-launch-sharing-console.json": "be9cb40859b39c77dc873c95eee546068a6f54d939d3173fb08a9b163bf9b10f",
+          "marketing-launch/agents/main/miniapps/cib-launch-support-console.json": "b720594c8983b2334f99d8a420432c9ba8510f9698a0da26a06afd1f7c63092d"
+        }
+      },
+      "workflow_actions": {
+        "marketing-launch/agents/main/workflows/cib-launch-campaign-save.json": {
+          "workflow_id": "cib-launch-campaign-save",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "run",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "2ab68c46580ef516d959adfd65d6f395812818239c0fa95b44f067525bf82763"
+            }
+          ]
+        },
+        "marketing-launch/agents/main/workflows/cib-launch-content-link.json": {
+          "workflow_id": "cib-launch-content-link",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "run",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "0ebde415f6d76a0fe210c30238476999584280ff29a58148e3ec507e0d0899a7"
+            }
+          ]
+        },
+        "marketing-launch/agents/main/workflows/cib-launch-list.json": {
+          "workflow_id": "cib-launch-list",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "run",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "dc98711b014725b76dee3b15c5de9677a448a2a92a7e70e8ec5ebd602ed1661c"
+            }
+          ]
+        },
+        "marketing-launch/agents/main/workflows/cib-launch-people.json": {
+          "workflow_id": "cib-launch-people",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "run",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "fb544ce4cd9773eb82cfb74eb61b1579bd2c7b29cdd7505c6730bbc63aa264fc"
+            }
+          ]
+        },
+        "marketing-launch/agents/main/workflows/cib-launch-progress.json": {
+          "workflow_id": "cib-launch-progress",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "run",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "3c5762cbdb8913ec2c568a991ab8928523740a44dce9656c65a6070b6a2a9b13"
+            }
+          ]
+        },
+        "marketing-launch/agents/main/workflows/cib-launch-read.json": {
+          "workflow_id": "cib-launch-read",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "run",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "323b5747549a3af96b57a9234cf5af47cc32eaa86a24675899e272bcb423b6b9"
+            }
+          ]
+        },
+        "marketing-launch/agents/main/workflows/cib-launch-request.json": {
+          "workflow_id": "cib-launch-request",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "run",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "6516c220f59f4febed00b640091585656bb3c29d736327fea360df89b8d24c73"
+            }
+          ]
+        },
+        "marketing-launch/agents/main/workflows/cib-launch-share.json": {
+          "workflow_id": "cib-launch-share",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "run",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "6b53fe911b89411e6f8a2f3cc046ad18a0ee13e2615568db805ef985bf9cb8a9"
+            }
+          ]
+        },
+        "marketing-launch/agents/main/workflows/cib-launch-summary.json": {
+          "workflow_id": "cib-launch-summary",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "run",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "c4e0707687046b879838ef896ed076ad3d0c5db180c85be98e818b4d5d8eba4d"
+            }
+          ]
+        }
+      },
+      "provides": {
+        "actions": [
+          {
+            "key": "campaign-save",
+            "workflow_id": "cib-launch-campaign-save",
+            "workflow_version": "1"
+          },
+          {
+            "key": "content-link",
+            "workflow_id": "cib-launch-content-link",
+            "workflow_version": "1"
+          },
+          {
+            "key": "request",
+            "workflow_id": "cib-launch-request",
+            "workflow_version": "1"
+          },
+          {
+            "key": "progress",
+            "workflow_id": "cib-launch-progress",
+            "workflow_version": "1"
+          },
+          {
+            "key": "share",
+            "workflow_id": "cib-launch-share",
+            "workflow_version": "1"
+          }
+        ],
+        "queries": [
+          {
+            "key": "read",
+            "workflow_id": "cib-launch-read",
+            "workflow_version": "1"
+          },
+          {
+            "key": "list",
+            "workflow_id": "cib-launch-list",
+            "workflow_version": "1"
+          },
+          {
+            "key": "people",
+            "workflow_id": "cib-launch-people",
+            "workflow_version": "1"
+          },
+          {
+            "key": "summary",
+            "workflow_id": "cib-launch-summary",
+            "workflow_version": "1"
+          }
+        ],
+        "apps": [
+          {
+            "key": "campaign",
+            "miniapp_id": "cib-launch-campaign-console",
+            "miniapp_version": "1"
+          },
+          {
+            "key": "content",
+            "miniapp_id": "cib-launch-content-console",
+            "miniapp_version": "1"
+          },
+          {
+            "key": "request",
+            "miniapp_id": "cib-launch-request-console",
+            "miniapp_version": "1"
+          },
+          {
+            "key": "support",
+            "miniapp_id": "cib-launch-support-console",
+            "miniapp_version": "1"
+          },
+          {
+            "key": "sharing",
+            "miniapp_id": "cib-launch-sharing-console",
+            "miniapp_version": "1"
+          },
+          {
+            "key": "direction",
+            "miniapp_id": "cib-launch-direction-console",
+            "miniapp_version": "1"
+          }
+        ]
+      },
+      "requires": {},
+      "composition_dependencies": [],
+      "known_consumers": [],
+      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
+      "publication": "present in historical GitHub source at specified commit",
+      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+    },
+    {
+      "key": "cib-accompagnement",
+      "version": "0.2.4",
+      "manifest": "support/module.yaml",
+      "workflows": 6,
+      "miniapps": 2,
+      "source": {
+        "repository": "github.com/agentmaurice/company-in-a-box",
+        "commit": "dc935630764b24c819defd03cc487bddf8f87399",
+        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+        "old_path": "solutions/company-in-a-box/modules/accompagnement"
+      },
+      "generators_and_composers": [
+        "templates/company-in-a-box/compose.py"
+      ],
+      "resources": {
+        "workflows": [
+          "support/agents/main/workflows/accompagnement-guard-action.json",
+          "support/agents/main/workflows/accompagnement-list.json",
+          "support/agents/main/workflows/accompagnement-people.json",
+          "support/agents/main/workflows/accompagnement-read.json",
+          "support/agents/main/workflows/accompagnement-save.json",
+          "support/agents/main/workflows/accompagnement-share.json"
+        ],
+        "miniapps": [
+          "support/agents/main/miniapps/accompagnement-console.json",
+          "support/agents/main/miniapps/accompagnement-sharing-console.json"
+        ],
+        "sha256": {
+          "support/module.yaml": "26527b3975fa92c8fbf9ea85f9b0531f431037946c101f5413cc01a4db71265c",
+          "support/agents/main/workflows/accompagnement-guard-action.json": "33fa773d67e496a4f1eed76707d1754cb436fdac1d8453e90dd87fba756565f6",
+          "support/agents/main/workflows/accompagnement-list.json": "d35062bc7407d54bc66c52aa34644a861f31ef7b71c8f5ad54d76c5b4cdcaf71",
+          "support/agents/main/workflows/accompagnement-people.json": "797e86fcbeaa50f2b355e98e347d1b6de099556a9e6e07a2615ba89d24e229ed",
+          "support/agents/main/workflows/accompagnement-read.json": "481b6b0a0157f770c425dd5b52181233a0a25ed066773de467ac59e86f635401",
+          "support/agents/main/workflows/accompagnement-save.json": "b0ac3917e558dcad2bdedd9f3ce6b9284922cfdbf3909e15cb7d3f6e773bb661",
+          "support/agents/main/workflows/accompagnement-share.json": "7e15e035e1c44a7dd6d91c70403cc983ca7d470a7e9ba9704512d72c053a7f14",
+          "support/agents/main/miniapps/accompagnement-console.json": "7a5d3360d17ce4d108275081a379a4588b820f4996ab6b0fc44632600f75269f",
+          "support/agents/main/miniapps/accompagnement-sharing-console.json": "e038e67301aadb3a3029c4ea362356106d7da5e811c8a72d9f5b41fb39c29e34"
+        }
+      },
+      "workflow_actions": {
+        "support/agents/main/workflows/accompagnement-guard-action.json": {
+          "workflow_id": "accompagnement-guard-action",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "evaluate",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "e159e635037acc2524d03e09fec63708a97b5f9bb20a1eb9bd5be2b8246acafc"
+            }
+          ]
+        },
+        "support/agents/main/workflows/accompagnement-list.json": {
+          "workflow_id": "accompagnement-list",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "list",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "f7b4f413c78c5b856b1969fa84943acb851637de2ac93f6e80ef0012d6454790"
+            }
+          ]
+        },
+        "support/agents/main/workflows/accompagnement-people.json": {
+          "workflow_id": "accompagnement-people",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "people",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "cb5ebb57bea18f011781020769a6df9ebbbeab85980e166964d8b858ff0fd181"
+            }
+          ]
+        },
+        "support/agents/main/workflows/accompagnement-read.json": {
+          "workflow_id": "accompagnement-read",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "validate",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "12642454c03d92b628a116ecd358af62f7a434ba9f78e119e418203e02b04816"
+            },
+            {
+              "path": "/actions/1",
+              "id": "read",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "7751c26d1ff518f7497f00c38e8971d8f8a63a712baed0f4c4b36d832128552b"
+            }
+          ]
+        },
+        "support/agents/main/workflows/accompagnement-save.json": {
+          "workflow_id": "accompagnement-save",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "validate-input",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "f008b82c0bb4f3c429cbb2c15978e45c6dda7049e9c06bef9f6a7af09d6b243d"
+            },
+            {
+              "path": "/actions/1",
+              "id": "guard-save",
+              "type": "workflow_call"
+            },
+            {
+              "path": "/actions/2",
+              "id": "require-eligible",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "dc78333f57c16f018b92f7f19735559c96b34a700fac11e29f923be5bc17d97f"
+            },
+            {
+              "path": "/actions/3",
+              "id": "write-dossier",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "f9a6dc442a8f84fa78bd63e63a057a2cc440fff504f72539cfb38d23d6a551c5"
+            }
+          ]
+        },
+        "support/agents/main/workflows/accompagnement-share.json": {
+          "workflow_id": "accompagnement-share",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "share",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "d13231f84ebb0ecf0e2b5b582383411a990fc004445e04435530b51486bad190"
+            }
+          ]
+        }
+      },
+      "provides": {
+        "actions": [
+          {
+            "key": "save",
+            "workflow_id": "accompagnement-save",
+            "workflow_version": "3"
+          },
+          {
+            "key": "share",
+            "workflow_id": "accompagnement-share",
+            "workflow_version": "1"
+          },
+          {
+            "key": "guard_action",
+            "workflow_id": "accompagnement-guard-action",
+            "workflow_version": "1"
+          }
+        ],
+        "queries": [
+          {
+            "key": "list",
+            "workflow_id": "accompagnement-list",
+            "workflow_version": "2"
+          },
+          {
+            "key": "read",
+            "workflow_id": "accompagnement-read",
+            "workflow_version": "2"
+          },
+          {
+            "key": "people",
+            "workflow_id": "accompagnement-people",
+            "workflow_version": "1"
+          }
+        ],
+        "apps": [
+          {
+            "key": "console",
+            "miniapp_id": "accompagnement-console",
+            "miniapp_version": "7"
+          },
+          {
+            "key": "sharing-console",
+            "miniapp_id": "accompagnement-sharing-console",
+            "miniapp_version": "1"
+          }
+        ]
+      },
+      "requires": {},
+      "composition_dependencies": [],
+      "known_consumers": [
+        "daily-routine",
+        "support-memory"
+      ],
+      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
+      "publication": "present in historical GitHub source at specified commit",
+      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+    },
+    {
+      "key": "cib-accompagnement-memory",
+      "version": "0.2.0",
+      "manifest": "support-memory/module.yaml",
+      "workflows": 3,
+      "miniapps": 3,
+      "source": {
+        "repository": "github.com/agentmaurice/company-in-a-box",
+        "commit": "dc935630764b24c819defd03cc487bddf8f87399",
+        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+        "old_path": "solutions/company-in-a-box/memory-integration/modules/accompagnement"
+      },
+      "generators_and_composers": [
+        "tooling/memory-integration/compose.py"
+      ],
+      "resources": {
+        "workflows": [
+          "support-memory/agents/main/workflows/accompagnement-memory-contribute.json",
+          "support-memory/agents/main/workflows/accompagnement-memory-query.json",
+          "support-memory/agents/main/workflows/accompagnement-memory-search.json"
+        ],
+        "miniapps": [
+          "support-memory/agents/main/miniapps/accompagnement-memory-contribute-console.json",
+          "support-memory/agents/main/miniapps/accompagnement-memory-query-console.json",
+          "support-memory/agents/main/miniapps/accompagnement-memory-search-console.json"
+        ],
+        "sha256": {
+          "support-memory/module.yaml": "9ed65127ed0709ba3a58060c90a3dcd3a9ddbd0c9b34abb12d3c4576394079d3",
+          "support-memory/agents/main/workflows/accompagnement-memory-contribute.json": "ab806d484a6ee58a69c2c2bb2d5c1e46bf11ae87581d4384862c3f1d463c245b",
+          "support-memory/agents/main/workflows/accompagnement-memory-query.json": "7a18e0e3ab5f349d33cb2514833aba5df9b199a3c4aa0b8b251aba5f4b162bc0",
+          "support-memory/agents/main/workflows/accompagnement-memory-search.json": "9021cb3a219ca2bbb8d14664e6291a4be9cc7121bf224c98ab0bacbd3af876f7",
+          "support-memory/agents/main/miniapps/accompagnement-memory-contribute-console.json": "fac7889ffc0b04a3d964aaf464e3deb5741227e0c43bd1c3d60e60cbfeefbf86",
+          "support-memory/agents/main/miniapps/accompagnement-memory-query-console.json": "91eb82e4410bab746c0cac1fb3f5993ab69f8d7aa33ed8eb38b7b9ee9969572c",
+          "support-memory/agents/main/miniapps/accompagnement-memory-search-console.json": "4254c74d577d28b6afff42b7f6c6958a38aa3a7510995b48eec33f96f597ae1a"
+        }
+      },
+      "workflow_actions": {
+        "support-memory/agents/main/workflows/accompagnement-memory-contribute.json": {
+          "workflow_id": "accompagnement-memory-contribute",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "validate",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "ab76b37f216a52f71d298531763f8f2df7e3a58599a081a2ec71b0a3055b733b"
+            },
+            {
+              "path": "/actions/1",
+              "id": "read-local",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "6cab64b8c9a28e521e8bec3a02863db420673748f3c664f33ee828039207e04e"
+            },
+            {
+              "path": "/actions/2",
+              "id": "select-excerpt",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "1312ebe33717eb79790865935f99841786ce68df09ec26edc2ab41f6fd080e8f"
+            },
+            {
+              "path": "/actions/3",
+              "id": "capture",
+              "type": "workflow_call"
+            },
+            {
+              "path": "/actions/4",
+              "id": "propose",
+              "type": "workflow_call"
+            }
+          ]
+        },
+        "support-memory/agents/main/workflows/accompagnement-memory-query.json": {
+          "workflow_id": "accompagnement-memory-query",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "consult",
+              "type": "workflow_call"
+            }
+          ]
+        },
+        "support-memory/agents/main/workflows/accompagnement-memory-search.json": {
+          "workflow_id": "accompagnement-memory-search",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "consult",
+              "type": "workflow_call"
+            }
+          ]
+        }
+      },
+      "provides": {
+        "actions": [
+          {
+            "key": "accompagnement-memory-contribute",
+            "workflow_id": "accompagnement-memory-contribute",
+            "workflow_version": "2"
+          }
+        ],
+        "queries": [
+          {
+            "key": "accompagnement-memory-query",
+            "workflow_id": "accompagnement-memory-query",
+            "workflow_version": "1"
+          },
+          {
+            "key": "accompagnement-memory-search",
+            "workflow_id": "accompagnement-memory-search",
+            "workflow_version": "1"
+          }
+        ],
+        "apps": [
+          {
+            "key": "accompagnement-memory-query-console",
+            "miniapp_id": "accompagnement-memory-query-console",
+            "miniapp_version": "1"
+          },
+          {
+            "key": "accompagnement-memory-search-console",
+            "miniapp_id": "accompagnement-memory-search-console",
+            "miniapp_version": "1"
+          },
+          {
+            "key": "accompagnement-memory-contribute-console",
+            "miniapp_id": "accompagnement-memory-contribute-console",
+            "miniapp_version": "2"
+          }
+        ]
+      },
+      "requires": {},
+      "composition_dependencies": [
+        "support",
+        "company-memory"
+      ],
+      "known_consumers": [],
+      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
+      "publication": "present in historical GitHub source at specified commit",
+      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+    },
+    {
+      "key": "cib-veille",
+      "version": "0.2.4",
+      "manifest": "watch/module.yaml",
+      "workflows": 7,
+      "miniapps": 2,
+      "source": {
+        "repository": "github.com/agentmaurice/company-in-a-box",
+        "commit": "dc935630764b24c819defd03cc487bddf8f87399",
+        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+        "old_path": "solutions/company-in-a-box/modules/veille"
+      },
+      "generators_and_composers": [
+        "templates/company-in-a-box/compose.py"
+      ],
+      "resources": {
+        "workflows": [
+          "watch/agents/main/workflows/check_research.json",
+          "watch/agents/main/workflows/route_worker.json",
+          "watch/agents/main/workflows/veille-list.json",
+          "watch/agents/main/workflows/veille-people.json",
+          "watch/agents/main/workflows/veille-read.json",
+          "watch/agents/main/workflows/veille-save.json",
+          "watch/agents/main/workflows/veille-share.json"
+        ],
+        "miniapps": [
+          "watch/agents/main/miniapps/veille-console.json",
+          "watch/agents/main/miniapps/veille-sharing-console.json"
+        ],
+        "sha256": {
+          "watch/module.yaml": "f32db870687d26e4763a3d8eb615ad307bd98b8815963b70eb1cbc191f66fc4c",
+          "watch/agents/main/workflows/check_research.json": "afba51399f0f50e9c7a7a92e03be89a15f61a4ead6bd84eae496c08fbc38dad6",
+          "watch/agents/main/workflows/route_worker.json": "cd07b5bdea8253d9666626c45e71bd7d481dccdf77e46426a15b5695e36fa501",
+          "watch/agents/main/workflows/veille-list.json": "0ea7f18ad24cc335ef986f33924649fc3303f0eb58222163968b5cfa20ce5940",
+          "watch/agents/main/workflows/veille-people.json": "5ccd2accac65ed6e745572d687e1b90f6c0684679abffc61d69b1a03a1441842",
+          "watch/agents/main/workflows/veille-read.json": "71c542cd4e16ced7d041a055c0e0105c560e5840977c927696ac6ae83536eda9",
+          "watch/agents/main/workflows/veille-save.json": "0384fdf03165b9eaa10ff311843e4a10784477216b675ee786ffaac5b504e412",
+          "watch/agents/main/workflows/veille-share.json": "7eb012c1c9e22fa939dcd0238e1c69dbf65b6fce5d63c41efe99ee25ff94712c",
+          "watch/agents/main/miniapps/veille-console.json": "bb5e35cddc6505fa5b4f70328749cf121888cefa0683ec73758cb9b23cfe73a2",
+          "watch/agents/main/miniapps/veille-sharing-console.json": "37215a8ea4f8d4bcfb56d682ffca4bfefccafae5a4a4a8a91e4d25fe8edc4055"
+        }
+      },
+      "workflow_actions": {
+        "watch/agents/main/workflows/check_research.json": {
+          "workflow_id": "check_research",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "check",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "f0b90d55fa08e8e40e5e993dcbcb35b36c3d1d78717ea344ebe5ba2500415ea9"
+            }
+          ]
+        },
+        "watch/agents/main/workflows/route_worker.json": {
+          "workflow_id": "route_worker",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "route",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "66e6e8be1fbafc54c8181e9a9175c87cb87bcdc0f1dd7a4bea6491c1a30f9558"
+            }
+          ]
+        },
+        "watch/agents/main/workflows/veille-list.json": {
+          "workflow_id": "veille-list",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "list",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "baef424d61587adb2c798cb2e73dc65be0d60eb701ccac4023673a03b9b93393"
+            }
+          ]
+        },
+        "watch/agents/main/workflows/veille-people.json": {
+          "workflow_id": "veille-people",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "people",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "78cf6e1950c53a496140a777c574230f19720c08196af0d1e345d48b8c7acb02"
+            }
+          ]
+        },
+        "watch/agents/main/workflows/veille-read.json": {
+          "workflow_id": "veille-read",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "validate",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "12642454c03d92b628a116ecd358af62f7a434ba9f78e119e418203e02b04816"
+            },
+            {
+              "path": "/actions/1",
+              "id": "read",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "59a0cd9276b5336c62da9414fbf056f95c76093f42e796184641cdd71ca3056b"
+            }
+          ]
+        },
+        "watch/agents/main/workflows/veille-save.json": {
+          "workflow_id": "veille-save",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "validate",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "adca58fd8c3809014de4a5fc519f686f2ade1142dcf7f1fd9d784e484390c863"
+            },
+            {
+              "path": "/actions/1",
+              "id": "route",
+              "type": "workflow_call"
+            },
+            {
+              "path": "/actions/2",
+              "id": "research",
+              "type": "workflow_call"
+            },
+            {
+              "path": "/actions/3",
+              "id": "prepare",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "8d908639551e970969f3475893b7f398c2b6d0000a25ce2e6749b6360a04999a"
+            },
+            {
+              "path": "/actions/4",
+              "id": "save",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "6093eb4b16aa9a0ba318ab3129dc52aa1369016cb726e5f4cec7fb1e7496bd0c"
+            }
+          ]
+        },
+        "watch/agents/main/workflows/veille-share.json": {
+          "workflow_id": "veille-share",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "share",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "4aebe2f9bb92584c1ceeeb1023cc9dc60194a154ce1a549d455b31669e80c9d7"
+            }
+          ]
+        }
+      },
+      "provides": {
+        "actions": [
+          {
+            "key": "save",
+            "workflow_id": "veille-save",
+            "workflow_version": "2"
+          },
+          {
+            "key": "share",
+            "workflow_id": "veille-share",
+            "workflow_version": "1"
+          },
+          {
+            "key": "route_worker",
+            "workflow_id": "route_worker",
+            "workflow_version": "1"
+          },
+          {
+            "key": "check_research",
+            "workflow_id": "check_research",
+            "workflow_version": "1"
+          }
+        ],
+        "queries": [
+          {
+            "key": "list",
+            "workflow_id": "veille-list",
+            "workflow_version": "2"
+          },
+          {
+            "key": "read",
+            "workflow_id": "veille-read",
+            "workflow_version": "2"
+          },
+          {
+            "key": "people",
+            "workflow_id": "veille-people",
+            "workflow_version": "1"
+          }
+        ],
+        "apps": [
+          {
+            "key": "console",
+            "miniapp_id": "veille-console",
+            "miniapp_version": "6"
+          },
+          {
+            "key": "sharing-console",
+            "miniapp_id": "veille-sharing-console",
+            "miniapp_version": "1"
+          }
+        ]
+      },
+      "requires": {},
+      "composition_dependencies": [],
+      "known_consumers": [
+        "daily-routine",
+        "watch-memory"
+      ],
+      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
+      "publication": "present in historical GitHub source at specified commit",
+      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+    },
+    {
+      "key": "cib-veille-memory",
+      "version": "0.2.0",
+      "manifest": "watch-memory/module.yaml",
+      "workflows": 3,
+      "miniapps": 3,
+      "source": {
+        "repository": "github.com/agentmaurice/company-in-a-box",
+        "commit": "dc935630764b24c819defd03cc487bddf8f87399",
+        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+        "old_path": "solutions/company-in-a-box/memory-integration/modules/veille"
+      },
+      "generators_and_composers": [
+        "tooling/memory-integration/compose.py"
+      ],
+      "resources": {
+        "workflows": [
+          "watch-memory/agents/main/workflows/veille-memory-contribute.json",
+          "watch-memory/agents/main/workflows/veille-memory-query.json",
+          "watch-memory/agents/main/workflows/veille-memory-search.json"
+        ],
+        "miniapps": [
+          "watch-memory/agents/main/miniapps/veille-memory-contribute-console.json",
+          "watch-memory/agents/main/miniapps/veille-memory-query-console.json",
+          "watch-memory/agents/main/miniapps/veille-memory-search-console.json"
+        ],
+        "sha256": {
+          "watch-memory/module.yaml": "bf295664b5b9410516edf1c91280d2d4a3199d0b13ecac20c63705a020d9ba59",
+          "watch-memory/agents/main/workflows/veille-memory-contribute.json": "24326955ea68be6de3a453aa30388ce904d02a94e83e0e1cee5e35bbb527949d",
+          "watch-memory/agents/main/workflows/veille-memory-query.json": "9f7993a040f1a258587c0fe08ecc2f1cc47761d1902086e591f66c9239723271",
+          "watch-memory/agents/main/workflows/veille-memory-search.json": "b5496da1111d9a71050a8acf528b2b6e155ae5f72f0a0d7666264547503965d0",
+          "watch-memory/agents/main/miniapps/veille-memory-contribute-console.json": "86b177c8dac8e6e30d9fc9cc1b8a1f61c778e7169b63168b3b7c76ed35140636",
+          "watch-memory/agents/main/miniapps/veille-memory-query-console.json": "46d00956fd457885117b55a24303bb5f4343531cc05244340a7e8dbdfc879a00",
+          "watch-memory/agents/main/miniapps/veille-memory-search-console.json": "06f3a7b48ecee4b5e3b48d2d1157e0e2065cbb7795b9dc68ecef346efafa0c74"
+        }
+      },
+      "workflow_actions": {
+        "watch-memory/agents/main/workflows/veille-memory-contribute.json": {
+          "workflow_id": "veille-memory-contribute",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "validate",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "c253d4a4e0a81cc3473727588fbdab2e42263c1f24e10843321ebb4a1c6419f7"
+            },
+            {
+              "path": "/actions/1",
+              "id": "read-local",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "751e83be1272aba1b4ee841319520da4a5ba20f29d7c9eeeb3effa9a609979ea"
+            },
+            {
+              "path": "/actions/2",
+              "id": "select-excerpt",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "e6e726803aef75be399d72b277ca67f00ffe0909f805302ac43059cec22b3b6b"
+            },
+            {
+              "path": "/actions/3",
+              "id": "capture",
+              "type": "workflow_call"
+            },
+            {
+              "path": "/actions/4",
+              "id": "propose",
+              "type": "workflow_call"
+            }
+          ]
+        },
+        "watch-memory/agents/main/workflows/veille-memory-query.json": {
+          "workflow_id": "veille-memory-query",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "consult",
+              "type": "workflow_call"
+            }
+          ]
+        },
+        "watch-memory/agents/main/workflows/veille-memory-search.json": {
+          "workflow_id": "veille-memory-search",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "consult",
+              "type": "workflow_call"
+            }
+          ]
+        }
+      },
+      "provides": {
+        "actions": [
+          {
+            "key": "veille-memory-contribute",
+            "workflow_id": "veille-memory-contribute",
+            "workflow_version": "2"
+          }
+        ],
+        "queries": [
+          {
+            "key": "veille-memory-query",
+            "workflow_id": "veille-memory-query",
+            "workflow_version": "1"
+          },
+          {
+            "key": "veille-memory-search",
+            "workflow_id": "veille-memory-search",
+            "workflow_version": "1"
+          }
+        ],
+        "apps": [
+          {
+            "key": "veille-memory-query-console",
+            "miniapp_id": "veille-memory-query-console",
+            "miniapp_version": "1"
+          },
+          {
+            "key": "veille-memory-search-console",
+            "miniapp_id": "veille-memory-search-console",
+            "miniapp_version": "1"
+          },
+          {
+            "key": "veille-memory-contribute-console",
+            "miniapp_id": "veille-memory-contribute-console",
+            "miniapp_version": "2"
+          }
+        ]
+      },
+      "requires": {},
+      "composition_dependencies": [
+        "watch",
+        "company-memory"
+      ],
+      "known_consumers": [],
+      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
+      "publication": "present in historical GitHub source at specified commit",
+      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+    },
+    {
+      "key": "cib-work-dossiers",
+      "version": "0.2.2",
+      "manifest": "work-cases/module.yaml",
+      "workflows": 6,
+      "miniapps": 2,
+      "source": {
+        "repository": "github.com/agentmaurice/company-in-a-box",
+        "commit": "dc935630764b24c819defd03cc487bddf8f87399",
+        "historical_library_commit": "dc935630764b24c819defd03cc487bddf8f87399",
+        "old_path": "solutions/company-in-a-box/common-dossier/module"
+      },
+      "generators_and_composers": [
+        "tooling/work-cases/build.py",
+        "tooling/work-cases/compose.py"
+      ],
+      "resources": {
+        "workflows": [
+          "work-cases/agents/main/workflows/cib-case-list.json",
+          "work-cases/agents/main/workflows/cib-case-people.json",
+          "work-cases/agents/main/workflows/cib-case-read.json",
+          "work-cases/agents/main/workflows/cib-case-save.json",
+          "work-cases/agents/main/workflows/cib-case-share.json",
+          "work-cases/agents/main/workflows/cib-direction-brief.json"
+        ],
+        "miniapps": [
+          "work-cases/agents/main/miniapps/cib-case-console.json",
+          "work-cases/agents/main/miniapps/cib-direction-console.json"
+        ],
+        "sha256": {
+          "work-cases/module.yaml": "65ef645f3e093cfa5bc68df154e8b762da1e48df14ae5ab94131bf23af4566cf",
+          "work-cases/agents/main/workflows/cib-case-list.json": "a00402ed1c01b944ca3f7f3aa0f65fedeee965c2bd2c8cbd7c1ddb385338c15b",
+          "work-cases/agents/main/workflows/cib-case-people.json": "d5221d2a1d38f455b5d39902c44d84dcdd9d12cd44a590a8a284bfb5399a93ea",
+          "work-cases/agents/main/workflows/cib-case-read.json": "4942514cea90c26ac0ac1c5f630b88671e613adf1b4baad417e77191a07ce6ff",
+          "work-cases/agents/main/workflows/cib-case-save.json": "19c38bd9676c143c73bb9a29b3d74b1dd53fbffc47ad12f412890f8a061ea409",
+          "work-cases/agents/main/workflows/cib-case-share.json": "a314e097122cebf354c26d7fce4ec888ec629cd9612ad202ea9f9ea6e1a3100d",
+          "work-cases/agents/main/workflows/cib-direction-brief.json": "76913010deda18d77e3b0fbfcd925bfa5f249d632a1355940619f23a4c4ad2b6",
+          "work-cases/agents/main/miniapps/cib-case-console.json": "9d3410c5bfa2072d7dadac33f6b8453416f76d3b78155a3fc7072d7a15a0e677",
+          "work-cases/agents/main/miniapps/cib-direction-console.json": "fd2c5ac34d14ef0ce1558f7d8637389db1d685527139f7068ad2a0f6c5a9affe"
+        }
+      },
+      "workflow_actions": {
+        "work-cases/agents/main/workflows/cib-case-list.json": {
+          "workflow_id": "cib-case-list",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "validate",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "153c13da5179f25459377731bccc3e55e58464d26711a1880ea21a1017753bbe"
+            },
+            {
+              "path": "/actions/1",
+              "id": "list",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "b448be57f10d85047141562f32c407d589bcbb15c707cc5b153aa2821ce0fcf9"
+            }
+          ]
+        },
+        "work-cases/agents/main/workflows/cib-case-people.json": {
+          "workflow_id": "cib-case-people",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "target",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "4e47c6b6e2fe692321da270a06b541c964944b0145b798dca8c95017a3ffb45b"
+            },
+            {
+              "path": "/actions/1",
+              "id": "people",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "b57d66602e91b08e2e40414f98d8839cf9ad39817e7a72249418b263c80c9f0f"
+            }
+          ]
+        },
+        "work-cases/agents/main/workflows/cib-case-read.json": {
+          "workflow_id": "cib-case-read",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "target",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "4e47c6b6e2fe692321da270a06b541c964944b0145b798dca8c95017a3ffb45b"
+            },
+            {
+              "path": "/actions/1",
+              "id": "read",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "43e4c6995291fa813e8d1e303ed93fe81ddb3523a130373e0d7d5bb52fa3cb68"
+            }
+          ]
+        },
+        "work-cases/agents/main/workflows/cib-case-save.json": {
+          "workflow_id": "cib-case-save",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "validate",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "4fa41d84a42edfdd1ee2c38933e19a804d4c21d680ef319b997fbc3df8af2f94"
+            },
+            {
+              "path": "/actions/1",
+              "id": "save",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "ccac886025fc5294d2ab16961ea14c3993e7502d2b96b38b10c4415342e66a48"
+            }
+          ]
+        },
+        "work-cases/agents/main/workflows/cib-case-share.json": {
+          "workflow_id": "cib-case-share",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "share",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "fd3f4bb5a6a3af0967134012e8e97199afe140915c0c8987ae1929e40b039d27"
+            }
+          ]
+        },
+        "work-cases/agents/main/workflows/cib-direction-brief.json": {
+          "workflow_id": "cib-direction-brief",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "list",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "6740d124114fe4256afe9d6be931bc98687b965d509ada6c4087c871704327ff"
+            },
+            {
+              "path": "/actions/1",
+              "id": "brief",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "6788bd4971a4e530d0b609245e85799e22583936cbd5aa2221e0f188930d124c"
+            }
+          ]
+        }
+      },
+      "provides": {
+        "actions": [
+          {
+            "key": "save",
+            "workflow_id": "cib-case-save",
+            "workflow_version": "4"
+          },
+          {
+            "key": "share",
+            "workflow_id": "cib-case-share",
+            "workflow_version": "2"
+          }
+        ],
+        "queries": [
+          {
+            "key": "read",
+            "workflow_id": "cib-case-read",
+            "workflow_version": "2"
+          },
+          {
+            "key": "list",
+            "workflow_id": "cib-case-list",
+            "workflow_version": "2"
+          },
+          {
+            "key": "direction-brief",
+            "workflow_id": "cib-direction-brief",
+            "workflow_version": "3"
+          },
+          {
+            "key": "people",
+            "workflow_id": "cib-case-people",
+            "workflow_version": "2"
+          }
+        ],
+        "apps": [
+          {
+            "key": "case-console",
+            "miniapp_id": "cib-case-console",
+            "miniapp_version": "5"
+          },
+          {
+            "key": "direction-console",
+            "miniapp_id": "cib-direction-console",
+            "miniapp_version": "3"
+          }
+        ]
+      },
+      "requires": {},
+      "composition_dependencies": [],
+      "known_consumers": [],
+      "language": "Inherited French content is present in the library; M5 review remains pending and language is not qualified",
+      "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
+      "publication": "present in historical GitHub source at specified commit",
+      "migration_m5_m6": "to define and qualify; deployment status is not inferred"
+    }
+  ]
+}

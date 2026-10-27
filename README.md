@@ -1,62 +1,66 @@
-# Company in a Box — Modules AgentMaurice
+# AgentMaurice Modules
 
-Bibliothèque privée de Modules applicatifs réutilisables pour AgentMaurice One.
-Les packages contiennent des Workflows et des MiniApps, leurs tests synthétiques
-et des composeurs locaux. Chaque entreprise conserve son projet consommateur,
-ses identités, droits, connexions et données. Aucun One ni donnée d’entreprise
-n’est inclus dans ce dépôt.
+Reusable application Modules for AgentMaurice, maintained in one repository.
+Each Module has its own version and a root `module.yaml`; published Module
+keys, Workflow IDs and MiniApp IDs keep their existing contracts. The repository
+remains private and retains the history of `agentmaurice/company-in-a-box`.
 
-## Modules disponibles
+## Modules
 
-| Module | Version | Workflows | MiniApps |
-|---|---|---:|---:|
-| [`cib-work-dossiers`](solutions/company-in-a-box/common-dossier/module/module.yaml) | 0.2.2 | 6 | 2 |
-| [`cib-daily-routine`](solutions/company-in-a-box/daily-routine/module/module.yaml) | 0.1.0 | 4 | 3 |
-| [`cib-enterprise-admin`](solutions/company-in-a-box/enterprise-admin/module/module.yaml) | 0.2.2 | 7 | 3 |
-| [`cib-marketing-launch`](solutions/company-in-a-box/marketing-launch/module/module.yaml) | 0.1.0 | 9 | 6 |
-| [`cib-accompagnement-memory`](solutions/company-in-a-box/memory-integration/modules/accompagnement/module.yaml) | 0.2.0 | 3 | 3 |
-| [`cib-contenu-memory`](solutions/company-in-a-box/memory-integration/modules/contenu/module.yaml) | 0.2.0 | 4 | 4 |
-| [`cib-veille-memory`](solutions/company-in-a-box/memory-integration/modules/veille/module.yaml) | 0.2.0 | 3 | 3 |
-| [`cib-accompagnement`](solutions/company-in-a-box/modules/accompagnement/module.yaml) | 0.2.4 | 6 | 2 |
-| [`cib-contenu`](solutions/company-in-a-box/modules/contenu/module.yaml) | 0.2.4 | 6 | 2 |
-| [`cib-veille`](solutions/company-in-a-box/modules/veille/module.yaml) | 0.2.4 | 7 | 2 |
-| [`company-memory`](solutions/company-memory/module/module.yaml) | 0.2.0 | 9 | 6 |
+| Module directory | Stable Module key | Manifest |
+|---|---|---|
+| Company Memory | `company-memory` | [company-memory](company-memory/module.yaml) |
+| Work cases and Direction | `cib-work-dossiers` | [work-cases](work-cases/module.yaml) |
+| Daily routine | `cib-daily-routine` | [daily-routine](daily-routine/module.yaml) |
+| Enterprise administration | `cib-enterprise-admin` | [enterprise-admin](enterprise-admin/module.yaml) |
+| Marketing launch | `cib-marketing-launch` | [marketing-launch](marketing-launch/module.yaml) |
+| Watch | `cib-veille` | [watch](watch/module.yaml) |
+| Content | `cib-contenu` | [content](content/module.yaml) |
+| Customer support | `cib-accompagnement` | [support](support/module.yaml) |
+| Watch memory adapter | `cib-veille-memory` | [watch-memory](watch-memory/module.yaml) |
+| Content memory adapter | `cib-contenu-memory` | [content-memory](content-memory/module.yaml) |
+| Support memory adapter | `cib-accompagnement-memory` | [support-memory](support-memory/module.yaml) |
 
-Les trois Modules `*-memory` raccordent chacun un rôle à la mémoire autonome.
-La routine quotidienne est composée dans les trois Agents métier. Les fonctions
-RH, Commerce et les packs sectoriels ne sont pas livrés dans cette bibliothèque.
-Le fichier [modules.json](modules.json) est l’inventaire vérifiable.
+[modules.json](modules.json) is generated from the manifests. The detailed
+[source and migration inventory](inventory/modules.json) records resources,
+runtimes, dependencies, consumers and source reconciliation. The
+[repository migration guide](docs/REPOSITORY_MIGRATION.md) maps historical
+paths and explains version compatibility.
 
-## Démarrer
+## Company in a Box
 
-1. Lire les [prérequis et l’installation](docs/INSTALLATION.md).
-2. Composer les seuls Modules utiles, en preview puis avec `--write` après revue.
-3. Vérifier et committer le projet consommateur, déployer par le rail Agent Spec
-   natif, puis publier sa surface Application avec les droits appropriés.
-4. Tester manuellement avec des données synthétiques avant tout usage réel.
+The [Company in a Box template](templates/company-in-a-box/modules.json)
+pins these Modules without duplicating their resources. Its role composer is
+[templates/company-in-a-box/compose.py](templates/company-in-a-box/compose.py).
+Module-specific generators, composers and tests live under `tooling/`.
+Consumer Agent Specs, deployment locks, accounts, connections and data remain
+in a separate consumer project.
 
-Le téléchargement GitHub ne déploie rien. L’installation automatique par URL et
-le rail Module Catalog ne sont pas qualifiés par ce dépôt. Un Module installé
-ne crée ni personnes, ni droits, ni connexions par simple présence de fichiers.
+Follow the [installation guide](docs/INSTALLATION.md), then use the native
+Agent Spec check/plan/apply/verify rail and verify the resulting UI. The current
+library uses local composition; URL/catalog installation and archive transport
+have separate implementation work. Existing UI text and business code remain
+on their current language/runtime until their qualified migrations.
 
-## Vérifier hors ligne
+Company Memory now carries the separately versioned 0.3.0 source. Its
+[reconciliation notes](tooling/company-memory/README.md) explain supersession,
+the retired helper Workflow and the limits of upgrade/Viewer qualification.
+The historical 0.2.0 package remains recoverable from its original Git commit.
 
-Python 3.12+ et Node.js 22+ sont nécessaires. Aucune dépendance Python ou Node
-supplémentaire, aucun secret et aucun One ne sont requis.
+## Offline checks
+
+Python 3.12+ and Node.js 22+ are required. No extra package, credential or One
+is needed for these checks:
 
 ```sh
+python3 scripts/inventory.py --check
 python3 scripts/check.py
-python3 scripts/test.py
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/test.py
+git diff --check
 ```
 
-Les tests utilisent des copies temporaires ; aucun runtime n’est lancé ou
-modifié. La CI applique les mêmes contrôles. Voir [tests](docs/TESTING.md),
-[droits et isolation](docs/SECURITY.md), [mise à jour](docs/UPGRADING.md).
+Tests run on temporary copies. Read the [testing guide](docs/TESTING.md),
+[security boundaries](docs/SECURITY.md) and [upgrade guide](docs/UPGRADING.md).
+Offline CI proves these checks; runtime and business acceptance are separate.
 
-Les ressources des Modules proviennent d’un instantané de sources vérifiées.
-Les adaptations de publication portent sur les guides, les tests autonomes et
-la CI ; elles ne changent pas les Workflows ou MiniApps. Les preuves privées de
-qualification, données réelles, clés, comptes et configurations restent exclus.
-Une CI hors ligne verte ne prouve pas une qualification de votre One.
-
-Logiciel propriétaire AgentMaurice. Voir [NOTICE](NOTICE).
+AgentMaurice proprietary software. See [NOTICE](NOTICE).
