@@ -4,7 +4,7 @@
   "key": "company-memory",
   "name": "Company Memory",
   "description": "Manual document memory based on explicit sources and reviews.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "provides": {
     "actions": [
       {
@@ -64,7 +64,7 @@
       {
         "key": "review",
         "miniapp_id": "memory-review",
-        "miniapp_version": "4"
+        "miniapp_version": "5"
       },
       {
         "key": "query",

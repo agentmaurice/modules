@@ -12,7 +12,7 @@
   "modules": [
     {
       "key": "company-memory",
-      "version": "0.3.1",
+      "version": "0.3.2",
       "manifest": "company-memory/module.yaml",
       "workflows": 10,
       "miniapps": 6,
@@ -20,7 +20,7 @@
         "current": {
           "repository": "github.com/agentmaurice/modules",
           "package_path": "company-memory",
-          "version": "0.3.1",
+          "version": "0.3.2",
           "revision_resolution": "Resolve the exact commit at import or release; it is not embedded in this generated inventory."
         },
         "historical_baseline": {
@@ -57,7 +57,7 @@
           "company-memory/agents/main/miniapps/memory-search-console.json"
         ],
         "sha256": {
-          "company-memory/module.yaml": "32f66a3ea36e3b3b2f2023d390e333ca11c7f3f628112174ce6a3be65d9d6431",
+          "company-memory/module.yaml": "28233907917a0610f8bb1bf50aa371493196aff95c4c0acc21a6d2099f7b3981",
           "company-memory/agents/main/workflows/memory-capture-source.json": "f2a591ba24cbc5f4708f542d3c543aef664f2022ea0ed5e9cf7efdaec1a5a736",
           "company-memory/agents/main/workflows/memory-health.json": "7b8090dde2daef9a9e93f0528f2281032bb028bcca301146046b94f349b1b423",
           "company-memory/agents/main/workflows/memory-index-revision.json": "93a2225301a3f21280d866148e6197ad94fd7db7668daad7609ea570abd00820",
@@ -72,7 +72,7 @@
           "company-memory/agents/main/miniapps/memory-index-console.json": "ed109d56868504e34943beb658b962b118bbac88f4a36a0806db7d2492abc47c",
           "company-memory/agents/main/miniapps/memory-propose.json": "82c3e1e6eb3ff2b948ae7bf16a7713977c8d0a774acc9b5232a7a40acd0c4340",
           "company-memory/agents/main/miniapps/memory-query-console.json": "5a2db965243d8ef5c61a5f94b8f9839b139a8927faa6008d94d132f09b41dbd4",
-          "company-memory/agents/main/miniapps/memory-review.json": "2ec532f45a77c8c70dde8f70cdf025e0c29e920a6bfe092f9d8a7ea0fb277767",
+          "company-memory/agents/main/miniapps/memory-review.json": "31f707ace5e55912361327d96642e97ecd1d88c63c6c6323989cd4116049123a",
           "company-memory/agents/main/miniapps/memory-search-console.json": "41f5a6be2ea52bbf765b61b662ae27847c8a39387c77c253ad850e125416fe61"
         }
       },
@@ -530,7 +530,7 @@
           {
             "key": "review",
             "miniapp_id": "memory-review",
-            "miniapp_version": "4"
+            "miniapp_version": "5"
           },
           {
             "key": "query",

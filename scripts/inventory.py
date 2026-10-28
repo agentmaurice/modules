@@ -46,7 +46,7 @@ SOURCES = {
 # Versioned observations describe this M5 candidate only. A later version is
 # not automatically treated as reviewed, published or qualified.
 M5_VERSIONS = {
-    'company-memory': ('0.3.0', '0.3.1'),
+    'company-memory': ('0.3.0', '0.3.2'),
     'watch': ('0.2.4', '0.2.5'), 'content': ('0.2.4', '0.2.5'),
     'support': ('0.2.4', '0.2.5'),
     'watch-memory': ('0.2.0', '0.2.1'), 'content-memory': ('0.2.0', '0.2.1'),

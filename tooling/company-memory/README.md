@@ -1,6 +1,6 @@
-# Company Memory 0.3.1 — manual memory, supersession and compact search
+# Company Memory 0.3.2 — manual memory, supersession and compact search
 
-Source: GitLab pilote-maurice commit `8cb35a14b825dcdae4515d46e3b4c5149c154901`; historical 0.2.0: GitHub library commit `dc935630764b24c819defd03cc487bddf8f87399`. The 0.2.0 → 0.3.0 upgrade was not qualified on One or Viewer in this repository. Version 0.3.1 translates presentation without renaming wire keys or historical values. Its runtime and Viewer qualification remain to be performed; private replay scripts are not distributed. The generated pilote-maurice validator is absent here, so its test is skipped.
+Source: GitLab pilote-maurice commit `8cb35a14b825dcdae4515d46e3b4c5149c154901`; historical 0.2.0: GitHub library commit `dc935630764b24c819defd03cc487bddf8f87399`. The 0.2.0 → 0.3.0 upgrade was not qualified on One or Viewer in this repository. Version 0.3.1 translates presentation without renaming wire keys or historical values; 0.3.2 fixes the review MiniApp's stale decision display without changing Workflow wire keys. Runtime and Viewer qualification remain to be performed; private replay scripts are not distributed. The generated pilote-maurice validator is absent here, so its test is skipped.
 
 This standalone, manual Module V2 stores sources, proposes updates and records a manual review decision. It returns a proposal only if its decision is `validated`, its quotation still matches the source exactly and `review_due` has not passed according to the server clock. Search excludes revisions replaced by newer validated revisions.
 
@@ -19,7 +19,7 @@ User input remains data and is never interpreted as instructions. No LLM, web ca
 | Action IDs | Names such as `validate`, `write` and `revalidate` repeated across Workflows | IDs are unique across the Module (e.g. `capture-validate`, `query-answer`, `revalidate-revision`), checked offline; shared IDs could resolve against the wrong definition (AGENT-1054). |
 | Versions | Module 0.2.0, Workflows version 2 | Module 0.3.0: search 9, query 7, index 8, review 6, capture 4, propose 4, inspect 4, health 3, write-supersession 2, read-supersession 1; `memory-resolve-candidate` retired; query MiniApp 4. |
 
-In 0.3.1 the respective Workflow versions are 10, 8, 9, 7, 5, 5, 5, 4, 3 and 2. MiniApps capture, propose and review are version 4; query is 5; index and search are 3. The manifest pins these versions. Historical IDs, fields, enums and native files remain readable; consumers must update their explicit pins.
+In 0.3.1 the respective Workflow versions are 10, 8, 9, 7, 5, 5, 5, 4, 3 and 2. MiniApps capture, propose and review are version 4; query is 5; index and search are 3. In 0.3.2, the review MiniApp is version 5: loading a proposal replaces the review state carried by the previous proposal before the new inspection is rendered. The manifest pins these versions. Historical IDs, fields, enums and native files remain readable; consumers must update their explicit pins.
 
 ### `context` and code steps
 

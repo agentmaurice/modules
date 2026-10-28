@@ -5,7 +5,7 @@
   "miniapp_id": "memory-review",
   "title": "Memory — manual review",
   "description": "Load a proposal, read its evidence, then make a manual decision.",
-  "version": "4",
+  "version": "5",
   "ui": {
     "renderer": "component",
     "component": "company-memory",
@@ -22,7 +22,7 @@
         {
           "type": "text",
           "value": {
-            "state": "selected.title"
+            "state": "proposal_id.title"
           }
         },
         {
@@ -32,7 +32,7 @@
         {
           "type": "text",
           "value": {
-            "state": "selected.content"
+            "state": "proposal_id.content"
           }
         },
         {
@@ -42,7 +42,7 @@
         {
           "type": "text",
           "value": {
-            "state": "selected.evidence_quote"
+            "state": "proposal_id.evidence_quote"
           }
         },
         {
@@ -52,7 +52,7 @@
         {
           "type": "text",
           "value": {
-            "state": "selected.source_content"
+            "state": "proposal_id.source_content"
           }
         },
         {
@@ -62,7 +62,7 @@
         {
           "type": "text",
           "value": {
-            "state": "selected.source_ref"
+            "state": "proposal_id.source_ref"
           }
         },
         {
@@ -72,7 +72,7 @@
         {
           "type": "text",
           "value": {
-            "state": "selected.review_due"
+            "state": "proposal_id.review_due"
           }
         },
         {
@@ -97,7 +97,7 @@
         {
           "type": "text",
           "value": {
-            "state": "result.review.decision"
+            "state": "proposal_id.review.decision"
           }
         }
       ]
@@ -107,7 +107,46 @@
     "type": "object",
     "properties": {
       "proposal_id": {
-        "type": "string"
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "proposal_id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              },
+              "evidence_quote": {
+                "type": "string"
+              },
+              "source_id": {
+                "type": "string"
+              },
+              "source_ref": {
+                "type": "string"
+              },
+              "source_content": {
+                "type": "string"
+              },
+              "review_due": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "review": {
+                "type": "object"
+              }
+            }
+          }
+        ]
       },
       "selected": {
         "type": "object"
@@ -132,7 +171,7 @@
           "proposal_id": "{{ state.proposal_id }}"
         }
       },
-      "result_to_state": "selected"
+      "result_to_state": "proposal_id"
     },
     {
       "event_id": "validate",
@@ -140,13 +179,13 @@
       "workflow": {
         "workflow_id": "memory-review-update",
         "input": {
-          "proposal_id": "{{ state.selected.proposal_id }}",
+          "proposal_id": "{{ state.proposal_id.proposal_id }}",
           "decision": "validated",
           "review_note": "Review from the MiniApp",
           "confirmation_manuelle": "oui"
         }
       },
-      "result_to_state": "result"
+      "result_to_state": "proposal_id"
     },
     {
       "event_id": "refuse",
@@ -154,13 +193,13 @@
       "workflow": {
         "workflow_id": "memory-review-update",
         "input": {
-          "proposal_id": "{{ state.selected.proposal_id }}",
+          "proposal_id": "{{ state.proposal_id.proposal_id }}",
           "decision": "refused",
           "review_note": "Review from the MiniApp",
           "confirmation_manuelle": "oui"
         }
       },
-      "result_to_state": "result"
+      "result_to_state": "proposal_id"
     },
     {
       "event_id": "dispute",
@@ -168,13 +207,13 @@
       "workflow": {
         "workflow_id": "memory-review-update",
         "input": {
-          "proposal_id": "{{ state.selected.proposal_id }}",
+          "proposal_id": "{{ state.proposal_id.proposal_id }}",
           "decision": "disputed",
           "review_note": "Review from the MiniApp",
           "confirmation_manuelle": "oui"
         }
       },
-      "result_to_state": "result"
+      "result_to_state": "proposal_id"
     }
   ]
 }

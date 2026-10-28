@@ -1,4 +1,4 @@
-"""Offline checks for Company Memory 0.3.1.
+"""Offline checks for Company Memory 0.3.2.
 
 Three layers, none of them calls a One, Memory or Brain:
 
@@ -1115,7 +1115,7 @@ class ChainTest(unittest.TestCase):
 class ContractTest(unittest.TestCase):
     def test_module_manifest_matches_shipped_versions(self):
         manifest = load_json(MODULE / "module.yaml")
-        self.assertEqual(manifest["version"], "0.3.1")
+        self.assertEqual(manifest["version"], "0.3.2")
         for group in ("actions", "queries"):
             for entry in manifest["provides"][group]:
                 doc = WORKFLOWS_CACHE[entry["workflow_id"]]
@@ -1142,6 +1142,36 @@ class ContractTest(unittest.TestCase):
         notes = [event["workflow"]["input"]["review_note"] for event in app["events"]
                  if "review_note" in event["workflow"].get("input", {})]
         self.assertEqual(notes, ["Review from the MiniApp"] * 3)
+
+    def test_review_load_replaces_previous_decision_state(self):
+        app = load_json(MINIAPPS / "memory-review.json")
+        inspect = next(event for event in app["events"] if event["event_id"] == "inspect")
+        self.assertEqual(inspect["result_to_state"], "proposal_id")
+        self.assertEqual(
+            {event["result_to_state"] for event in app["events"] if event["event_id"] != "inspect"},
+            {"proposal_id"},
+        )
+        for event in app["events"]:
+            if event["event_id"] != "inspect":
+                self.assertEqual(
+                    event["workflow"]["input"]["proposal_id"],
+                    "{{ state.proposal_id.proposal_id }}",
+                )
+
+        def deep_merge(base, patch):
+            merged = dict(base)
+            for key, value in patch.items():
+                if isinstance(value, dict) and isinstance(merged.get(key), dict):
+                    merged[key] = deep_merge(merged[key], value)
+                else:
+                    merged[key] = value
+            return merged
+
+        state = {"proposal_id": ""}
+        state = deep_merge(state, {"proposal_id": {"proposal_id": "old", "review": {"decision": "disputed"}}})
+        state = deep_merge(state, {"proposal_id": "new"})
+        self.assertEqual(state["proposal_id"], "new")
+        self.assertNotIsInstance(state["proposal_id"], dict)
 
     def test_revalidation_calls_pin_the_new_query_version(self):
         calls = [(name, a) for name, doc in WORKFLOWS_CACHE.items() for a in doc["actions"]
