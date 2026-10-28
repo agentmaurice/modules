@@ -137,6 +137,27 @@ main().then(() => {{
       target.write_bytes(old + b" ")
       with self.assertRaises(ValueError): compose.compose(consumer)
 
+  def test_compose_accepts_real_4a_candidate_and_rejects_unknown_divergence(self):
+    relative = "module/agents/main/workflows/cib-admin-manage.json"
+    repository_path = "enterprise-admin/agents/main/workflows/cib-admin-manage.json"
+    revision = "4a1447d26e49c6b9445d889078d9f74b504c8367"
+    old = subprocess.run(
+      ["git", "show", f"{revision}:{repository_path}"],
+      cwd=ROOT.parents[1], check=True, capture_output=True,
+    ).stdout
+    self.assertEqual(hashlib.sha256(old).hexdigest(), compose.CANDIDATE_4A_HASHES[relative])
+    with tempfile.TemporaryDirectory() as directory:
+      consumer = Path(directory)
+      spec_path = consumer / "agents/veille/agent-spec.json"
+      spec_path.parent.mkdir(parents=True)
+      spec_path.write_text(json.dumps({"schema_version": 2, "agent_alias": "veille", "agent_id": "abcdefghijklmnopqrst"}))
+      target = consumer / "agents/veille/workflows/cib-admin-manage.json"
+      target.parent.mkdir(parents=True)
+      target.write_bytes(old)
+      self.assertEqual(len(compose.compose(consumer)), 10)
+      target.write_bytes(old + b" ")
+      with self.assertRaises(ValueError): compose.compose(consumer)
+
   def test_overview_display_projection_preserves_native_values(self):
     overview = json.loads(((ROOT.parents[1] / "enterprise-admin") / "agents/main/workflows/cib-admin-overview.json").read_text())
     code = overview["actions"][0]["code"].replace("import { callTool } from './tools/nats_bridge.ts';", "")

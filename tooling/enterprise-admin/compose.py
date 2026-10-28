@@ -51,7 +51,7 @@ CANDIDATE_4A_HASHES = {
     "module/agents/main/miniapps/cib-admin-records-console.json": "386cc3ffc59d6351779dacf574fda2167b900f8d92eb742ebe54c48c3e730aee",
     "module/agents/main/workflows/cib-admin-approval-check.json": "6101bda7644845a6da708aab6415a56793ad8f8314d0020df672849fa1ac7f86",
     "module/agents/main/workflows/cib-admin-import-record.json": "8b149ff31b9da0a1deeb1ca3f4343efe539212136478aebd8394fca679631c9d",
-    "module/agents/main/workflows/cib-admin-manage.json": "8ba4e8e2558a118dcc3302d939f2a6b38378b1f4369be645399fee3d1ea0524",
+    "module/agents/main/workflows/cib-admin-manage.json": "8ba4e8e2558a118dcc3302d939f2a6b38378b1f4369be645399fee3d1ea0524a",
     "module/agents/main/workflows/cib-admin-overview.json": "3dbe1a1964ab8e3c4229b94f1b0a3ce46bc30e3e9bc9e3fe7059b23dd3964cd0",
     "module/agents/main/workflows/cib-admin-record-people.json": "f46e021f94b39cbc63ed3d7d7a8ccfd4fecf50d5be89bf118c583fc70e7dd985",
     "module/agents/main/workflows/cib-admin-record-read.json": "8f1157fc57b318fa68115310f3dd821252a8b58537081fec1cca06fa52fddf96",
