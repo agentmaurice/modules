@@ -141,10 +141,15 @@ main().then(() => {{
     relative = "module/agents/main/workflows/cib-admin-manage.json"
     repository_path = "enterprise-admin/agents/main/workflows/cib-admin-manage.json"
     revision = "4a1447d26e49c6b9445d889078d9f74b504c8367"
-    old = subprocess.run(
+    git_result = subprocess.run(
       ["git", "show", f"{revision}:{repository_path}"],
-      cwd=ROOT.parents[1], check=True, capture_output=True,
-    ).stdout
+      cwd=ROOT.parents[1], capture_output=True,
+    )
+    # scripts/test.py runs suites from a copy without .git; retain the exact
+    # hash assertion there against the packaged source bytes.
+    old = git_result.stdout if git_result.returncode == 0 else (
+      ROOT.parents[1] / repository_path
+    ).read_bytes()
     self.assertEqual(hashlib.sha256(old).hexdigest(), compose.CANDIDATE_4A_HASHES[relative])
     with tempfile.TemporaryDirectory() as directory:
       consumer = Path(directory)
