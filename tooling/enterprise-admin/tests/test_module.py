@@ -17,7 +17,7 @@ class ModuleTest(unittest.TestCase):
   def test_generated_contract_and_bounded_tools(self):
     build.build()
     manifest = json.loads(((ROOT.parents[1] / "enterprise-admin") / "module.yaml").read_text())
-    self.assertEqual(manifest["version"], "0.2.3")
+    self.assertEqual(manifest["version"], "0.2.4")
     self.assertEqual({x["workflow_id"] for x in manifest["provides"]["actions"] + manifest["provides"]["queries"]}, {"cib-admin-manage", "cib-admin-overview", "cib-admin-approval-check", "cib-admin-import-record", "cib-admin-record-read", "cib-admin-record-people", "cib-admin-record-share"})
     manage = json.loads(((ROOT.parents[1] / "enterprise-admin") / "agents/main/workflows/cib-admin-manage.json").read_text())
     code = manage["actions"][0]["code"]
@@ -156,6 +156,8 @@ main().then(() => {{
   def test_confirmation_defaults_to_non(self):
     miniapp = json.loads(((ROOT.parents[1] / "enterprise-admin") / "agents/main/miniapps/cib-admin-console.json").read_text())
     self.assertEqual(miniapp["initial_state"]["confirmation_manuelle"], "false")
+    self.assertEqual(miniapp["initial_state"]["overview"]["message"], "No overview read.")
+    self.assertEqual(miniapp["initial_state"]["result"]["message"], "")
 
   def test_historical_acl_contract_is_unitary_and_bodyless(self):
     read = json.loads(((ROOT.parents[1] / "enterprise-admin") / "agents/main/workflows/cib-admin-record-read.json").read_text())

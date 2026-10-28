@@ -3,7 +3,7 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "cib-case-console",
-  "version": "6",
+  "version": "7",
   "title": "Shared cases",
   "description": "Manual internal ACL coordination, owned by Watch.",
   "ui": {
@@ -71,6 +71,10 @@
             {
               "type": "text",
               "value": "Owner"
+            },
+            {
+              "type": "text",
+              "value": "To share or remove access, open cib-case-sharing-console from navigation and copy the selected case, revision and member."
             },
             {
               "type": "text",
@@ -255,9 +259,6 @@
       "confirmation_manuelle": {
         "type": "string"
       },
-      "share_permission": {
-        "type": "string"
-      },
       "result": {
         "type": "object"
       },
@@ -293,7 +294,6 @@
     "preuve_ref": "",
     "revue_manuelle": "non",
     "confirmation_manuelle": "non",
-    "share_permission": "read",
     "result": {},
     "listing": {
       "items": []
@@ -391,22 +391,6 @@
         }
       },
       "result_to_state": "people"
-    },
-    {
-      "event_id": "share",
-      "trigger": "form.submit",
-      "workflow": {
-        "workflow_id": "cib-case-share",
-        "input": {
-          "jeu": "{{ state.jeu }}",
-          "case_id": "{{ state.selected.record.case_id }}",
-          "expected_revision": "{{ state.selected.revision }}",
-          "subject_user_id": "{{ state.people.selected_target.user_id }}",
-          "permission": "{{ state.share_permission }}",
-          "confirmation_manuelle": "{{ state.confirmation_manuelle }}"
-        }
-      },
-      "result_to_state": "selected"
     }
   ]
 }

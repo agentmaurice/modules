@@ -29,7 +29,7 @@ class ComposeTest(unittest.TestCase):
         root = self.consumer()
         before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
         planned = COMPOSE.compose(root)
-        self.assertEqual(8, len(planned))
+        self.assertEqual(9, len(planned))
         self.assertTrue(all(p.is_relative_to(root / "agents/veille") for p in planned))
         self.assertEqual(before, {p: p.read_bytes() for p in root.rglob("*") if p.is_file()})
         for p, content in planned.items():
@@ -60,7 +60,7 @@ class ComposeTest(unittest.TestCase):
                 return digest
         with patch.object(COMPOSE.hashlib, "sha256", return_value=Digest()):
             planned = COMPOSE.compose(root)
-        self.assertEqual(8, len(planned))
+        self.assertEqual(9, len(planned))
 
     def test_write_mode_updates_an_existing_planned_resource(self):
         root = self.consumer()

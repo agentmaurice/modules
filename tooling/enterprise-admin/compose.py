@@ -42,6 +42,22 @@ PREQUAL_022_HASHES = {
     'module/agents/main/miniapps/cib-admin-record-share-console.json': 'c6e1625161d3a13b0c5510801ebc120e6b7b69a892cb29dd6d0bac3688340ed7',
 }
 
+# Exact candidate bytes at source revision 4a1447d, accepted for upgrade while
+# retaining the published and prequalification histories above.
+CANDIDATE_4A_HASHES = {
+    "module/module.yaml": "7cff6f9345fc142250d5653d5115334747c103c4cf22df8763fc7f3dcfb2ac41",
+    "module/agents/main/miniapps/cib-admin-console.json": "2b049ef01f7a24916df8235a4768e8ec7f27a01e9ab0b316d0f7c11158997ddc",
+    "module/agents/main/miniapps/cib-admin-record-share-console.json": "297ad0bb06cdb42e80c57642c633db9e58825adabca54f3e5c70deecc5f1ec41",
+    "module/agents/main/miniapps/cib-admin-records-console.json": "386cc3ffc59d6351779dacf574fda2167b900f8d92eb742ebe54c48c3e730aee",
+    "module/agents/main/workflows/cib-admin-approval-check.json": "6101bda7644845a6da708aab6415a56793ad8f8314d0020df672849fa1ac7f86",
+    "module/agents/main/workflows/cib-admin-import-record.json": "8b149ff31b9da0a1deeb1ca3f4343efe539212136478aebd8394fca679631c9d",
+    "module/agents/main/workflows/cib-admin-manage.json": "8ba4e8e2558a118dcc3302d939f2a6b38378b1f4369be645399fee3d1ea0524",
+    "module/agents/main/workflows/cib-admin-overview.json": "3dbe1a1964ab8e3c4229b94f1b0a3ce46bc30e3e9bc9e3fe7059b23dd3964cd0",
+    "module/agents/main/workflows/cib-admin-record-people.json": "f46e021f94b39cbc63ed3d7d7a8ccfd4fecf50d5be89bf118c583fc70e7dd985",
+    "module/agents/main/workflows/cib-admin-record-read.json": "8f1157fc57b318fa68115310f3dd821252a8b58537081fec1cca06fa52fddf96",
+    "module/agents/main/workflows/cib-admin-record-share.json": "c285276a3f37c5a3723143d6f170bcf7efe66805428ca40ccabf58aa948c20e8",
+}
+
 def digest(path):
     h = hashlib.sha256(); h.update(path.read_bytes()); return h.hexdigest()
 
@@ -64,8 +80,8 @@ def compose(consumer: Path, owner_alias: str = "veille"):
         current = digest(src)
         relative = "module/" + src.relative_to(MODULE).as_posix()
         legacy = LEGACY_021_HASHES.get(relative)
-        if actual not in {current, legacy, LEGACY_022_HASHES.get(relative), PREQUAL_022_HASHES.get(relative)}:
-            expected = ", ".join(value for value in (current, legacy, LEGACY_022_HASHES.get(relative), PREQUAL_022_HASHES.get(relative)) if value)
+        if actual not in {current, legacy, LEGACY_022_HASHES.get(relative), PREQUAL_022_HASHES.get(relative), CANDIDATE_4A_HASHES.get(relative)}:
+            expected = ", ".join(value for value in (current, legacy, LEGACY_022_HASHES.get(relative), PREQUAL_022_HASHES.get(relative), CANDIDATE_4A_HASHES.get(relative)) if value)
             raise ValueError(f"refusing divergent resource: {dst} (expected sha256: {expected})")
     return planned
 

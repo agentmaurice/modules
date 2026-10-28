@@ -3,7 +3,7 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "cib-admin-console",
-  "version": "3",
+  "version": "4",
   "title": "Company-in-a-Box administration",
   "description": "Read and perform manual administrative operations without creating accounts or sending email invitations.",
   "ui": {
@@ -165,10 +165,11 @@
       "application_people": [],
       "approval_mandates": [],
       "approval_mandates_display": [],
-      "mandate_count": 0
+      "mandate_count": 0,
+      "message": "No overview read."
     },
     "result": {
-      "message": "No overview read."
+      "message": ""
     },
     "operation": "",
     "person_id": "",

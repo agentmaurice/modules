@@ -1,0 +1,86 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "cib-case-sharing-console",
+  "version": "1",
+  "title": "Shared case access",
+  "description": "Share one case with one member through the internal ACL broker.",
+  "ui": {
+    "renderer": "component",
+    "component": "company-in-a-box",
+    "configuration": {
+      "layout": [
+        {
+          "type": "text",
+          "value": "Copy the case and revision from Shared cases. One case and one member are handled at a time; the internal ACL broker remains authoritative."
+        },
+        {
+          "type": "text",
+          "value": "Open the share form from the available interactions, then confirm sharing or removal."
+        },
+        {
+          "type": "text",
+          "value": {
+            "state": "result.message"
+          }
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "jeu": {
+        "type": "string"
+      },
+      "case_id": {
+        "type": "string"
+      },
+      "expected_revision": {
+        "type": "string"
+      },
+      "subject_user_id": {
+        "type": "string"
+      },
+      "permission": {
+        "type": "string"
+      },
+      "confirmation_manuelle": {
+        "type": "string"
+      },
+      "result": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "jeu": "usage",
+    "case_id": "",
+    "expected_revision": "",
+    "subject_user_id": "",
+    "permission": "read",
+    "confirmation_manuelle": "non",
+    "result": {
+      "message": "No action."
+    }
+  },
+  "events": [
+    {
+      "event_id": "share",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "cib-case-share",
+        "input": {
+          "jeu": "{{ state.jeu }}",
+          "case_id": "{{ state.case_id }}",
+          "expected_revision": "{{ state.expected_revision }}",
+          "subject_user_id": "{{ state.subject_user_id }}",
+          "permission": "{{ state.permission }}",
+          "confirmation_manuelle": "{{ state.confirmation_manuelle }}"
+        }
+      },
+      "result_to_state": "result"
+    }
+  ]
+}

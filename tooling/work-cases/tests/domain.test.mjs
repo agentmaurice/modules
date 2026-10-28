@@ -58,5 +58,5 @@ assert.match(share.actions[0].code, /operation:"share"/);
 assert.match(people.actions[1].code, /operation:"people"/);
 assert.match(save.actions[1].code, /expected_revision/);
 assert.match(share.actions[0].code, /manual_confirmation_required/);
-assert.equal(JSON.parse(fs.readFileSync(new URL('../../../work-cases/module.yaml', import.meta.url))).version, '0.2.3');
+assert.equal(JSON.parse(fs.readFileSync(new URL('../../../work-cases/module.yaml', import.meta.url))).version, '0.2.4');
 console.log('domain and generated contract tests passed');

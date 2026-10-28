@@ -221,6 +221,9 @@ return {people: directory.people || [], grants, grants_display, application_peop
     }
     miniapp["state_schema"]["properties"].update({f["name"]: {"type": "string"} for f in forms})
     miniapp["initial_state"].update({f["name"]: "false" if f["name"] == "confirmation_manuelle" else "" for f in forms})
+    miniapp["version"] = "4"
+    miniapp["initial_state"]["overview"]["message"] = "No overview read."
+    miniapp["initial_state"]["result"]["message"] = ""
     dump(DEST / "miniapps/cib-admin-console.json", miniapp)
     approval_check = workflow("cib-admin-approval-check", "CIB approval — local qualification read", [{"id":"read_only", "type":"tool_call", "tool":"list_files", "require_approval":True, "params":{"path":"/company-in-a-box/veille"}, "output_key":"files"}], {"files":"{{ files }}"})
     approval_check["version"] = "2"
@@ -274,14 +277,19 @@ return {people: directory.people || [], grants, grants_display, application_peop
     dump(DEST / "workflows/cib-admin-record-read.json", record_read_workflow())
     dump(DEST / "workflows/cib-admin-record-people.json", record_people_workflow())
     dump(DEST / "workflows/cib-admin-record-share.json", record_share_workflow())
-    dump(DEST / "miniapps/cib-admin-records-console.json", records_console())
+    records = records_console()
+    records["version"] = "3"
+    records["ui"]["configuration"]["layout"][0]["value"] = "Enter one record at a time. The administrator remains the custodian; bulk transfer is unavailable; individual sharing is available in the dedicated sharing console."
+    dump(DEST / "miniapps/cib-admin-records-console.json", records)
 
     manifest["provides"]["actions"].append({"key":"record-share", "workflow_id":"cib-admin-record-share", "workflow_version":"2"})
     manifest["provides"]["queries"].extend([
         {"key":"record-read", "workflow_id":"cib-admin-record-read", "workflow_version":"2"},
         {"key":"record-people", "workflow_id":"cib-admin-record-people", "workflow_version":"2"},
     ])
-    manifest["provides"]["apps"].append({"key":"records-console", "miniapp_id":"cib-admin-records-console", "miniapp_version":"2"})
+    manifest["version"] = "0.2.4"
+    manifest["provides"]["apps"][0]["miniapp_version"] = "4"
+    manifest["provides"]["apps"].append({"key":"records-console", "miniapp_id":"cib-admin-records-console", "miniapp_version":"3"})
     manifest["provides"]["apps"].append({"key":"record-share-console", "miniapp_id":"cib-admin-record-share-console", "miniapp_version":"2"})
     dump((ROOT.parents[1] / "enterprise-admin" / "module.yaml"), manifest)
     dump(DEST / "miniapps/cib-admin-record-share-console.json", record_share_console())

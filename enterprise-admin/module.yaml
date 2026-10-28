@@ -3,7 +3,7 @@
   "schema_version": 2,
   "key": "cib-enterprise-admin",
   "name": "Company-in-a-Box — enterprise administration",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "provides": {
     "actions": [
       {
@@ -48,12 +48,12 @@
       {
         "key": "admin-console",
         "miniapp_id": "cib-admin-console",
-        "miniapp_version": "3"
+        "miniapp_version": "4"
       },
       {
         "key": "records-console",
         "miniapp_id": "cib-admin-records-console",
-        "miniapp_version": "2"
+        "miniapp_version": "3"
       },
       {
         "key": "record-share-console",

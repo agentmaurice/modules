@@ -31,7 +31,7 @@
     },
     {
       "key": "cib-enterprise-admin",
-      "version": "0.2.3",
+      "version": "0.2.4",
       "manifest": "enterprise-admin/module.yaml",
       "workflows": 7,
       "miniapps": 3
@@ -73,10 +73,10 @@
     },
     {
       "key": "cib-work-dossiers",
-      "version": "0.2.3",
+      "version": "0.2.4",
       "manifest": "work-cases/module.yaml",
       "workflows": 6,
-      "miniapps": 2
+      "miniapps": 3
     }
   ]
 }

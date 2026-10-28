@@ -3,7 +3,7 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "cib-admin-records-console",
-  "version": "2",
+  "version": "3",
   "title": "Administration — historical records",
   "description": "Inspect metadata and ACL sharing for individual historical records. Records remain private by default.",
   "ui": {
@@ -13,7 +13,7 @@
       "layout": [
         {
           "type": "text",
-          "value": "Enter one record at a time. The administrator remains the custodian; bulk transfer and sharing are unavailable."
+          "value": "Enter one record at a time. The administrator remains the custodian; bulk transfer is unavailable; individual sharing is available in the dedicated sharing console."
         },
         {
           "type": "button",
