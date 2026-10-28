@@ -1449,10 +1449,10 @@
       "requires": {},
       "composition_dependencies": [],
       "known_consumers": [],
-      "language": "Version outside the recorded M5 candidate; language review status is not inferred.",
+      "language": "M5 English source candidate prepared; complete review and One and Viewer qualification remain pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
-      "publication": "Publication status of this version is not inferred.",
-      "migration_m5_m6": "M5 and M6 status for this version is not inferred."
+      "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
+      "migration_m5_m6": "M5 source candidate prepared, not fully qualified; M6 Go port and runtime qualification remain pending."
     },
     {
       "key": "cib-marketing-launch",
@@ -2504,7 +2504,7 @@
     },
     {
       "key": "cib-work-dossiers",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "manifest": "work-cases/module.yaml",
       "workflows": 6,
       "miniapps": 3,
@@ -2512,7 +2512,7 @@
         "current": {
           "repository": "github.com/agentmaurice/modules",
           "package_path": "work-cases",
-          "version": "0.2.4",
+          "version": "0.2.5",
           "revision_resolution": "Resolve the exact commit at import or release; it is not embedded in this generated inventory."
         },
         "historical_baseline": {
@@ -2543,14 +2543,14 @@
           "work-cases/agents/main/miniapps/cib-direction-console.json"
         ],
         "sha256": {
-          "work-cases/module.yaml": "974a2d5c456082326b1759e0b6b93ed840e73b33fdafdba0c6b8609289a903e5",
+          "work-cases/module.yaml": "9661bdeda8373f8635cd2ce62002435334cecaa208d9dde6da5b090761d82245",
           "work-cases/agents/main/workflows/cib-case-list.json": "1bcf1168d5c35e0fdc0431618555191e84adc0c02d077357ff4ff5063b46339c",
           "work-cases/agents/main/workflows/cib-case-people.json": "879c20df05c945c6ac244e75689de187caa6d336a4b9013bfc33c69f1c7f228f",
           "work-cases/agents/main/workflows/cib-case-read.json": "84ba99136a265aca68262fed238111a082ececadc383831f6d8e52a524606379",
           "work-cases/agents/main/workflows/cib-case-save.json": "758bd304bb1dc58227e0079025777938397073f246659a3c021e2123bcd27b20",
           "work-cases/agents/main/workflows/cib-case-share.json": "88b9013f09fd7c195cc52bcb0a47ba12c1dbf77216c4312c0a6cb129c790349a",
           "work-cases/agents/main/workflows/cib-direction-brief.json": "cd267299db603ebaf4ae2a204bd686bf213519fe03ade5f5dba5f07855ff994b",
-          "work-cases/agents/main/miniapps/cib-case-console.json": "7cec5f3852ed08e20e89bfa294c1aa6b31e32038a7a02167c75d6597291b40d5",
+          "work-cases/agents/main/miniapps/cib-case-console.json": "9fee35c008cc0267e48e472ef5abe1512cb505b6a742cbd373e566e64e8c0128",
           "work-cases/agents/main/miniapps/cib-case-sharing-console.json": "3d7c080db08fa332a1b1b2d29025f39e38c85a3691f0e10145fc74ec5e443a56",
           "work-cases/agents/main/miniapps/cib-direction-console.json": "7cf3ee9ef1b1824537bbcda6eb7ecefff90c20c413ad41e7ece80c801322953b"
         }
@@ -2714,7 +2714,7 @@
           {
             "key": "case-console",
             "miniapp_id": "cib-case-console",
-            "miniapp_version": "7"
+            "miniapp_version": "8"
           },
           {
             "key": "direction-console",
@@ -2731,10 +2731,10 @@
       "requires": {},
       "composition_dependencies": [],
       "known_consumers": [],
-      "language": "Version outside the recorded M5 candidate; language review status is not inferred.",
+      "language": "M5 English source candidate prepared; complete review and One and Viewer qualification remain pending.",
       "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
-      "publication": "Publication status of this version is not inferred.",
-      "migration_m5_m6": "M5 and M6 status for this version is not inferred."
+      "publication": "M5 candidate version is local and unpublished; no release or qualification is asserted.",
+      "migration_m5_m6": "M5 source candidate prepared, not fully qualified; M6 Go port and runtime qualification remain pending."
     }
   ]
 }

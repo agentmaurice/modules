@@ -34,6 +34,9 @@ CANDIDATE_4A_SHA256 = {
     'workflows/cib-case-share.json': '88b9013f09fd7c195cc52bcb0a47ba12c1dbf77216c4312c0a6cb129c790349a',
     'workflows/cib-direction-brief.json': 'cd267299db603ebaf4ae2a204bd686bf213519fe03ade4d9f645fd4e2f6436e',
 }
+MINIAPP_7_SHA256 = {
+    'miniapps/cib-case-console.json': '7cec5f3852ed08e20e89bfa294c1aa6b31e32038a7a02167c75d6597291b40d5',
+}
 
 def compose(consumer, owner_alias="veille"):
     if not re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", owner_alias):
@@ -54,7 +57,7 @@ def compose(consumer, owner_alias="veille"):
         if dest.exists() and dest.read_bytes() != content:
             relative = dest.relative_to(agent)
             digest = hashlib.sha256(dest.read_bytes()).hexdigest()
-            if PREVIOUS_SHA256.get(relative) != digest and ADDITIONAL_PREVIOUS_SHA256.get(str(relative)) != digest and ACL_PREFILL_PREVIOUS_SHA256.get(str(relative)) != digest and migration_hashes.get(str(relative)) != digest and CANDIDATE_4A_SHA256.get(str(relative)) != digest:
+            if PREVIOUS_SHA256.get(relative) != digest and ADDITIONAL_PREVIOUS_SHA256.get(str(relative)) != digest and ACL_PREFILL_PREVIOUS_SHA256.get(str(relative)) != digest and migration_hashes.get(str(relative)) != digest and CANDIDATE_4A_SHA256.get(str(relative)) != digest and MINIAPP_7_SHA256.get(str(relative)) != digest:
                 raise ValueError("refusing divergent resource: " + str(dest))
     return planned
 

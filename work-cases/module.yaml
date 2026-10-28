@@ -3,7 +3,7 @@
   "schema_version": 2,
   "key": "cib-work-dossiers",
   "name": "Company-in-a-Box — shared cases",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "provides": {
     "actions": [
       {
@@ -43,7 +43,7 @@
       {
         "key": "case-console",
         "miniapp_id": "cib-case-console",
-        "miniapp_version": "7"
+        "miniapp_version": "8"
       },
       {
         "key": "direction-console",

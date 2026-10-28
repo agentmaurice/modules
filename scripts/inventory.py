@@ -52,7 +52,7 @@ M5_VERSIONS = {
     'watch-memory': ('0.2.0', '0.2.1'), 'content-memory': ('0.2.0', '0.2.1'),
     'support-memory': ('0.2.0', '0.2.1'),
     'daily-routine': ('0.1.0', '0.1.1'), 'marketing-launch': ('0.1.0', '0.1.1'),
-    'enterprise-admin': ('0.2.2', '0.2.3'), 'work-cases': ('0.2.2', '0.2.3'),
+    'enterprise-admin': ('0.2.2', '0.2.4'), 'work-cases': ('0.2.2', '0.2.5'),
 }
 CONSUMERS = {
     'watch-memory': ['watch', 'company-memory'], 'content-memory': ['content', 'company-memory'],

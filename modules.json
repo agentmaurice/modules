@@ -73,7 +73,7 @@
     },
     {
       "key": "cib-work-dossiers",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "manifest": "work-cases/module.yaml",
       "workflows": 6,
       "miniapps": 3
