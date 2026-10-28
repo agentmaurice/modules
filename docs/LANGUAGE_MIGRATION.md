@@ -103,7 +103,7 @@ marked “example” appear in `templates/company-in-a-box/surface.example.json`
 which is only a placeholder example. Other MiniApps require explicit surface
 configuration and applicable access. Intended normal navigation is Home →
 the published Application → the named MiniApp; neither that publication nor
-any actual Home/Viewer rendering is proved here. All 36 rows have **real UI
+any actual Home/Viewer rendering is proved here. All matrix rows have **real UI
 proof pending**. Do not substitute a backend JSON response for visual evidence.
 
 | Module | MiniApp and native version | Source file and SHA-256 | Intended journey and packaged Workflow targets | Surface |
