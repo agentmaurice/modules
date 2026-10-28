@@ -3,14 +3,14 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "daily-context",
-  "version": "1",
-  "title": "Préparer mon dossier avec la mémoire",
+  "version": "2",
+  "title": "Prepare my case with memory",
   "actions": [
     {
       "id": "dossier",
       "type": "workflow_call",
       "workflow_id": "daily-role-read",
-      "workflow_version": "1",
+      "workflow_version": "3",
       "execution": "sync",
       "input": {
         "dossier_id": "{{ dossier_id }}"
@@ -21,7 +21,7 @@
       "id": "memory",
       "type": "workflow_call",
       "workflow_id": "company-memory-query",
-      "workflow_version": "1",
+      "workflow_version": "2",
       "execution": "sync",
       "input": {
         "proposal_id": "{{ proposal_id }}"
@@ -31,7 +31,7 @@
     {
       "id": "context",
       "type": "code_execution",
-      "code": "const r=({{ json .local }}).data.record;const m=({{ json .memory }}).data;const valid=m.status===\"validated\"&&typeof m.answer===\"string\"&&m.answer.trim()&&Array.isArray(m.citations)&&m.citations.length>0&&Number.isFinite(Date.parse(m.expires_at))&&Date.parse(m.expires_at)>Date.now();return {dossier:r,content:JSON.stringify(r,null,2),memory_status:m.status,memory_answer:valid?m.answer:\"Mémoire non utilisable : une revue est nécessaire.\",citations:valid?m.citations:[],proposal_id:m.proposal_id,expires_at:m.expires_at||\"\",ready:!!valid,message:valid?\"Contexte disponible. Préparez le livrable interne, puis relisez-le avant de noter le temps.\":\"Mémoire non validée ou périmée : ne pas utiliser comme fait. Revenir à la collecte ou à la revue mémoire.\"};",
+      "code": "const r=({{ json .local }}).data.record;const m=({{ json .memory }}).data;const valid=m.status===\"validated\"&&typeof m.answer===\"string\"&&m.answer.trim()&&Array.isArray(m.citations)&&m.citations.length>0&&Number.isFinite(Date.parse(m.expires_at))&&Date.parse(m.expires_at)>Date.now();return {dossier:r,content:JSON.stringify(r,null,2),memory_status:m.status,memory_answer:valid?m.answer:\"Memory cannot be used: review is required.\",citations:valid?m.citations:[],proposal_id:m.proposal_id,expires_at:m.expires_at||\"\",ready:!!valid,message:valid?\"Context available. Prepare and review the internal deliverable before recording time.\":\"Memory is unvalidated or expired: do not use it as fact. Return to collection or memory review.\"};",
       "output_key": "context"
     }
   ],
@@ -51,17 +51,17 @@
   "forms": [
     {
       "id": "submit",
-      "title": "Préparer mon dossier avec la mémoire",
+      "title": "Prepare my case with memory",
       "fields": [
         {
           "name": "dossier_id",
-          "title": "Dossier local",
+          "title": "Local case",
           "type": "string",
           "required": true
         },
         {
           "name": "proposal_id",
-          "title": "Révision mémoire à consulter",
+          "title": "Memory revision to view",
           "type": "string",
           "required": true
         }

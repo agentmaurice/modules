@@ -24,6 +24,20 @@ ADDITIONAL_PREVIOUS_SHA256 = {'miniapps/cib-direction-console.json': '700d88b859
 
 ACL_PREFILL_PREVIOUS_SHA256 = {'workflows/cib-case-read.json': '94a165cf10b29d44463433b379def6b642a2c55e644333cb18885fe23376806c', 'workflows/cib-case-save.json': '7755efcb58f47286c5c6aebc05e4b6f0ca85eda48b012c642340cc7880718317'}
 
+CANDIDATE_4A_SHA256 = {
+    'miniapps/cib-case-console.json': 'a0f35d08d4d39c6eff424e774b2d924a64291bd20f7df29e13955dc26f5c72f0',
+    'miniapps/cib-direction-console.json': '7cf3ee9ef1b1824537bbcda6eb7ecefff90c20c413ad41e7ece80c801322953b',
+    'workflows/cib-case-list.json': '1bcf1168d5c35e0fdc0431618555191e84adc0c02d077357ff4ff5063b46339c',
+    'workflows/cib-case-people.json': '879c20df05c945c6ac244e75689de187caa6d336a4b9013bfc33c69f1c7f228f',
+    'workflows/cib-case-read.json': '84ba99136a265aca68262fed238111a082ececadc383831f6d8e52a524606379',
+    'workflows/cib-case-save.json': '758bd304bb1dc58227e0079025777938397073f246659a3c021e2123bcd27b20',
+    'workflows/cib-case-share.json': '88b9013f09fd7c195cc52bcb0a47ba12c1dbf77216c4312c0a6cb129c790349a',
+    'workflows/cib-direction-brief.json': 'cd267299db603ebaf4ae2a204bd686bf213519fe03ade4d9f645fd4e2f6436e',
+}
+MINIAPP_7_SHA256 = {
+    'miniapps/cib-case-console.json': '7cec5f3852ed08e20e89bfa294c1aa6b31e32038a7a02167c75d6597291b40d5',
+}
+
 def compose(consumer, owner_alias="veille"):
     if not re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", owner_alias):
         raise ValueError("invalid owner alias")
@@ -36,13 +50,14 @@ def compose(consumer, owner_alias="veille"):
     source = ROOT.parents[1] / "work-cases" / "agents" / "main"
     planned = {agent / p.relative_to(source): p.read_bytes()
                for p in sorted(source.rglob("*.json"))}
-    if len(planned) != 8:
-        raise ValueError("expected six Workflows and two MiniApps")
+    if len(planned) != 9:
+        raise ValueError("expected six Workflows and three MiniApps")
+    migration_hashes = json.loads((ROOT / "legacy-0.2.2-hashes.json").read_text())
     for dest, content in planned.items():
         if dest.exists() and dest.read_bytes() != content:
             relative = dest.relative_to(agent)
             digest = hashlib.sha256(dest.read_bytes()).hexdigest()
-            if PREVIOUS_SHA256.get(relative) != digest and ADDITIONAL_PREVIOUS_SHA256.get(str(relative)) != digest and ACL_PREFILL_PREVIOUS_SHA256.get(str(relative)) != digest:
+            if PREVIOUS_SHA256.get(relative) != digest and ADDITIONAL_PREVIOUS_SHA256.get(str(relative)) != digest and ACL_PREFILL_PREVIOUS_SHA256.get(str(relative)) != digest and migration_hashes.get(str(relative)) != digest and CANDIDATE_4A_SHA256.get(str(relative)) != digest and MINIAPP_7_SHA256.get(str(relative)) != digest:
                 raise ValueError("refusing divergent resource: " + str(dest))
     return planned
 

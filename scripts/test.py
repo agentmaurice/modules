@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests locaux hors réseau et One dans une copie temporaire du dépôt."""
+"""Offline tests in a temporary copy of the repository."""
 import os, shutil, subprocess, sys, tempfile
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
@@ -7,6 +7,7 @@ PYTHON_SUITES = ['templates/company-in-a-box/tests'] + [f'tooling/{name}/tests' 
 NODE_TESTS = [f'tooling/{path}' for path in ('memory-integration/tests/test_publication.mjs', 'daily-routine/tests/metrics.test.mjs', 'work-cases/tests/domain.test.mjs', 'marketing-launch/tests/test_domain.cjs', 'marketing-launch/tests/test_generated_runtime.cjs')]
 def main():
     env = {**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'}
+    subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', str(ROOT / 'scripts/tests'), '-p', 'test_*.py', '-v'], env=env, cwd=ROOT, check=True)
     with tempfile.TemporaryDirectory(prefix='modules-offline-') as temp:
         work = Path(temp)
         for name in ('templates', 'tooling'):
@@ -26,7 +27,7 @@ def main():
             subprocess.run([sys.executable, str(work / 'tooling' / name / 'build.py')], env=env, cwd=work, check=True)
             after = {p.relative_to(module): p.read_bytes() for p in module.rglob('*') if p.is_file()}
             if before != after or any(p.read_bytes() != data for p, data in extra_before.items()):
-                raise SystemExit(f'{name}: le générateur ne reproduit pas les ressources publiées')
+                raise SystemExit(f'{name}: generator does not reproduce the checked-in resources')
 
-    print('PASS: 7 suites unittest, contrat ACL Python et 5 contrôles Node et 4 reconstructions à octets identiques, sans réseau ni runtime.')
+    print('PASS: language audit tests, 7 Module unittest suites, Python ACL contract, 5 Node checks and 4 byte-identical rebuilds, without network or runtime.')
 if __name__ == '__main__': main()

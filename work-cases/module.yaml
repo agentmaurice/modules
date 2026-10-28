@@ -2,53 +2,58 @@
   "$schema": "agentmaurice.module/v2",
   "schema_version": 2,
   "key": "cib-work-dossiers",
-  "name": "Company-in-a-Box — dossiers communs",
-  "version": "0.2.2",
+  "name": "Company-in-a-Box — shared cases",
+  "version": "0.2.5",
   "provides": {
     "actions": [
       {
         "key": "save",
         "workflow_id": "cib-case-save",
-        "workflow_version": "4"
+        "workflow_version": "5"
       },
       {
         "key": "share",
         "workflow_id": "cib-case-share",
-        "workflow_version": "2"
+        "workflow_version": "3"
       }
     ],
     "queries": [
       {
         "key": "read",
         "workflow_id": "cib-case-read",
-        "workflow_version": "2"
+        "workflow_version": "3"
       },
       {
         "key": "list",
         "workflow_id": "cib-case-list",
-        "workflow_version": "2"
+        "workflow_version": "3"
       },
       {
         "key": "direction-brief",
         "workflow_id": "cib-direction-brief",
-        "workflow_version": "3"
+        "workflow_version": "4"
       },
       {
         "key": "people",
         "workflow_id": "cib-case-people",
-        "workflow_version": "2"
+        "workflow_version": "3"
       }
     ],
     "apps": [
       {
         "key": "case-console",
         "miniapp_id": "cib-case-console",
-        "miniapp_version": "5"
+        "miniapp_version": "8"
       },
       {
         "key": "direction-console",
         "miniapp_id": "cib-direction-console",
-        "miniapp_version": "3"
+        "miniapp_version": "4"
+      },
+      {
+        "key": "case-sharing-console",
+        "miniapp_id": "cib-case-sharing-console",
+        "miniapp_version": "1"
       }
     ]
   },

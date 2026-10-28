@@ -1,4 +1,7 @@
 import json
+import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -26,7 +29,7 @@ class ComposeTest(unittest.TestCase):
             (agent / "miniapps").mkdir()
             (agent / "agent-spec.json").write_text(json.dumps({"agent_alias": role, "schema_version": 2}))
             (agent / "workflows" / f"{role}-read.json").write_text("{}")
-            (agent / "workflows" / "company-memory-query.json").write_text("{}")
+            (agent / "workflows" / "company-memory-query.json").write_text(json.dumps({"workflow_id": "company-memory-query", "version": "2"}))
         return root
 
     def materialize(self, planned):
@@ -64,6 +67,31 @@ class ComposeTest(unittest.TestCase):
             COMPOSE.compose(consumer)
         self.assertFalse((consumer / "agents" / "veille" / "workflows" / "daily-role-read.json").exists())
 
+    def test_current_memory_bridges_allow_write(self):
+        consumer = self.consumer()
+        result = subprocess.run([sys.executable, str(ROOT / "compose.py"), "--consumer-dir", str(consumer), "--write"], capture_output=True, text=True, env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for role in ROLES:
+            workflow = json.loads((consumer / "agents" / role / "workflows/daily-context.json").read_text())
+            memory_call = next(action for action in workflow["actions"] if action.get("workflow_id") == "company-memory-query")
+            self.assertEqual(memory_call["workflow_version"], "2")
+
+    def test_wrong_memory_bridge_refuses_write_without_changes(self):
+        for bad in ('{"workflow_id":"company-memory-query","version":"1"}',
+                    '{invalid JSON',
+                    '{"version":"2"}',
+                    '{"workflow_id":"other","version":"2"}'):
+            with self.subTest(bridge=bad):
+                consumer = self.consumer()
+                bridge = consumer / "agents/contenu/workflows/company-memory-query.json"
+                bridge.write_text(bad)
+                before = {str(p.relative_to(consumer)): (p.read_bytes() if p.is_file() else None) for p in consumer.rglob("*")}
+                result = subprocess.run([sys.executable, str(ROOT / "compose.py"), "--consumer-dir", str(consumer), "--write"], capture_output=True, text=True, env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("company-memory-query bridge", result.stderr)
+                after = {str(p.relative_to(consumer)): (p.read_bytes() if p.is_file() else None) for p in consumer.rglob("*")}
+                self.assertEqual(before, after)
+
     def test_divergent_resource_refuses_without_overwrite(self):
         consumer = self.consumer()
         target = consumer / "agents" / "veille" / "workflows" / "daily-role-read.json"
@@ -71,6 +99,17 @@ class ComposeTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "refusing divergent resource"):
             COMPOSE.compose(consumer)
         self.assertEqual(target.read_text(), "sentinel")
+
+    def test_upgrade_known_consumer_context_and_refuse_divergence(self):
+        consumer = self.consumer()
+        target = consumer / "agents/veille/workflows/daily-context.json"
+        target.write_bytes((ROOT / "tests/fixtures/daily-context-0.1.0-veille.json").read_bytes())
+        upgraded = COMPOSE.compose(consumer)
+        self.assertEqual(json.loads(upgraded[target])["version"], "3")
+        self.assertEqual(json.loads(upgraded[consumer / "agents/veille/workflows/daily-role-read.json"])["version"], "3")
+        target.write_bytes(target.read_bytes() + b" ")
+        with self.assertRaisesRegex(ValueError, "refusing divergent resource"):
+            COMPOSE.compose(consumer)
 
     def test_module_contains_only_bounded_local_primitives(self):
         forbidden = ("llm", "http", "cron", "schedule", "grant", "mcp")

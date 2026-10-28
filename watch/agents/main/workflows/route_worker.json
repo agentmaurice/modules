@@ -3,13 +3,13 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "route_worker",
-  "version": "1",
-  "title": "Choisir le rôle — validation manuelle",
+  "version": "2",
+  "title": "Choose a role — manual approval",
   "actions": [
     {
       "id": "route",
       "type": "code_execution",
-      "code": "const x = {{ json . }}; const roles = [\"veille\", \"contenu\", \"accompagnement\"]; const worker = x.confirmation_manuelle === true && roles.includes(x.role_demande) ? x.role_demande : \"human_review\"; return {worker, mode:\"manual\", dispatch:false, reason: worker === \"human_review\" ? \"Affectation manuelle requise\" : \"Rôle choisi par la personne\"};",
+      "code": "const x = {{ json . }}; const roles = [\"veille\", \"contenu\", \"accompagnement\"]; const worker = x.confirmation_manuelle === true && roles.includes(x.role_demande) ? x.role_demande : \"human_review\"; return {worker, mode:\"manual\", dispatch:false, reason: worker === \"human_review\" ? \"Manual assignment required\" : \"Role chosen by the user\"};",
       "output_key": "route"
     }
   ],

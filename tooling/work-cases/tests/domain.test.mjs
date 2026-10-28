@@ -23,7 +23,7 @@ assert.throws(() => normalizeCase({...base, veille_ref:'', veille_version:'1'}),
 const closed = normalizeCase({...base, statut:'termine_interne', revue_manuelle:'oui', preuve_ref:'proof-1'});
 assert.equal(validateStored(closed, 'usage', 'case-1').case_id, 'case-1');
 assert.throws(() => validateStored(closed, 'qualification', 'case-1'), /stored_identity_mismatch/);
-const result = summarize([base, {...base, case_id:'case-2', statut:'bloque', blocage:'Attente', prochaine_action:'Décider'}]);
+const result = summarize([base, {...base, case_id:'case-2', statut:'bloque', blocage:'Attente', prochaine_action:'Decide'}]);
 assert.deepEqual(result.counts, {en_cours:1, bloque:1});
 assert.deepEqual(result.blocked, ['case-2']);
 assert.deepEqual(result.ready, []);
@@ -45,9 +45,18 @@ for (const workflow of workflows) {
 assert.match(save.actions[1].code, /operation:"save"/);
 assert.match(read.actions[1].code, /operation:"read"/);
 assert.match(list.actions[1].code, /operation:"list"/);
+const listCode = list.actions[1].code
+  .replace("import { callTool } from './tools/nats_bridge.ts';", '')
+  .replace('{{ json .request }}', JSON.stringify({jeu:'usage'}));
+const runList = new (Object.getPrototypeOf(async function(){}).constructor)('callTool', listCode);
+const listing = await runList(async () => ({items:[{record_key:'usage/case-1',data:base,revision:1}],total:1}));
+assert.equal(listing.items[0].statut, 'en_cours');
+assert.equal(listing.items[0].status_label, 'In progress');
+assert.equal(listing.items[0].responsable_role, 'veille');
+assert.equal(listing.items[0].role_label, 'Watch');
 assert.match(share.actions[0].code, /operation:"share"/);
 assert.match(people.actions[1].code, /operation:"people"/);
 assert.match(save.actions[1].code, /expected_revision/);
 assert.match(share.actions[0].code, /manual_confirmation_required/);
-assert.equal(JSON.parse(fs.readFileSync(new URL('../../../work-cases/module.yaml', import.meta.url))).version, '0.2.2');
+assert.equal(JSON.parse(fs.readFileSync(new URL('../../../work-cases/module.yaml', import.meta.url))).version, '0.2.5');
 console.log('domain and generated contract tests passed');

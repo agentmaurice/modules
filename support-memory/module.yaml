@@ -2,43 +2,43 @@
   "$schema": "agentmaurice.module/v2",
   "schema_version": 2,
   "key": "cib-accompagnement-memory",
-  "name": "Company-in-a-Box — Accompagnement — raccordement mémoire",
-  "version": "0.2.0",
+  "name": "Company-in-a-Box — Support — memory integration",
+  "version": "0.2.1",
   "provides": {
     "actions": [
       {
         "key": "accompagnement-memory-contribute",
         "workflow_id": "accompagnement-memory-contribute",
-        "workflow_version": "2"
+        "workflow_version": "3"
       }
     ],
     "queries": [
       {
         "key": "accompagnement-memory-query",
         "workflow_id": "accompagnement-memory-query",
-        "workflow_version": "1"
+        "workflow_version": "2"
       },
       {
         "key": "accompagnement-memory-search",
         "workflow_id": "accompagnement-memory-search",
-        "workflow_version": "1"
+        "workflow_version": "2"
       }
     ],
     "apps": [
       {
         "key": "accompagnement-memory-query-console",
         "miniapp_id": "accompagnement-memory-query-console",
-        "miniapp_version": "1"
+        "miniapp_version": "2"
       },
       {
         "key": "accompagnement-memory-search-console",
         "miniapp_id": "accompagnement-memory-search-console",
-        "miniapp_version": "1"
+        "miniapp_version": "2"
       },
       {
         "key": "accompagnement-memory-contribute-console",
         "miniapp_id": "accompagnement-memory-contribute-console",
-        "miniapp_version": "2"
+        "miniapp_version": "3"
       }
     ]
   },

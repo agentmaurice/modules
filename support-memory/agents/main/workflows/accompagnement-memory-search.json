@@ -3,18 +3,18 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "accompagnement-memory-search",
-  "version": "1",
-  "title": "Accompagnement — Rechercher dans la mémoire",
+  "version": "2",
+  "title": "Support — Search memory",
   "forms": [
     {
       "id": "submit",
-      "title": "Accompagnement — Rechercher dans la mémoire",
+      "title": "Support — Search memory",
       "fields": [
         {
           "name": "query",
           "type": "string",
           "required": true,
-          "title": "Recherche dans la mémoire"
+          "title": "Search memory"
         }
       ],
       "actions_on_submit": [
@@ -27,7 +27,7 @@
       "id": "consult",
       "type": "workflow_call",
       "workflow_id": "company-memory-search",
-      "workflow_version": "1",
+      "workflow_version": "2",
       "execution": "sync",
       "input": {
         "query": "{{ query }}"

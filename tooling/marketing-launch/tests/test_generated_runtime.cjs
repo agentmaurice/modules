@@ -15,8 +15,8 @@ const WORKFLOW_IDS = [
 
 const campaignInput = {
   jeu: 'qualification', id: 'campagne-runtime-1',
-  objectif: 'Qualifier une demande d’essai', audience: 'makers',
-  promesse: 'Premier résultat vérifiable', canal: 'contenu', responsable: 'contenu',
+  objectif: 'Qualify a trial request', audience: 'makers',
+  promesse: 'Verifiable first result', canal: 'contenu', responsable: 'contenu',
   echeance: '2026-11-15', critere_fin: 'Preuve relue par une personne',
   confirmation_manuelle: 'oui', expected_revision: 0,
 };
@@ -28,14 +28,14 @@ const veille = {
 const contenu = {
   id: 'contenu-runtime-1', role: 'contenu', revision: 4,
   decision: { decision: 'accepted' }, review_scope: 'internal_draft_only',
-  source_ref: 'fixture:veille-runtime-1', brouillon: 'Brouillon interne',
+  source_ref: 'fixture:veille-runtime-1', brouillon: 'Internal draft',
   external_effect: false, preuve_ref: 'fixture:contenu-runtime-1',
 };
 const support = {
   id: 'accompagnement-runtime-1', role: 'accompagnement', revision: 2,
-  objectif: 'Accompagner la prise en main', resultat_observe: 'Résultat observé',
+  objectif: 'Support onboarding', resultat_observe: 'Observed result',
   preuve_ref: 'fixture:result-runtime-1', blocage: '',
-  prochaine_etape: 'Relecture humaine', confirmation_manuelle: true,
+  prochaine_etape: 'Human review', confirmation_manuelle: true,
   external_effect: false,
 };
 
@@ -150,7 +150,7 @@ function rejects(promise, pattern) {
   const requestInput = {
     jeu: 'qualification', campaign_id: campaign.record.id, campaign_revision: 2,
     trial_id: 'trial-runtime-1', personne_ref: 'personne-alias-opaque',
-    besoin: 'Tester le parcours', objectif: 'Obtenir un premier résultat',
+    besoin: 'Test the journey', objectif: 'Achieve a first result',
     confirmation_manuelle: 'oui',
   };
   const requested = await runWorkflow('cib-launch-request', requestInput, broker);
@@ -186,6 +186,10 @@ function rejects(promise, pattern) {
     jeu: 'qualification', kind: 'trial',
   }, broker);
   assert.equal(listed.items.length, 1);
+  assert.equal(listed.items[0].phase, 'premier_resultat_confirme');
+  assert.equal(listed.items[0].phase_label, 'First result confirmed');
+  assert.equal(listed.items[0].kind, 'trial');
+  assert.equal(listed.items[0].kind_label, 'Trial');
   const people = await runWorkflow('cib-launch-people', {
     jeu: 'qualification', kind: 'campaign', id: campaign.record.id,
   }, broker);

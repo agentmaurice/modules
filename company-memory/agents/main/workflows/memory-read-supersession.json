@@ -3,8 +3,8 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "memory-read-supersession",
-  "version": "1",
-  "title": "Lire le marqueur de remplacement d'une révision",
+  "version": "2",
+  "title": "Read a revision supersession marker",
   "actions": [
     {
       "id": "read",

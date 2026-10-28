@@ -3,8 +3,8 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "cib-case-share",
-  "version": "2",
-  "title": "Dossier commun — partage",
+  "version": "3",
+  "title": "Shared case — sharing",
   "actions": [
     {
       "id": "share",
@@ -14,7 +14,7 @@
           "recipe--application_data_v1"
         ]
       },
-      "code": "import { callTool } from './tools/nats_bridge.ts';\nconst input={{ json . }};\nconst ID = /^[a-z0-9][a-z0-9-]{0,63}$/;\nconst REF = /^[a-z0-9][a-z0-9:_./-]{0,127}$/;\nconst GAMES = new Set([\"usage\", \"qualification\"]);\nconst SERVICES = new Set([\"marketing\", \"service_client\", \"interne\"]);\nconst ROLES = new Set([\"veille\", \"contenu\", \"accompagnement\"]);\nconst PRIORITIES = new Set([\"haute\", \"normale\", \"basse\"]);\nconst STATUSES = new Set([\"a_qualifier\", \"en_cours\", \"bloque\", \"pret_a_revoir\", \"termine_interne\", \"abandonne\"]);\n\nfunction text(value, name, max = 8000, required = true) {\n  if (value == null && !required) return \"\";\n  if (typeof value !== \"string\" || value.length > max || (required && !value.trim())) throw new Error(`${name}_invalid`);\n  return value.trim();\n}\nfunction id(value, name) { if (typeof value !== \"string\" || !ID.test(value)) throw new Error(`${name}_invalid`); return value; }\nfunction ref(value, name, required = false) { if (value == null || value === \"\") { if (required) throw new Error(`${name}_invalid`); return \"\"; } if (typeof value !== \"string\" || !REF.test(value) || value.includes(\"..\") || value.toLowerCase().includes(\"secret://\")) throw new Error(`${name}_invalid`); return value; }\nfunction roleRef(value, name) { if (value == null || value === \"\") return \"\"; return id(value, name); }\nfunction optionalId(value, name) { if (value == null || value === \"\") return \"\"; return id(value, name); }\nfunction version(value, name, paired) { if (value == null || value === \"\") { if (paired) throw new Error(`${name}_invalid`); return \"\"; } if (typeof value !== \"string\" || !/^[1-9][0-9]*$/.test(value)) throw new Error(`${name}_invalid`); return value; }\nfunction yes(value, name) { if (value === true || value === \"oui\") return true; if (value === false || value === \"non\") return false; throw new Error(`${name}_invalid`); }\nfunction validateExpectedRevision(value) {\n  if (value == null || value === \"\") return 0;\n  if (typeof value === \"string\" && /^[0-9]+$/.test(value)) value = Number(value);\n  if (!Number.isSafeInteger(value) || value < 0) throw new Error(\"expected_revision_invalid\");\n  return value;\n}\n\nfunction normalizeCase(input) {\n  if (!input || typeof input !== \"object\" || Array.isArray(input)) throw new Error(\"case_invalid\");\n  const jeu = input.jeu; if (!GAMES.has(jeu)) throw new Error(\"jeu_invalid\");\n  const case_id = id(input.case_id, \"case_id\");\n  const statut = input.statut; if (!STATUSES.has(statut)) throw new Error(\"statut_invalid\");\n  if (!SERVICES.has(input.service)) throw new Error(\"service_invalid\");\n  if (!ROLES.has(input.responsable_role)) throw new Error(\"responsable_role_invalid\");\n  if (!PRIORITIES.has(input.priorite)) throw new Error(\"priorite_invalid\");\n  const blocked = text(input.blocage, \"blocage\", 2000, false);\n  if (statut === \"bloque\" && !blocked) throw new Error(\"blocage_required\");\n  const manualReview = yes(input.revue_manuelle, \"revue_manuelle\");\n  const confirmation = yes(input.confirmation_manuelle, \"confirmation_manuelle\");\n  if (!confirmation) throw new Error(\"manual_confirmation_required\");\n  const refs = {\n    veille_ref: roleRef(input.veille_ref, \"veille_ref\"),\n    veille_version: version(input.veille_version, \"veille_version\", !!input.veille_ref || !!input.veille_version),\n    contenu_ref: roleRef(input.contenu_ref, \"contenu_ref\"),\n    contenu_version: version(input.contenu_version, \"contenu_version\", !!input.contenu_ref || !!input.contenu_version),\n    accompagnement_ref: roleRef(input.accompagnement_ref, \"accompagnement_ref\"),\n    accompagnement_version: version(input.accompagnement_version, \"accompagnement_version\", !!input.accompagnement_ref || !!input.accompagnement_version),\n    memoire_ref: optionalId(input.memoire_ref, \"memoire_ref\"),\n    preuve_ref: ref(input.preuve_ref, \"preuve_ref\"),\n  };\n  for (const role of ROLES) if (Boolean(refs[role + \"_ref\"]) !== Boolean(refs[role + \"_version\"])) throw new Error(role + \"_ref_version_pair_required\");\n  const roleReference = refs.veille_ref || refs.contenu_ref || refs.accompagnement_ref;\n  if (statut === \"termine_interne\" && (!manualReview || !refs.preuve_ref || !roleReference)) throw new Error(\"internal_closure_requires_manual_review_proof_and_role_ref\");\n  return { schema_version: 1, jeu, case_id, objectif: text(input.objectif, \"objectif\", 4000), critere_fin: text(input.critere_fin, \"critere_fin\", 4000), service: input.service, responsable_role: input.responsable_role, priorite: input.priorite, statut, prochaine_action: text(input.prochaine_action, \"prochaine_action\", 4000), blocage: blocked, ...refs, revue_manuelle: manualReview, confirmation_manuelle: confirmation, scope: \"internal_only\", validation_mode: \"manual_attestation\" };\n}\n\nfunction validateStored(record, expectedJeu, expectedId) {\n  if (!record || record.schema_version !== 1) throw new Error(\"stored_schema_invalid\");\n  const value = normalizeCase(record);\n  if (value.jeu !== expectedJeu || value.case_id !== expectedId) throw new Error(\"stored_identity_mismatch\");\n  return value;\n}\n\nfunction summarize(items) {\n  const rows = items.map((item) => ({ case_id: item.case_id, statut: item.statut, priorite: item.priorite, service: item.service, responsable_role: item.responsable_role, prochaine_action: item.prochaine_action }));\n  return { total: rows.length, counts: rows.reduce((a, row) => { a[row.statut] = (a[row.statut] || 0) + 1; return a; }, {}), blocked: rows.filter((r) => r.statut === \"bloque\").map((r) => r.case_id), ready: rows.filter((r) => r.statut === \"pret_a_revoir\").map((r) => r.case_id), next_actions: rows.filter((r) => r.prochaine_action).map((r) => ({ case_id: r.case_id, action: r.prochaine_action })) };\n}\n\nconst target={jeu:input.jeu,case_id:input.case_id,record_key:input.jeu+\"/\"+input.case_id};if(![\"usage\",\"qualification\"].includes(target.jeu)||!/^[a-z0-9][a-z0-9-]{0,63}$/.test(target.case_id))throw Error(\"case_identity_invalid\");const expected_revision=validateExpectedRevision(input.expected_revision);if(typeof input.subject_user_id!==\"string\"||!input.subject_user_id.trim()||input.subject_user_id.length>256||/[\\/\\s]/.test(input.subject_user_id))throw Error(\"subject_user_id_invalid\");if(![\"read\",\"write\",\"none\"].includes(input.permission))throw Error(\"permission_invalid\");if(input.confirmation_manuelle!==true&&input.confirmation_manuelle!==\"oui\")throw Error(\"manual_confirmation_required\");\nconst response=await callTool(\"recipe--application_data_v1\",{operation:\"share\",namespace:\"cib-cases\",record_key:target.record_key,expected_revision,subject_user_id:input.subject_user_id.trim(),permission:input.permission});\nconst wrapped=response&&response.data?response.data:response;if(!wrapped||!wrapped.record||typeof wrapped.record!==\"object\")throw Error(\"broker_record_invalid\");const item=wrapped.record;if(item.namespace!==\"cib-cases\"||item.key!==target.record_key)throw Error(\"broker_record_identity_invalid\");if(!Number.isSafeInteger(item.revision)||item.revision<0)throw Error(\"broker_revision_invalid\");if(!item.data||typeof item.data!==\"object\")throw Error(\"broker_record_data_invalid\");const canonical=validateStored(item.data,target.jeu,target.case_id);const permissions=item.permissions;if(!permissions||typeof permissions.can_read!==\"boolean\"||typeof permissions.can_write!==\"boolean\"||typeof permissions.can_manage!==\"boolean\")throw Error(\"broker_permissions_invalid\");const shares=Array.isArray(item.shares)?item.shares:[];const permissions_summary=\"Lecture : \"+(permissions.can_read?\"oui\":\"non\")+\" · Modification : \"+(permissions.can_write?\"oui\":\"non\")+\" · Partage : \"+(permissions.can_manage?\"oui\":\"non\");const share_count=shares.length;const result={record:canonical,content:JSON.stringify(canonical,null,2),revision:item.revision,owner_user_id:typeof item.owner_user_id===\"string\"?item.owner_user_id:\"\",permissions,permissions_summary,shares,share_count,path:target.record_key};\nreturn {...result,message:\"Partage mis à jour par le broker ACL interne.\"};",
+      "code": "import { callTool } from './tools/nats_bridge.ts';\nconst input={{ json . }};\nconst ID = /^[a-z0-9][a-z0-9-]{0,63}$/;\nconst REF = /^[a-z0-9][a-z0-9:_./-]{0,127}$/;\nconst GAMES = new Set([\"usage\", \"qualification\"]);\nconst SERVICES = new Set([\"marketing\", \"service_client\", \"interne\"]);\nconst ROLES = new Set([\"veille\", \"contenu\", \"accompagnement\"]);\nconst PRIORITIES = new Set([\"haute\", \"normale\", \"basse\"]);\nconst STATUSES = new Set([\"a_qualifier\", \"en_cours\", \"bloque\", \"pret_a_revoir\", \"termine_interne\", \"abandonne\"]);\n\nfunction text(value, name, max = 8000, required = true) {\n  if (value == null && !required) return \"\";\n  if (typeof value !== \"string\" || value.length > max || (required && !value.trim())) throw new Error(`${name}_invalid`);\n  return value.trim();\n}\nfunction id(value, name) { if (typeof value !== \"string\" || !ID.test(value)) throw new Error(`${name}_invalid`); return value; }\nfunction ref(value, name, required = false) { if (value == null || value === \"\") { if (required) throw new Error(`${name}_invalid`); return \"\"; } if (typeof value !== \"string\" || !REF.test(value) || value.includes(\"..\") || value.toLowerCase().includes(\"secret://\")) throw new Error(`${name}_invalid`); return value; }\nfunction roleRef(value, name) { if (value == null || value === \"\") return \"\"; return id(value, name); }\nfunction optionalId(value, name) { if (value == null || value === \"\") return \"\"; return id(value, name); }\nfunction version(value, name, paired) { if (value == null || value === \"\") { if (paired) throw new Error(`${name}_invalid`); return \"\"; } if (typeof value !== \"string\" || !/^[1-9][0-9]*$/.test(value)) throw new Error(`${name}_invalid`); return value; }\nfunction yes(value, name) { if (value === true || value === \"oui\") return true; if (value === false || value === \"non\") return false; throw new Error(`${name}_invalid`); }\nfunction validateExpectedRevision(value) {\n  if (value == null || value === \"\") return 0;\n  if (typeof value === \"string\" && /^[0-9]+$/.test(value)) value = Number(value);\n  if (!Number.isSafeInteger(value) || value < 0) throw new Error(\"expected_revision_invalid\");\n  return value;\n}\n\nfunction normalizeCase(input) {\n  if (!input || typeof input !== \"object\" || Array.isArray(input)) throw new Error(\"case_invalid\");\n  const jeu = input.jeu; if (!GAMES.has(jeu)) throw new Error(\"jeu_invalid\");\n  const case_id = id(input.case_id, \"case_id\");\n  const statut = input.statut; if (!STATUSES.has(statut)) throw new Error(\"statut_invalid\");\n  if (!SERVICES.has(input.service)) throw new Error(\"service_invalid\");\n  if (!ROLES.has(input.responsable_role)) throw new Error(\"responsable_role_invalid\");\n  if (!PRIORITIES.has(input.priorite)) throw new Error(\"priorite_invalid\");\n  const blocked = text(input.blocage, \"blocage\", 2000, false);\n  if (statut === \"bloque\" && !blocked) throw new Error(\"blocage_required\");\n  const manualReview = yes(input.revue_manuelle, \"revue_manuelle\");\n  const confirmation = yes(input.confirmation_manuelle, \"confirmation_manuelle\");\n  if (!confirmation) throw new Error(\"manual_confirmation_required\");\n  const refs = {\n    veille_ref: roleRef(input.veille_ref, \"veille_ref\"),\n    veille_version: version(input.veille_version, \"veille_version\", !!input.veille_ref || !!input.veille_version),\n    contenu_ref: roleRef(input.contenu_ref, \"contenu_ref\"),\n    contenu_version: version(input.contenu_version, \"contenu_version\", !!input.contenu_ref || !!input.contenu_version),\n    accompagnement_ref: roleRef(input.accompagnement_ref, \"accompagnement_ref\"),\n    accompagnement_version: version(input.accompagnement_version, \"accompagnement_version\", !!input.accompagnement_ref || !!input.accompagnement_version),\n    memoire_ref: optionalId(input.memoire_ref, \"memoire_ref\"),\n    preuve_ref: ref(input.preuve_ref, \"preuve_ref\"),\n  };\n  for (const role of ROLES) if (Boolean(refs[role + \"_ref\"]) !== Boolean(refs[role + \"_version\"])) throw new Error(role + \"_ref_version_pair_required\");\n  const roleReference = refs.veille_ref || refs.contenu_ref || refs.accompagnement_ref;\n  if (statut === \"termine_interne\" && (!manualReview || !refs.preuve_ref || !roleReference)) throw new Error(\"internal_closure_requires_manual_review_proof_and_role_ref\");\n  return { schema_version: 1, jeu, case_id, objectif: text(input.objectif, \"objectif\", 4000), critere_fin: text(input.critere_fin, \"critere_fin\", 4000), service: input.service, responsable_role: input.responsable_role, priorite: input.priorite, statut, prochaine_action: text(input.prochaine_action, \"prochaine_action\", 4000), blocage: blocked, ...refs, revue_manuelle: manualReview, confirmation_manuelle: confirmation, scope: \"internal_only\", validation_mode: \"manual_attestation\" };\n}\n\nfunction validateStored(record, expectedJeu, expectedId) {\n  if (!record || record.schema_version !== 1) throw new Error(\"stored_schema_invalid\");\n  const value = normalizeCase(record);\n  if (value.jeu !== expectedJeu || value.case_id !== expectedId) throw new Error(\"stored_identity_mismatch\");\n  return value;\n}\n\nfunction summarize(items) {\n  const rows = items.map((item) => ({ case_id: item.case_id, statut: item.statut, priorite: item.priorite, service: item.service, responsable_role: item.responsable_role, prochaine_action: item.prochaine_action }));\n  return { total: rows.length, counts: rows.reduce((a, row) => { a[row.statut] = (a[row.statut] || 0) + 1; return a; }, {}), blocked: rows.filter((r) => r.statut === \"bloque\").map((r) => r.case_id), ready: rows.filter((r) => r.statut === \"pret_a_revoir\").map((r) => r.case_id), next_actions: rows.filter((r) => r.prochaine_action).map((r) => ({ case_id: r.case_id, action: r.prochaine_action })) };\n}\n\nconst target={jeu:input.jeu,case_id:input.case_id,record_key:input.jeu+\"/\"+input.case_id};if(![\"usage\",\"qualification\"].includes(target.jeu)||!/^[a-z0-9][a-z0-9-]{0,63}$/.test(target.case_id))throw Error(\"case_identity_invalid\");const expected_revision=validateExpectedRevision(input.expected_revision);if(typeof input.subject_user_id!==\"string\"||!input.subject_user_id.trim()||input.subject_user_id.length>256||/[\\/\\s]/.test(input.subject_user_id))throw Error(\"subject_user_id_invalid\");if(![\"read\",\"write\",\"none\"].includes(input.permission))throw Error(\"permission_invalid\");if(input.confirmation_manuelle!==true&&input.confirmation_manuelle!==\"oui\")throw Error(\"manual_confirmation_required\");\nconst response=await callTool(\"recipe--application_data_v1\",{operation:\"share\",namespace:\"cib-cases\",record_key:target.record_key,expected_revision,subject_user_id:input.subject_user_id.trim(),permission:input.permission});\nconst wrapped=response&&response.data?response.data:response;if(!wrapped||!wrapped.record||typeof wrapped.record!==\"object\")throw Error(\"broker_record_invalid\");const item=wrapped.record;if(item.namespace!==\"cib-cases\"||item.key!==target.record_key)throw Error(\"broker_record_identity_invalid\");if(!Number.isSafeInteger(item.revision)||item.revision<0)throw Error(\"broker_revision_invalid\");if(!item.data||typeof item.data!==\"object\")throw Error(\"broker_record_data_invalid\");const canonical=validateStored(item.data,target.jeu,target.case_id);const permissions=item.permissions;if(!permissions||typeof permissions.can_read!==\"boolean\"||typeof permissions.can_write!==\"boolean\"||typeof permissions.can_manage!==\"boolean\")throw Error(\"broker_permissions_invalid\");const shares=Array.isArray(item.shares)?item.shares:[];const permissions_summary=\"Read: \"+(permissions.can_read?\"yes\":\"no\")+\" · Write: \"+(permissions.can_write?\"yes\":\"no\")+\" · Share: \"+(permissions.can_manage?\"yes\":\"no\");const share_count=shares.length;const result={record:canonical,content:JSON.stringify(canonical,null,2),revision:item.revision,owner_user_id:typeof item.owner_user_id===\"string\"?item.owner_user_id:\"\",permissions,permissions_summary,shares,share_count,path:target.record_key};\nreturn {...result,message:\"Sharing updated by the internal ACL broker.\"};",
       "output_key": "result"
     }
   ],
@@ -35,11 +35,11 @@
   "forms": [
     {
       "id": "share",
-      "title": "Partager / retirer l'accès au dossier",
+      "title": "Share or revoke case access",
       "fields": [
         {
           "name": "jeu",
-          "title": "Jeu",
+          "title": "Data set",
           "type": "select",
           "required": true,
           "options": [
@@ -55,19 +55,19 @@
         },
         {
           "name": "case_id",
-          "title": "Identifiant du dossier",
+          "title": "Case ID",
           "type": "string",
           "required": true
         },
         {
           "name": "expected_revision",
-          "title": "Révision attendue",
+          "title": "Expected revision",
           "type": "string",
           "required": true
         },
         {
           "name": "subject_user_id",
-          "title": "Membre",
+          "title": "Member",
           "type": "string",
           "required": true
         },
@@ -79,31 +79,31 @@
           "options": [
             {
               "value": "read",
-              "label": "Lecture"
+              "label": "Read"
             },
             {
               "value": "write",
-              "label": "Écriture"
+              "label": "Write"
             },
             {
               "value": "none",
-              "label": "Retirer"
+              "label": "Revoke"
             }
           ]
         },
         {
           "name": "confirmation_manuelle",
-          "title": "Confirmation manuelle",
+          "title": "Manual confirmation",
           "type": "select",
           "required": true,
           "options": [
             {
               "value": "oui",
-              "label": "Oui"
+              "label": "Yes"
             },
             {
               "value": "non",
-              "label": "Non"
+              "label": "No"
             }
           ]
         }

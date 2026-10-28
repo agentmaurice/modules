@@ -1,8 +1,7 @@
-// Exécute le source d'une étape code_execution comme le fait le sandbox de chatserver :
-// chaque clé de `context` devient une liaison `const` (internal/business/core/sandbox_service.go,
-// generateUserModule), le contexte arrive en JSON (context.json) et le source ne contient
-// aucune donnée d'exécution. Entrée : JSON sur stdin {"code": "...", "context": {...}}.
-// Sortie : JSON sur stdout {"ok": true, "result": ...} ou {"ok": false, "error": "..."}.
+// Run a code_execution step with the chatserver sandbox bindings: each context
+// key becomes a const, context arrives as JSON, and source contains no runtime data.
+// Input: JSON on stdin {"code": "...", "context": {...}}.
+// Output: JSON on stdout {"ok": true, "result": ...} or {"ok": false, "error": "..."}.
 import { readFileSync } from "node:fs";
 
 const input = JSON.parse(readFileSync(0, "utf8"));

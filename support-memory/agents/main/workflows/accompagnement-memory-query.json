@@ -3,18 +3,18 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "accompagnement-memory-query",
-  "version": "1",
-  "title": "Accompagnement — Consulter une révision",
+  "version": "2",
+  "title": "Support — View a revision",
   "forms": [
     {
       "id": "submit",
-      "title": "Accompagnement — Consulter une révision",
+      "title": "Support — View a revision",
       "fields": [
         {
           "name": "proposal_id",
           "type": "string",
           "required": true,
-          "title": "Révision mémoire"
+          "title": "Memory revision"
         }
       ],
       "actions_on_submit": [
@@ -27,7 +27,7 @@
       "id": "consult",
       "type": "workflow_call",
       "workflow_id": "company-memory-query",
-      "workflow_version": "1",
+      "workflow_version": "2",
       "execution": "sync",
       "input": {
         "proposal_id": "{{ proposal_id }}"

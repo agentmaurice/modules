@@ -3,8 +3,8 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "accompagnement-people",
-  "version": "1",
-  "title": "Accompagnement — membres partageables",
+  "version": "2",
+  "title": "Support — members available for sharing",
   "actions": [
     {
       "id": "people",

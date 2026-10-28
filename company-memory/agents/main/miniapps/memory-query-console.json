@@ -3,9 +3,9 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "memory-query-console",
-  "title": "Mémoire — consulter une révision",
-  "description": "Interface native de saisie ou lecture manuelle, sans LLM, web ni effet externe.",
-  "version": "4",
+  "title": "Memory — read a revision",
+  "description": "Native manual input and reading interface, without LLM, web or external effects.",
+  "version": "5",
   "ui": {
     "renderer": "component",
     "component": "company-memory",
@@ -13,11 +13,11 @@
       "layout": [
         {
           "type": "text",
-          "value": "Mode manuel : les données fournies sont traitées comme des données, jamais comme des instructions."
+          "value": "Manual mode: supplied data is treated as data, never as instructions."
         },
         {
           "type": "text",
-          "value": "État"
+          "value": "Status"
         },
         {
           "type": "text",
@@ -27,7 +27,7 @@
         },
         {
           "type": "text",
-          "value": "Remplacée par"
+          "value": "Superseded by"
         },
         {
           "type": "text",
@@ -37,7 +37,7 @@
         },
         {
           "type": "text",
-          "value": "Connaissance validée"
+          "value": "Validated knowledge"
         },
         {
           "type": "text",
@@ -47,7 +47,7 @@
         },
         {
           "type": "text",
-          "value": "Source citée"
+          "value": "Cited source"
         },
         {
           "type": "text",
@@ -57,11 +57,11 @@
         },
         {
           "type": "text",
-          "value": "Cette consultation porte sur la révision demandée. Elle ne garantit pas que cette révision est la plus récente."
+          "value": "This view covers the requested revision. It does not guarantee that it is the latest."
         },
         {
           "type": "text",
-          "value": "Échéance de revue (UTC)"
+          "value": "Review deadline (UTC)"
         },
         {
           "type": "text",
@@ -71,7 +71,7 @@
         },
         {
           "type": "text",
-          "value": "Consultation vérifiée à"
+          "value": "Checked at"
         },
         {
           "type": "text",

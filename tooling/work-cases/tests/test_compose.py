@@ -29,7 +29,7 @@ class ComposeTest(unittest.TestCase):
         root = self.consumer()
         before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
         planned = COMPOSE.compose(root)
-        self.assertEqual(8, len(planned))
+        self.assertEqual(9, len(planned))
         self.assertTrue(all(p.is_relative_to(root / "agents/veille") for p in planned))
         self.assertEqual(before, {p: p.read_bytes() for p in root.rglob("*") if p.is_file()})
         for p, content in planned.items():
@@ -60,7 +60,7 @@ class ComposeTest(unittest.TestCase):
                 return digest
         with patch.object(COMPOSE.hashlib, "sha256", return_value=Digest()):
             planned = COMPOSE.compose(root)
-        self.assertEqual(8, len(planned))
+        self.assertEqual(9, len(planned))
 
     def test_write_mode_updates_an_existing_planned_resource(self):
         root = self.consumer()
@@ -72,6 +72,18 @@ class ComposeTest(unittest.TestCase):
         with patch.object(COMPOSE, "compose", return_value=planned), patch.object(sys, "argv", argv):
             COMPOSE.main()
         self.assertEqual(b"new", target.read_bytes())
+
+    def test_upgrade_exact_022_resource_and_reject_modified_copy(self):
+        root = self.consumer()
+        target = root / "agents/veille/workflows/cib-case-read.json"
+        target.parent.mkdir(parents=True)
+        fixture = ROOT / "tests/fixtures/cib-case-read-0.2.2.json"
+        target.write_bytes(fixture.read_bytes())
+        planned = COMPOSE.compose(root)
+        self.assertEqual(json.loads(planned[target])["version"], "3")
+        target.write_bytes(fixture.read_bytes() + b" ")
+        with self.assertRaisesRegex(ValueError, "divergent"):
+            COMPOSE.compose(root)
 
     def test_owner_path_and_identity_are_validated(self):
         root = self.consumer()

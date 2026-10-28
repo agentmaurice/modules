@@ -15,7 +15,7 @@ from pathlib import Path
 
 ROLES = ("veille", "contenu", "accompagnement")
 MODULE_DIRS = {"veille": "watch", "contenu": "content", "accompagnement": "support"}
-MODULE_VERSION = "0.2.4"
+MODULE_VERSION = "0.2.5"
 
 # A consumer composed at 0.2.3 may already contain the old console.  Only
 # these exact source bytes are a supported in-place upgrade; any other
@@ -61,6 +61,10 @@ KNOWN_UPGRADE_HASHES = {
         "881e7d421ef315dba65bdf2138517d2d82d933e255a29fcebc8d92fb4b6e31df",
     },
 }
+
+# The exact 0.2.4 source bytes are an additional recognized upgrade baseline.
+for _path, _hash in json.loads((Path(__file__).parent / "legacy-0.2.4-hashes.json").read_text()).items():
+    KNOWN_UPGRADE_HASHES.setdefault(_path, set()).add(_hash)
 
 
 def digest(path: Path) -> str:
@@ -140,18 +144,18 @@ def main() -> int:
         "--consumer-dir",
         required=True,
         type=Path,
-        help="Projet consommateur déjà spec-init avec agents/<role>/agent-spec.json",
+        help="Consumer project initialized with agents/<role>/agent-spec.json",
     )
     parser.add_argument(
         "--source-root",
         type=Path,
         default=Path(__file__).resolve().parents[2],
-        help="Racine du dépôt contenant les Modules et templates/",
+        help="Repository root containing Modules and templates/",
     )
     parser.add_argument(
         "--write",
         action="store_true",
-        help="Copier les octets après toutes les validations préalables",
+        help="Copy bytes after all preflight validations",
     )
     args = parser.parse_args()
     source_root = args.source_root.resolve()

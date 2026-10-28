@@ -1,33 +1,32 @@
-# Administration — cib-enterprise-admin 0.2.2
+# Administration — cib-enterprise-admin
 
-Module de consultation et administration bornée des personnes, identités
-existantes, accès par service et révocations de mandats. Il réutilise
-`recipe--company_admin_v1` et `recipe--application_data_v1` avec l’identité
-humaine résolue côté serveur, jamais une identité fournie par le formulaire.
+This Module provides bounded inspection and administration of people, existing
+identities, service access and mandate revocations. It uses
+`recipe--company_admin_v1` and `recipe--application_data_v1` with the human
+identity resolved by the server, never an identity supplied by a form.
 
 ```sh
-python3 tooling/enterprise-admin/compose.py --consumer-dir /chemin/consommateur --owner-alias veille
-python3 tooling/enterprise-admin/compose.py --consumer-dir /chemin/consommateur --owner-alias veille --write
+python3 tooling/enterprise-admin/compose.py --consumer-dir /path/to/consumer --owner-alias veille
+python3 tooling/enterprise-admin/compose.py --consumer-dir /path/to/consumer --owner-alias veille --write
 ```
 
-La route humaine Application et les brokers natifs sont des prérequis.
-Les profils `cib_admin`, `cib_marketing`, `cib_service_client`, `cib_direction`
-et `cib_dossiers` doivent être reliés aux personnes existantes et aux gates
-`required_role`. `service_roles.py` prépare un brouillon de surface ; il ne
-l’applique pas et refuse une permission existante divergente.
+The human Application route and native brokers are prerequisites. The
+`cib_admin`, `cib_marketing`, `cib_service_client`, `cib_direction` and
+`cib_dossiers` profiles must be linked to existing people and `required_role`
+gates. `service_roles.py` prepares a surface draft; it does not apply it and
+refuses conflicting existing permissions.
 
-Le Module ne crée pas de compte, n’envoie aucune invitation et ne signe aucun
-mandat. Les changements sont explicites et demandent confirmation. La
-confirmation de formulaire ne remplace ni l’IAM ni une approbation native.
-`cib-admin-approval-check` est une lecture locale avec `require_approval` ; seule
-la personne compétente peut l’autoriser dans AM.
+The Module does not create accounts, send invitations or sign mandates. Changes
+are explicit and require confirmation. Form confirmation replaces neither IAM
+nor native approval. `cib-admin-approval-check` is a local read with
+`require_approval`; only the authorized person may approve it in AM.
 
-Les opérations sur une fiche historique sont unitaires : namespace, clé et
-révision connus ; aucune liste universelle de corps privés, aucun transfert
-ni partage en masse. `admin_recovery` reste limité au partage et est revalidé
-par le serveur. Les 0.2.1 connues peuvent être remplacées par empreinte exacte ;
-toute autre divergence est un conflit manuel. Les fiches héritées restent
-privées sous leur dépositaire tant qu’un partage explicite n’est pas décidé.
+Historical record operations are individual, using a known namespace, key and
+revision; there is no universal listing of private bodies, bulk transfer or
+bulk sharing. `admin_recovery` remains restricted to sharing and is revalidated
+by the server. Known 0.2.1 and 0.2.2 resources can be replaced by exact fingerprint; any
+other divergence is a manual conflict. Inherited records stay private under
+their custodian until explicit sharing is decided.
 
-Voir [installation](../../docs/INSTALLATION.md),
-[droits](../../docs/SECURITY.md) et [tests](../../docs/TESTING.md).
+See [installation](../../docs/INSTALLATION.md), [permissions](../../docs/SECURITY.md)
+and [tests](../../docs/TESTING.md).

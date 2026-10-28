@@ -3,9 +3,9 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "memory-review",
-  "title": "Mémoire — revue manuelle",
-  "description": "Charger une proposition, lire sa preuve, puis prendre une décision manuelle.",
-  "version": "3",
+  "title": "Memory — manual review",
+  "description": "Load a proposal, read its evidence, then make a manual decision.",
+  "version": "5",
   "ui": {
     "renderer": "component",
     "component": "company-memory",
@@ -13,91 +13,91 @@
       "layout": [
         {
           "type": "text",
-          "value": "Proposition enregistrée — inspection avant décision."
+          "value": "Proposal saved — inspect before deciding."
         },
         {
           "type": "text",
-          "value": "Titre proposé"
+          "value": "Proposed title"
         },
         {
           "type": "text",
           "value": {
-            "state": "selected.title"
+            "state": "proposal_id.title"
           }
         },
         {
           "type": "text",
-          "value": "Texte proposé"
+          "value": "Proposed text"
         },
         {
           "type": "text",
           "value": {
-            "state": "selected.content"
+            "state": "proposal_id.content"
           }
         },
         {
           "type": "text",
-          "value": "Extrait utilisé comme preuve"
+          "value": "Evidence excerpt"
         },
         {
           "type": "text",
           "value": {
-            "state": "selected.evidence_quote"
+            "state": "proposal_id.evidence_quote"
           }
         },
         {
           "type": "text",
-          "value": "Source conservée"
+          "value": "Stored source"
         },
         {
           "type": "text",
           "value": {
-            "state": "selected.source_content"
+            "state": "proposal_id.source_content"
           }
         },
         {
           "type": "text",
-          "value": "Référence de la source"
+          "value": "Source reference"
         },
         {
           "type": "text",
           "value": {
-            "state": "selected.source_ref"
+            "state": "proposal_id.source_ref"
           }
         },
         {
           "type": "text",
-          "value": "À revoir avant le début de cette date (UTC)"
+          "value": "Review before the start of this date (UTC)"
         },
         {
           "type": "text",
           "value": {
-            "state": "selected.review_due"
+            "state": "proposal_id.review_due"
           }
         },
         {
           "type": "button",
-          "label": "Valider cette proposition",
+          "label": "Validate this proposal",
           "on_click": "validate"
         },
         {
           "type": "button",
-          "label": "Refuser cette proposition",
+          "label": "Refuse this proposal",
           "on_click": "refuse"
         },
         {
           "type": "button",
-          "label": "Signaler une contradiction",
+          "label": "Flag a contradiction",
           "on_click": "dispute"
         },
         {
           "type": "text",
-          "value": "Décision enregistrée"
+          "value": "Decision recorded"
         },
         {
           "type": "text",
           "value": {
-            "state": "result.review.decision"
+            "state": "proposal_id.review.decision"
           }
         }
       ]
@@ -107,7 +107,46 @@
     "type": "object",
     "properties": {
       "proposal_id": {
-        "type": "string"
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "proposal_id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              },
+              "evidence_quote": {
+                "type": "string"
+              },
+              "source_id": {
+                "type": "string"
+              },
+              "source_ref": {
+                "type": "string"
+              },
+              "source_content": {
+                "type": "string"
+              },
+              "review_due": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "review": {
+                "type": "object"
+              }
+            }
+          }
+        ]
       },
       "selected": {
         "type": "object"
@@ -132,7 +171,7 @@
           "proposal_id": "{{ state.proposal_id }}"
         }
       },
-      "result_to_state": "selected"
+      "result_to_state": "proposal_id"
     },
     {
       "event_id": "validate",
@@ -140,13 +179,13 @@
       "workflow": {
         "workflow_id": "memory-review-update",
         "input": {
-          "proposal_id": "{{ state.selected.proposal_id }}",
+          "proposal_id": "{{ state.proposal_id.proposal_id }}",
           "decision": "validated",
-          "review_note": "Revue depuis la MiniApp",
+          "review_note": "Review from the MiniApp",
           "confirmation_manuelle": "oui"
         }
       },
-      "result_to_state": "result"
+      "result_to_state": "proposal_id"
     },
     {
       "event_id": "refuse",
@@ -154,13 +193,13 @@
       "workflow": {
         "workflow_id": "memory-review-update",
         "input": {
-          "proposal_id": "{{ state.selected.proposal_id }}",
+          "proposal_id": "{{ state.proposal_id.proposal_id }}",
           "decision": "refused",
-          "review_note": "Revue depuis la MiniApp",
+          "review_note": "Review from the MiniApp",
           "confirmation_manuelle": "oui"
         }
       },
-      "result_to_state": "result"
+      "result_to_state": "proposal_id"
     },
     {
       "event_id": "dispute",
@@ -168,13 +207,13 @@
       "workflow": {
         "workflow_id": "memory-review-update",
         "input": {
-          "proposal_id": "{{ state.selected.proposal_id }}",
+          "proposal_id": "{{ state.proposal_id.proposal_id }}",
           "decision": "disputed",
-          "review_note": "Revue depuis la MiniApp",
+          "review_note": "Review from the MiniApp",
           "confirmation_manuelle": "oui"
         }
       },
-      "result_to_state": "result"
+      "result_to_state": "proposal_id"
     }
   ]
 }

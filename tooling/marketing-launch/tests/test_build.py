@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import json
 import shutil
 import subprocess
 import sys
@@ -31,6 +32,19 @@ def all_files(root: Path) -> dict[str, bytes]:
 
 
 class BuildDeterminismTest(unittest.TestCase):
+    def test_sharing_members_labels_preserve_wire_and_selection(self) -> None:
+        resource = ROOT.parents[1] / "marketing-launch/agents/main/miniapps/cib-launch-sharing-console.json"
+        miniapp = json.loads(resource.read_text())
+        self.assertEqual(miniapp["version"], "2")
+        table = next(item for item in miniapp["ui"]["configuration"]["layout"] if item.get("columns") == ["user_id", "display_name"])
+        self.assertEqual(table["column_labels"], {"user_id": "Identifier", "display_name": "Member"})
+        self.assertEqual(table["rows"], {"state": "people.people"})
+        self.assertEqual(table["on_row_click"], "choose")
+        choose = next(event for event in miniapp["events"] if event["event_id"] == "choose")
+        self.assertEqual(choose["trigger"], "table.row_click")
+        self.assertEqual(choose["workflow"]["workflow_id"], "cib-launch-people")
+        self.assertEqual(choose["workflow"]["input"]["subject_user_id"], "{{ event.payload.item.user_id }}")
+
     def test_build_is_byte_deterministic_across_hash_seeds(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

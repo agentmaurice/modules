@@ -181,7 +181,24 @@ export function summarize(rows, filter = {}) {
     status: pairs.length ? "gain_mesuré" : "gain_non_mesure",
   };
   const message = pairs.length
-    ? `${pairs.length} paire(s) comparée(s), temps récurrent et temps de mise en place séparés : gain/perte ${gainTotal.toFixed(2)} minute(s), résultat provisoire.`
-    : "Aucune paire comparable : gain non mesuré ; temps et mise en place restent séparés, résultat provisoire.";
-  return { items, pairs, exclusions, summary, message: (filter.jeu === "qualification" ? "Données de test : aucun gain réel démontré. " : "") + message };
+    ? `${pairs.length} pair(s) compared, recurring and setup time separated: gain/loss ${gainTotal.toFixed(2)} minute(s), provisional result.`
+    : "No comparable pair: gain not measured; work and setup time remain separate, provisional result.";
+  // Display-only fields leave the persisted values and raw reason codes intact.
+  const phaseLabels = { reference: "Baseline", assiste: "Assisted" };
+  const qualityLabels = { a_revoir: "Needs review", valide: "Validated", rejete: "Rejected" };
+  const reasonLabels = {
+    "session_id_dupliqué": "Duplicate measurement ID",
+    "paire_ambiguë_ou_incomplète": "Ambiguous or incomplete pair",
+    "qualité_non_validée": "Quality not validated",
+    "jeu_mélangé": "Mixed data sets",
+    "référence_assisté_incomparable": "Baseline and assisted work are not comparable",
+    "référence_sans_temps": "Baseline has no recorded time",
+  };
+  return {
+    items: items.map(row => ({...row, phase_label: phaseLabels[row.phase] ?? row.phase, quality_label: qualityLabels[row.qualite] ?? row.qualite})),
+    pairs,
+    exclusions: exclusions.map(row => ({...row, reason_label: reasonLabels[row.reason] ?? (row.reason.startsWith("ligne_invalide:") ? "Invalid entry" : "Unknown exclusion")})),
+    summary,
+    message: (filter.jeu === "qualification" ? "Test data: no actual gain demonstrated. " : "") + message,
+  };
 }

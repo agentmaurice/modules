@@ -3,8 +3,8 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "cib-case-people",
-  "version": "2",
-  "title": "Dossier commun — membres partageables",
+  "version": "3",
+  "title": "Shared case — eligible members",
   "actions": [
     {
       "id": "target",

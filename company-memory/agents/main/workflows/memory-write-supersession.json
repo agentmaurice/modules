@@ -3,8 +3,8 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "memory-write-supersession",
-  "version": "2",
-  "title": "Écrire le marqueur de remplacement d'une révision",
+  "version": "3",
+  "title": "Write a revision supersession marker",
   "actions": [
     {
       "id": "write-marker",

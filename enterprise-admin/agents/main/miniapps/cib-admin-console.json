@@ -3,9 +3,9 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "cib-admin-console",
-  "version": "2",
-  "title": "Administration Company-in-a-Box",
-  "description": "Lecture et opérations administratives manuelles, sans création de compte ni invitation email.",
+  "version": "4",
+  "title": "Company-in-a-Box administration",
+  "description": "Read and perform manual administrative operations without creating accounts or sending email invitations.",
   "ui": {
     "renderer": "component",
     "component": "company-in-a-box",
@@ -13,16 +13,16 @@
       "layout": [
         {
           "type": "text",
-          "value": "Gérez les personnes, leurs accès aux services et les mandats. Une fiche dans l’annuaire ne crée pas de compte utilisateur."
+          "value": "Manage people, their service access and mandates. A directory entry does not create a user account."
         },
         {
           "type": "button",
-          "label": "Actualiser l’état",
+          "label": "Refresh overview",
           "on_click": "refresh"
         },
         {
           "type": "section",
-          "title": "Personnes",
+          "title": "People",
           "children": [
             {
               "type": "table",
@@ -32,9 +32,9 @@
                 "platform_user_id"
               ],
               "column_labels": {
-                "person_id": "Référence",
-                "display_name": "Nom",
-                "platform_user_id": "Identité liée"
+                "person_id": "Reference",
+                "display_name": "Name",
+                "platform_user_id": "Linked identity"
               },
               "rows": {
                 "state": "overview.people"
@@ -44,27 +44,27 @@
         },
         {
           "type": "section",
-          "title": "Rôles métier",
+          "title": "Business roles",
           "children": [
             {
               "type": "table",
               "columns": [
                 "person_id",
-                "role_key"
+                "role_label"
               ],
               "column_labels": {
-                "person_id": "Personne",
-                "role_key": "Rôle"
+                "person_id": "Person",
+                "role_label": "Role"
               },
               "rows": {
-                "state": "overview.grants"
+                "state": "overview.grants_display"
               }
             }
           ]
         },
         {
           "type": "section",
-          "title": "Membres Application",
+          "title": "Application members",
           "children": [
             {
               "type": "table",
@@ -72,7 +72,7 @@
                 "user_id"
               ],
               "column_labels": {
-                "user_id": "Identité"
+                "user_id": "Identity"
               },
               "rows": {
                 "state": "overview.application_people"
@@ -82,11 +82,11 @@
         },
         {
           "type": "section",
-          "title": "Mandats",
+          "title": "Mandates",
           "children": [
             {
               "type": "metric",
-              "label": "Mandats actuels",
+              "label": "Current mandates",
               "value": {
                 "state": "overview.mandate_count"
               }
@@ -95,14 +95,14 @@
               "type": "table",
               "columns": [
                 "mandate_id",
-                "status"
+                "status_label"
               ],
               "column_labels": {
-                "mandate_id": "Mandat",
-                "status": "État"
+                "mandate_id": "Mandate",
+                "status_label": "Status"
               },
               "rows": {
-                "state": "overview.approval_mandates"
+                "state": "overview.approval_mandates_display"
               }
             }
           ]
@@ -161,12 +161,15 @@
     "overview": {
       "people": [],
       "grants": [],
+      "grants_display": [],
       "application_people": [],
       "approval_mandates": [],
-      "mandate_count": 0
+      "approval_mandates_display": [],
+      "mandate_count": 0,
+      "message": "No overview read."
     },
     "result": {
-      "message": "Aucun état consulté."
+      "message": ""
     },
     "operation": "",
     "person_id": "",

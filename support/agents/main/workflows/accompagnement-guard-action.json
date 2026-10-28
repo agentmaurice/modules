@@ -3,8 +3,8 @@
   "schema_version": 2,
   "workflow_id": "accompagnement-guard-action",
   "kind": "workflow",
-  "title": "Garde d'action accompagnement",
-  "version": "1",
+  "title": "Support action guard",
+  "version": "2",
   "input_schema": {
     "type": "object",
     "required": [

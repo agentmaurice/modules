@@ -3,9 +3,9 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "contenu-sharing-console",
-  "title": "Contenu — partage des fiches",
-  "description": "Partage ACL fermé des fiches sélectionnées. Sélectionnez une fiche, fermez le formulaire de lecture avec Annuler, rechargez les membres, sélectionnez la cible, puis ouvrez le formulaire de partage.",
-  "version": "1",
+  "title": "Content — record sharing",
+  "description": "Manage access to selected records. Select a record, close the read form with Cancel, refresh members, select a member, then open the sharing form.",
+  "version": "2",
   "ui": {
     "renderer": "component",
     "component": "company-in-a-box",
@@ -13,32 +13,28 @@
       "layout": [
         {
           "type": "text",
-          "value": "Parcours Contenu : sélectionnez une fiche, fermez le formulaire de lecture avec Annuler, rechargez les membres, sélectionnez un membre, puis ouvrez « Contenu — partager ou retirer l’accès » pour partager ou retirer l’accès."
+          "value": "Content flow: select a record, close the read form with Cancel, refresh members, select a member, then open “Content — share or remove access”."
         },
         {
           "type": "text",
-          "value": "La confirmation de partage est distincte de la sauvegarde et revient à Non après opération."
+          "value": "Sharing confirmation is separate from saving and resets to No after the operation."
         },
         {
           "type": "text",
-          "value": "Partager une fiche ne donne pas accès au service."
+          "value": "Sharing a record does not grant access to the service."
         },
         {
           "type": "text",
-          "value": "Mode manuel : données fournies par la personne, aucune recherche ni publication automatique."
-        },
-        {
-          "type": "text",
-          "value": "Pour partager une fiche, ouvrez la console dédiée depuis la navigation."
+          "value": "Manual mode: user-provided data; no automatic research or publication."
         },
         {
           "type": "button",
-          "label": "Actualiser les dossiers",
+          "label": "Refresh records",
           "on_click": "refresh"
         },
         {
           "type": "button",
-          "label": "Actualiser les membres",
+          "label": "Refresh members",
           "on_click": "people"
         },
         {
@@ -47,7 +43,7 @@
             "id"
           ],
           "column_labels": {
-            "id": "Dossier"
+            "id": "Record"
           },
           "rows": {
             "state": "listing.items"
@@ -56,7 +52,7 @@
         },
         {
           "type": "text",
-          "value": "Entreprise"
+          "value": "Company"
         },
         {
           "type": "text",
@@ -66,17 +62,17 @@
         },
         {
           "type": "text",
-          "value": "État"
+          "value": "Status"
         },
         {
           "type": "text",
           "value": {
-            "state": "selected.record.etat"
+            "state": "selected.display.status"
           }
         },
         {
           "type": "text",
-          "value": "Sujet"
+          "value": "Topic"
         },
         {
           "type": "text",
@@ -86,7 +82,7 @@
         },
         {
           "type": "text",
-          "value": "Faits"
+          "value": "Facts"
         },
         {
           "type": "text",
@@ -106,7 +102,7 @@
         },
         {
           "type": "text",
-          "value": "Brouillon à relire"
+          "value": "Draft for review"
         },
         {
           "type": "text",
@@ -116,17 +112,17 @@
         },
         {
           "type": "text",
-          "value": "Revue interne"
+          "value": "Internal review"
         },
         {
           "type": "text",
           "value": {
-            "state": "selected.record.decision.decision"
+            "state": "selected.display.review"
           }
         },
         {
           "type": "text",
-          "value": "Révision"
+          "value": "Revision"
         },
         {
           "type": "text",
@@ -136,7 +132,7 @@
         },
         {
           "type": "text",
-          "value": "Propriétaire"
+          "value": "Owner"
         },
         {
           "type": "text",
@@ -156,7 +152,7 @@
         },
         {
           "type": "text",
-          "value": "Partages"
+          "value": "Shares"
         },
         {
           "type": "text",
@@ -166,11 +162,11 @@
         },
         {
           "type": "section",
-          "title": "Partage de la fiche sélectionnée",
+          "title": "Share the selected record",
           "children": [
             {
               "type": "text",
-              "value": "Fiche associée aux membres"
+              "value": "Record associated with members"
             },
             {
               "type": "text",
@@ -180,11 +176,11 @@
             },
             {
               "type": "text",
-              "value": "Rechargez les membres après chaque sélection de fiche."
+              "value": "Refresh members after selecting a record."
             },
             {
               "type": "text",
-              "value": "Membres partageables"
+              "value": "Members available for sharing"
             },
             {
               "type": "table",
@@ -193,8 +189,8 @@
                 "display_name"
               ],
               "column_labels": {
-                "user_id": "Identifiant",
-                "display_name": "Membre"
+                "user_id": "Identifier",
+                "display_name": "Member"
               },
               "rows": {
                 "state": "people.people"
@@ -203,7 +199,7 @@
             },
             {
               "type": "text",
-              "value": "Membre sélectionné"
+              "value": "Selected member"
             },
             {
               "type": "text",
@@ -213,7 +209,7 @@
             },
             {
               "type": "text",
-              "value": "Droit sélectionné"
+              "value": "Selected permission"
             },
             {
               "type": "text",
@@ -223,11 +219,11 @@
             },
             {
               "type": "text",
-              "value": "La confirmation de partage est distincte de la sauvegarde et revient à Non après opération."
+              "value": "Sharing confirmation is separate from saving and resets to No after the operation."
             },
             {
               "type": "text",
-              "value": "Partager une fiche ne donne pas accès au service."
+              "value": "Sharing a record does not grant access to the service."
             }
           ]
         }
@@ -304,8 +300,14 @@
       "owner_user_id": "",
       "permissions": {},
       "shares": [],
-      "permissions_summary": "Lecture : non · Modification : non · Partage : non",
-      "share_count": 0
+      "permissions_summary": "Read: no · Write: no · Share: no",
+      "share_count": 0,
+      "display": {
+        "status": "",
+        "worker": "",
+        "verdict": "",
+        "review": ""
+      }
     },
     "listing": {
       "items": []

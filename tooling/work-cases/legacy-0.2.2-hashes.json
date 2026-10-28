@@ -1,0 +1,10 @@
+{
+  "miniapps/cib-case-console.json": "9d3410c5bfa2072d7dadac33f6b8453416f76d3b78155a3fc7072d7a15a0e677",
+  "miniapps/cib-direction-console.json": "fd2c5ac34d14ef0ce1558f7d8637389db1d685527139f7068ad2a0f6c5a9affe",
+  "workflows/cib-case-list.json": "a00402ed1c01b944ca3f7f3aa0f65fedeee965c2bd2c8cbd7c1ddb385338c15b",
+  "workflows/cib-case-people.json": "d5221d2a1d38f455b5d39902c44d84dcdd9d12cd44a590a8a284bfb5399a93ea",
+  "workflows/cib-case-read.json": "4942514cea90c26ac0ac1c5f630b88671e613adf1b4baad417e77191a07ce6ff",
+  "workflows/cib-case-save.json": "19c38bd9676c143c73bb9a29b3d74b1dd53fbffc47ad12f412890f8a061ea409",
+  "workflows/cib-case-share.json": "a314e097122cebf354c26d7fce4ec888ec629cd9612ad202ea9f9ea6e1a3100d",
+  "workflows/cib-direction-brief.json": "76913010deda18d77e3b0fbfcd925bfa5f249d632a1355940619f23a4c4ad2b6"
+}

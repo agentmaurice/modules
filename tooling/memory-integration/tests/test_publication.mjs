@@ -18,4 +18,4 @@ for(const role of ['veille','contenu','accompagnement']) {
  const actions=wf.forms[0].actions_on_submit;
  assert.ok(actions.indexOf('read-local')<actions.indexOf('capture'));
 }
-console.log('Publication commune : accord explicite et propriétaire requis pour les trois rôles');
+console.log('Shared publication: explicit owner confirmation required for all three roles');

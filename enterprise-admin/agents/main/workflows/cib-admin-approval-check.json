@@ -3,8 +3,8 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "cib-admin-approval-check",
-  "version": "1",
-  "title": "Accord CIB — lecture locale de qualification",
+  "version": "2",
+  "title": "CIB approval — local qualification read",
   "actions": [
     {
       "id": "read_only",
@@ -20,7 +20,7 @@
   "output": {
     "files": "{{ files }}"
   },
-  "description": "Qualification manuelle : lister des fichiers locaux uniquement après la décision humaine sur le plan immuable. Aucun envoi ni écriture métier.",
+  "description": "Manual qualification: list local files only after the human decision on the immutable plan. No sending or business write.",
   "output_schema": {
     "type": "object",
     "additionalProperties": false,

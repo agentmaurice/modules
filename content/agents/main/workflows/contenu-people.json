@@ -3,8 +3,8 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "contenu-people",
-  "version": "1",
-  "title": "Contenu — membres partageables",
+  "version": "2",
+  "title": "Content — members available for sharing",
   "actions": [
     {
       "id": "people",

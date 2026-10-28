@@ -12,11 +12,11 @@ SPEC.loader.exec_module(BUILD)
 class GenerationTest(unittest.TestCase):
     def test_generator_contract_is_native_acl(self):
         module = BUILD.MODULE / "module.yaml"
-        self.assertEqual("0.2.2", json.loads(module.read_text())["version"])
+        self.assertEqual("0.2.5", json.loads(module.read_text())["version"])
         workflows = sorted((BUILD.MODULE / "agents/main/workflows").glob("*.json"))
         miniapps = sorted((BUILD.MODULE / "agents/main/miniapps").glob("*.json"))
         self.assertEqual(6, len(workflows))
-        self.assertEqual(2, len(miniapps))
+        self.assertEqual(3, len(miniapps))
         for path in workflows:
             value = json.loads(path.read_text())
             text = path.read_text()
@@ -42,8 +42,16 @@ class GenerationTest(unittest.TestCase):
         events = {event["event_id"]: event for event in console["events"]}
         self.assertEqual("{{ state.selected.revision }}", events["save"]["workflow"]["input"]["expected_revision"])
         self.assertEqual("selected", events["save"]["result_to_state"])
-        self.assertEqual("selected", events["share"]["result_to_state"])
-        self.assertEqual("{{ state.people.selected_target.user_id }}", events["share"]["workflow"]["input"]["subject_user_id"])
+        self.assertNotIn("share", events)
+        layout = console["ui"]["configuration"]["layout"]
+        self.assertIn("cib-case-sharing-console", layout[1]["value"])
+        self.assertEqual(layout[2]["label"], "Refresh list")
+        owner_labels = [item for item in layout[6]["children"] if item.get("type") == "text" and item.get("value") == "Owner"]
+        owner_values = [item for item in layout[6]["children"] if item.get("type") == "text" and item.get("value") == {"state": "selected.owner_user_id"}]
+        self.assertEqual(len(owner_labels), len(owner_values), 1)
+        sharing = json.loads((BUILD.MODULE / "agents/main/miniapps/cib-case-sharing-console.json").read_text())
+        self.assertEqual([event["event_id"] for event in sharing["events"]], ["share"])
+        self.assertEqual(set(sharing["state_schema"]["properties"]), {"jeu", "case_id", "expected_revision", "subject_user_id", "permission", "confirmation_manuelle", "result"})
         brief = json.loads((BUILD.MODULE / "agents/main/workflows/cib-direction-brief.json").read_text())
         self.assertEqual("code_execution", brief["actions"][0]["type"])
         self.assertEqual([BUILD.BROKER], brief["actions"][0]["context"]["allowed_tools"])
@@ -59,9 +67,10 @@ class GenerationTest(unittest.TestCase):
             layout = json.dumps(value["ui"]["configuration"]["layout"])
             self.assertNotIn('"state": "selected.permissions"', layout)
             self.assertNotIn('"state": "selected.shares"', layout)
-            selected = value["initial_state"]["selected"]
-            self.assertIsInstance(selected["permissions_summary"], str)
-            self.assertIsInstance(selected["share_count"], int)
+            if "selected" in value["initial_state"]:
+                selected = value["initial_state"]["selected"]
+                self.assertIsInstance(selected["permissions_summary"], str)
+                self.assertIsInstance(selected["share_count"], int)
 
 
 if __name__ == "__main__":

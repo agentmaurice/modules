@@ -3,9 +3,9 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "cib-launch-content-console",
-  "version": "1",
-  "title": "Marketing — lier les preuves et le contenu",
-  "description": "2. Préparez les fiches Veille et Contenu dans les rôles existants. Sélectionnez une campagne, puis liez leurs identifiants et révisions exactes avec une preuve de revue. Aucune publication.",
+  "version": "2",
+  "title": "Marketing — link evidence and content",
+  "description": "2. Prepare Watch and Content records in the existing roles. Select a campaign, then link their exact IDs and revisions with review evidence. No publication.",
   "ui": {
     "renderer": "component",
     "component": "company-in-a-box",
@@ -13,20 +13,20 @@
       "layout": [
         {
           "type": "text",
-          "value": "2. Préparez les fiches Veille et Contenu dans les rôles existants. Sélectionnez une campagne, puis liez leurs identifiants et révisions exactes avec une preuve de revue. Aucune publication."
+          "value": "2. Prepare Watch and Content records in the existing roles. Select a campaign, then link their exact IDs and revisions with review evidence. No publication."
         },
         {
           "type": "text",
-          "value": "Ouvrez le formulaire par son titre dans les interactions disponibles. Les champs longs sont des mémos. Le responsable indiqué ne crée aucun droit AM."
+          "value": "Open the form by its title in the available interactions. Long fields are notes. The named owner grants no AM permissions."
         },
         {
           "type": "button",
-          "label": "Actualiser le travail réel",
+          "label": "Refresh real work",
           "on_click": "refresh-usage"
         },
         {
           "type": "button",
-          "label": "Actualiser les essais",
+          "label": "Refresh trials",
           "on_click": "refresh-qualification"
         },
         {
@@ -38,12 +38,19 @@
         {
           "type": "table",
           "columns": [
-            "kind",
+            "kind_label",
             "id",
-            "phase",
+            "phase_label",
             "revision",
             "objectif"
           ],
+          "column_labels": {
+            "kind_label": "Type",
+            "id": "ID",
+            "phase_label": "Stage",
+            "revision": "Revision",
+            "objectif": "Objective"
+          },
           "rows": {
             "state": "listing.items"
           },
@@ -155,7 +162,7 @@
     "phase": "en_cours",
     "listing": {
       "items": [],
-      "message": "Aucune liste chargée.",
+      "message": "No list loaded.",
       "summary": {}
     },
     "selected": {
@@ -176,7 +183,7 @@
         "kind": "campaign",
         "phase": "en_cours"
       },
-      "message": "Aucune fiche sélectionnée."
+      "message": "No record selected."
     },
     "people": {
       "people": []

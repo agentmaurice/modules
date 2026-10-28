@@ -6,19 +6,19 @@
   },
   "ticket": "AGENT-1050",
   "status": "source_reconciled_runtime_requalification_required",
-  "status_note": "This repository includes local composition commands and a documentary runtime qualification plan. Private replay tools are not distributed. No runtime qualification is performed by repository reorganization.",
+  "status_note": "This repository includes local composition commands and a documentary runtime qualification plan. Private replay tools are not distributed. No runtime qualification is performed by repository reorganization. This historical 0.3.0 plan has English expectations for the 0.3.1 source; it has not been replayed for either version in this library.",
   "preconditions": [
-    "Image Brain corrigée AGENT-1049 publiée par le pipeline GitLab de son dépôt, digest épinglé dans l'Agent consommateur. Aucun docker build ou push local.",
-    "Image Memory 1.0.16 et brain-sidecar épinglés par digest, comme pour 0.2.0 (valeurs à reprendre du consommateur, non recopiées ici).",
+    "The corrected AGENT-1049 Brain image is published by its GitLab pipeline and digest-pinned in the consumer Agent. No local docker build or push.",
+    "Memory 1.0.16 and brain-sidecar images are digest-pinned as for 0.2.0; take values from the consumer, not this plan.",
     "An isolated One is prepared by the owning session through the canonical sandbox procedure; this library has no dev-stack.sh and its CI starts no runtime.",
-    "Deux Agents integration_test distincts (A et B) avec stockage filesystem, chacun avec ses sidecars et volumes Memory et Brain.",
-    "Consommateur de qualification avec les fichiers 0.2.0 retirés selon la procédure de mise à jour décidée (voir README, section Migration), puis composition 0.3.0.",
-    "Les rejeux écrivent dans les deux Agents de test : aucune mémoire contenant des données métier."
+    "Two distinct integration_test Agents A and B using filesystem storage, each with dedicated Memory and Brain sidecars and volumes.",
+    "A qualification consumer with 0.2.0 copies updated using the selected migration procedure in the README, then composed with the target Module.",
+    "Replays write to both test Agents: do not use a memory containing business data."
   ],
   "decisions_needed": [
-    "Procédure de mise à jour d'un consommateur 0.2.0 vers 0.3.0 : compose.py refuse d'écraser des fichiers différents ; choisir entre suppression explicite des copies dans un changement relu et un mode de mise à jour du composeur (hors périmètre du worker).",
-    "Forme exacte de la réponse brain.keyword en response_format concise (nom du champ URI, identifiant de passage, score, extrait) à confirmer avec AGENT-1049 avant de retirer le repli détaillé.",
-    "Comportement de l'image Brain qui ignore response_format : échec attendu ; un résultat vide silencieux bloque la requalification."
+    "Choose the 0.2.0 → 0.3.0 consumer upgrade procedure: compose.py refuses different files unless explicitly updated; review the consumer change and use --update where authorized.",
+    "Confirm the exact concise brain.keyword response shape (URI field, passage ID, score and excerpt) with AGENT-1049 before removing the detailed fallback.",
+    "An image ignoring response_format must fail; a silent empty result blocks qualification."
   ],
   "commands_not_executed": [
     {
@@ -28,12 +28,12 @@
     {
       "id": "compose-write",
       "command": "python3 tooling/company-memory/compose.py --consumer-dir <consumer> --agent-alias memory --write",
-      "note": "Refus attendu tant que les copies 0.2.0 sont présentes."
+      "note": "Refusal expected while differing 0.2.0 copies remain without --update."
     },
     {
       "id": "compose-update",
       "command": "python3 tooling/company-memory/compose.py --consumer-dir <consumer> --agent-alias memory --update --write",
-      "note": "Remplace seulement les fichiers du Module qui diffèrent ; liste replaced_files."
+      "note": "Replaces only differing Module files; reports replaced_files."
     },
     {
       "id": "spec-check",
@@ -42,14 +42,14 @@
     {
       "id": "spec-deploy",
       "command": "maurice --config <config> spec deploy --dir <consumer> --env integration_test --agent-alias memory --tests auto --json",
-      "note": "Vérifier que le service d'exécution recharge la nouvelle définition (limite notée dans le README 0.2.0)."
+      "note": "Verify the execution service reloads the new definition, a limitation noted in the 0.2.0 README."
     }
   ],
   "cases": [
     {
       "id": "legacy-33",
       "group": "runtime",
-      "expect": "33 cas passent sur A et B ; search-compact-shape adapté (excerpt et source_ref).",
+      "expect": "All 33 cases pass on A and B; search-compact-shape updated for excerpts and source_ref.",
       "availability": "external_not_distributed",
       "source_repository": "mcpchatui/pilote-maurice",
       "source_commit": "8cb35a14b825dcdae4515d46e3b4c5149c154901",
@@ -66,86 +66,86 @@
         "confirmation_manuelle": "oui",
         "content": "Texte synthétique : npm:nats, `backticks`, ${x}, {{ json .record }} {{ y }}, const a = \"\\n\"; ligne « deux »."
       },
-      "expect": "completed ; puis memory-inspect de toute proposition sur cette source : source_content identique octet pour octet."
+      "expect": "completed; then memory-inspect any proposal on the source: source_content matches byte for byte."
     },
     {
       "id": "capture-npm-nats-accepted",
       "group": "runtime-new",
       "workflow": "memory-capture-source",
-      "expect": "completed. En 0.2.0, HTTP 422 « sandboxed code cannot import the NATS client » sur ce même type de texte."
+      "expect": "completed. In 0.2.0 the same kind of text returned HTTP 422 “sandboxed code cannot import the NATS client”."
     },
     {
       "id": "propose-hostile-quote",
       "group": "runtime-new",
       "workflow": "memory-propose-update",
-      "expect": "completed avec evidence_quote = première ligne du texte hostile ; review validated ; memory-query renvoie answer identique."
+      "expect": "completed with evidence_quote equal to the first hostile-text line; validated review; memory-query returns identical answer."
     },
     {
       "id": "index-hostile-text",
       "group": "runtime-new",
       "workflow": "memory-index-revision",
-      "expect": "completed ; memory_persisted et brain_indexed vrais ; contenu Brain identique à la réponse (vérifier via memory-query puis brain.keyword concise)."
+      "expect": "completed; memory_persisted and brain_indexed true; Brain content matches the answer, checked with memory-query and concise brain.keyword."
     },
     {
       "id": "replacement-supersede",
       "group": "runtime-new",
       "workflow": "memory-query",
-      "setup": "X validée et indexée ; Y validée et indexée avec previous_revision = X.",
-      "expect": "memory-query X : status superseded, superseded_by = Y, answer = texte de X. memory-query Y : validated."
+      "setup": "X validated and indexed; Y validated and indexed with previous_revision = X.",
+      "expect": "memory-query X: superseded, superseded_by = Y, answer is X text. memory-query Y: validated."
     },
     {
       "id": "replacement-unindexed-successor",
       "group": "runtime-new",
       "workflow": "memory-query",
-      "setup": "X validée et indexée ; Y validée avec previous_revision = X, sans appel à memory-index-revision sur Y.",
-      "expect": "Le marqueur superseded-X.json existe ; memory-query X : superseded par Y ; memory-search sur le terme de X : X absente, suppressed_count >= 1."
+      "setup": "X validated and indexed; Y validated with previous_revision = X, without indexing Y.",
+      "expect": "superseded-X.json exists; memory-query X is superseded by Y; memory-search on X excludes X and suppressed_count >= 1."
     },
     {
       "id": "replacement-search-hides-X",
       "group": "runtime-new",
       "workflow": "memory-search",
-      "expect": "Requête sur le contenu commun : X absente de results, suppressed_count >= 1, Y présente."
+      "expect": "A query for shared content excludes X from results, includes Y, and has suppressed_count >= 1."
     },
     {
       "id": "replacement-index-X-refused",
       "group": "runtime-new",
       "workflow": "memory-index-revision",
-      "expect": "failed (validated_revision_required) : une révision remplacée ne se réindexe pas."
+      "expect": "failed (validated_revision_required): a superseded revision cannot be reindexed."
     },
     {
       "id": "second-replacement-refused",
       "group": "runtime-new",
       "workflow": "memory-query",
-      "setup": "X validée et indexée ; Y1 validée et indexée avec previous_revision = X (marqueur natif écrit) ; Y2 avec previous_revision = X.",
-      "expect": "La revue de Y2 échoue avec successor_conflict et n'écrit ni revue ni marqueur ; memory-query X : superseded par Y1 ; memory-search : X absente."
+      "setup": "X and Y1 validated and indexed, Y1 with previous_revision = X and a native marker; Y2 also references X.",
+      "expect": "Review of Y2 fails with successor_conflict and writes neither review nor marker; query X is superseded by Y1 and search excludes X."
     },
     {
       "id": "search-compact",
       "group": "runtime-new",
       "workflow": "memory-search",
-      "setup": "Révision validée dont le texte fait plus de 1 000 caractères, avec le terme de la requête au milieu.",
-      "expect": "results[].excerpts : liste de un ou deux extraits, chacun de 408 caractères au plus (400 + deux marqueurs) ; clés exactes proposal_id, title, date, date_kind, source_ref, review_due, excerpts (superseded_by seulement si présent) ; pas de answer ni citations ; une ligne de summary par résultat ; excerpt_budget_chars = 8160 ; taille de sortie consignée (référence locale : 1 932 octets pour l'exemple type, 3 777 octets en 0.2.0 sur un exemple voisin)."
+      "setup": "A validated revision over 1,000 characters, with the query term in the middle.",
+      "expect": "results[].excerpts contains one or two excerpts of at most 408 characters each (400 plus markers); exact keys proposal_id, title, date, date_kind, source_ref, review_due, excerpts, optional superseded_by; no answer or citations. One summary line per result; excerpt_budget_chars = 8160. Record output size (offline reference 1,932 bytes; nearby 0.2.0 example 3,777)."
     },
     {
       "id": "search-excerpt-middle-term",
       "group": "runtime-new",
       "workflow": "memory-search",
-      "setup": "Révision validée d'un long texte où un terme rare de la requête est au milieu, loin du début.",
-      "expect": "Un extrait contient le terme (accents et casse ignorés) ; le début seul ne le contenait pas."
+      "setup": "A long validated revision with a rare query term in the middle, far from the start.",
+      "expect": "An excerpt contains the term, ignoring accents and case; the beginning alone did not."
     },
     {
       "id": "search-order-exact-identifier",
       "group": "runtime-new",
       "workflow": "memory-search",
-      "setup": "Requête = identifiant (ex. AGENT-530) ; une correction récente et une section plus ancienne qui portent cet identifiant ; un passage sans identifiant à score élevé.",
-      "expect": "Ordre : la correction (date la plus récente) puis la section ancienne, puis le passage à score élevé. Le champ match_type est transmis par Brain en forme concise (à confirmer, décision 2)."
+      "setup": "Query is an ID such as AGENT-530; a recent correction and an older section contain it, and another high-score passage does not.",
+      "expect": "Order is newer correction, older section, then high-score passage. Brain supplies match_type in concise format; confirm under decision 2."
     },
     {
       "id": "compose-update",
       "group": "composition",
       "command": "compose-update",
-      "setup": "Consommateur avec les copies 0.2.0 des Workflows et MiniApps.",
-      "expect": "Sans --update : refus, rien écrit. Avec --update (dry-run) : would_replace_files listant les fichiers différents. Avec --update --write : replaced_files, fichiers égaux aux octets du Module, aucun autre fichier supprimé."
+      "setup": "Consumer with 0.2.0 Workflow and MiniApp copies.",
+      "expect": "Without --update, refusal and no writes. With --update dry-run, would_replace_files lists differences. With --update --write, replaced_files are byte-equal to Module files and no other file is deleted."
     },
     {
       "id": "brain-concise-shape",
@@ -157,132 +157,132 @@
         "max_results": 10,
         "response_format": "concise"
       },
-      "expect": "Chaque résultat porte l'URI, l'identifiant de passage, le score et un extrait borné. Noms de champs à confirmer (décision 2)."
+      "expect": "Each result has URI, passage ID, score and a bounded excerpt. Confirm field names under decision 2."
     },
     {
       "id": "brain-image-without-concise",
       "group": "runtime-new",
       "workflow": "memory-search",
-      "setup": "Image Brain ne supportant pas response_format.",
-      "expect": "failed avec brain_concise_unsupported (forme détaillée) ou erreur explicite du sidecar sur le paramètre ; un completed avec zéro résultat est un défaut bloquant."
+      "setup": "Brain image without response_format support.",
+      "expect": "failed with brain_concise_unsupported for detailed output or an explicit sidecar parameter error; completed with zero results is a blocking defect."
     },
     {
       "id": "migration-reindex",
       "group": "runtime-new",
       "workflow": "memory-index-revision",
-      "setup": "X et Y indexées en 0.2.0 (sans previous_revision dans Memory).",
-      "expect": "Avant rejeu : memory-query X reste validated (écart connu). Après memory-index-revision sur Y : memory-query X superseded."
+      "setup": "X and Y indexed in 0.2.0 without previous_revision in Memory.",
+      "expect": "Before replay, memory-query X stays validated (known gap). After memory-index-revision on Y, query X is superseded."
     },
     {
       "id": "tenant-explicit",
       "group": "runtime-new",
       "workflow": "memory-search",
-      "expect": "Les appels Brain et Memory du module portent tenant_id company-memory ; une absence donnerait zéro résultat silencieux côté plateforme."
+      "expect": "Brain and Memory calls carry tenant_id company-memory; omission would silently return zero platform results."
     },
     {
       "id": "isolation-cross-agent",
       "group": "runtime-new",
       "workflow": "memory-query",
-      "setup": "Révision remplacée sur A consultée depuis B.",
-      "expect": "failed ; aucune révision de A visible depuis B, y compris superseded."
+      "setup": "A superseded revision on A queried from B.",
+      "expect": "failed; no A revision, including superseded ones, is visible from B."
     },
     {
       "id": "viewer-superseded",
       "group": "viewer",
       "miniapp": "memory-query-console",
-      "expect": "Affichage de « Remplacée par » suivi de l'identifiant de Y. Vérification UI à faire dans le navigateur, hors de ce plan."
+      "expect": "Display “Superseded by” followed by Y ID. Browser UI verification remains outside this plan."
     },
     {
       "id": "compose-refuses-0.2.0-copies",
       "group": "composition",
       "command": "compose-write",
-      "expect": "Refus sans écriture partielle tant que les copies 0.2.0 sont présentes."
+      "expect": "Refuse without partial writes while differing 0.2.0 copies remain and --update is absent."
     },
     {
       "id": "row-normalization",
       "group": "runtime-new",
       "workflow": "memory-search",
-      "setup": "Révision validée dont le titre contient un retour à la ligne et dont la référence de source en contient un.",
-      "expect": "Une seule ligne de summary pour cette révision ; title et source_ref sans retour à la ligne ; title borné à 200 caractères, source_ref à 300."
+      "setup": "Validated revision with newlines in title and source reference.",
+      "expect": "One summary line; title and source_ref contain no newlines and are capped at 200 and 300 characters respectively."
     },
     {
       "id": "search-single-memory-query",
       "group": "runtime-new",
       "workflow": "memory-search",
-      "setup": "Dix révisions validées et indexées qui répondent au même terme.",
-      "expect": "Trace d'exécution : un appel brain.keyword, un appel memory.query (maxRows 60), un appel list_files, aucun workflow_call ni for_each. Durée murale consignée (référence avant changement : 7 à 9 s pour 80 ms de moteur)."
+      "setup": "Ten validated indexed revisions matching the same term.",
+      "expect": "Trace has one brain.keyword, one memory.query (maxRows 60), one list_files, no workflow_call or for_each. Record wall time (before change: 7–9 s for 80 ms engine time)."
     },
     {
       "id": "search-attributes-format",
       "group": "runtime-new",
       "workflow": "memory-search",
-      "expect": "Observé sur l'Agent C (copie de memory.duckdb, index v7) : attributes en chaîne JSON, citations en chaîne Go « [référence] ». Après index v8 : citations en chaîne JSON de tableau et source_ref présent. Les trois formes de citations sont lues ; source_ref non vide dans les résultats."
+      "expect": "Observed on Agent C (copy of memory.duckdb, index v7): attributes as JSON string, citations as Go “[reference]” string. After index v8, citations are a JSON array string and source_ref is present. All three citation forms are read; results have nonempty source_ref."
     },
     {
       "id": "search-legacy-attributes",
       "group": "runtime-new",
       "workflow": "memory-search",
-      "setup": "Révision indexée avant l'ajout de title, source_date et reviewed_at dans attributes.",
-      "expect": "Résultat servi ; source_ref tiré de citations (tableau, chaîne JSON ou chaîne Go) ; title dérivé de cette référence (fragment entre « # » et le dernier « @ », sinon l'identifiant) ; date vide et date_kind « inconnue » si source_date et reviewed_at manquent. Après rejeu de memory-index-revision : title, date de la source et source_ref."
+      "setup": "Revision indexed before title, source_date and reviewed_at attributes.",
+      "expect": "Result is served; source_ref comes from citations (array, JSON string or Go string); title is derived from the reference between # and last @, or ID; date is empty and date_kind is inconnue when dates are missing. After reindexing, title, source date and source_ref are present."
     },
     {
       "id": "search-expired-memory-row",
       "group": "runtime-new",
       "workflow": "memory-search",
-      "setup": "Révision indexée dont l'échéance (attributes.expires_at) est dépassée.",
-      "expect": "Exclue des résultats et comptée dans suppressed_count, comme memory-query qui la renvoie expired."
+      "setup": "Indexed revision with expired attributes.expires_at.",
+      "expect": "Excluded from results and counted in suppressed_count, as memory-query returns expired."
     },
     {
       "id": "unique-action-ids",
       "group": "runtime-new",
       "workflow": "memory-index-revision",
-      "expect": "Les identifiants d'action sont uniques dans le module (revalidate-revision, search-answer, query-answer…) ; l'indexation puis la recherche s'enchaînent sans résolution d'action dans une autre définition (AGENT-1054)."
+      "expect": "Action IDs are unique in the Module (revalidate-revision, search-answer, query-answer, etc.); indexing and search do not resolve an action in another definition (AGENT-1054)."
     },
     {
       "id": "compose-retired-resolve-candidate",
       "group": "composition",
       "command": "compose-update",
-      "setup": "Consommateur qui contient encore workflows/memory-resolve-candidate.json.",
-      "expect": "compose.py signale retired_files_present sans rien supprimer ; le fichier est retiré à la main avant spec check, sinon il épingle memory-query 6 qui n'est plus livré."
+      "setup": "Consumer still contains workflows/memory-resolve-candidate.json.",
+      "expect": "compose.py reports retired_files_present without deleting anything; remove the file manually before spec check because it pins undelivered memory-query 6."
     },
     {
       "id": "search-no-candidate",
       "group": "runtime-new",
       "workflow": "memory-search",
-      "setup": "Base indexée (plus de 60 révisions sans prédécesseur) ; requête sans aucun résultat Brain.",
-      "expect": "completed, results vide, candidate_count 0, suppressed_count 0. La trace de read-revisions montre la requête external_id IN ('') sans clause previous_revision, rows null. Défaut corrigé : memory_rows_truncated sur 5 recherches sur 135 en campagne (v8)."
+      "setup": "Indexed database with over 60 revisions without predecessors; query has no Brain results.",
+      "expect": "completed, empty results, candidate_count 0, suppressed_count 0. read-revisions trace shows external_id IN ('') without previous_revision and rows null. Fixed defect: memory_rows_truncated in 5 of 135 searches in v8 campaign."
     },
     {
       "id": "review-write-order",
       "group": "runtime-new",
       "workflow": "memory-review-update",
-      "setup": "X validée et indexée ; Y proposée avec previous_revision = X.",
-      "expect": "Trace : review-write précède write-supersession. Une revue de Y qui échoue n'écrit aucun marqueur et X reste servie ; un marqueur qui échoue après la revue laisse review-Y.json validée, l'exécution failed, X servie jusqu'à l'indexation de Y puis remplacée (relecture adverse codex)."
+      "setup": "X validated and indexed; Y proposed with previous_revision = X.",
+      "expect": "Trace: review-write precedes write-supersession. If Y review fails no marker is written and X remains served. If marker fails after review, review-Y.json remains validated, execution fails and X remains served until Y is indexed (adversarial Codex review)."
     }
   ],
   "offline_checks_already_run": [
-    "python3 -m unittest discover -s solutions/company-memory/tests -p 'test_*.py' : 61 tests verts au moment de la rédaction (55 dans test_module_offline.py, 6 dans test_compose.py)",
-    "maurice module validate et maurice module test sur module.yaml 0.3.0 : passés",
-    "Validateur Agent Spec V2 sur les Workflows (dont les deux enfants internes), MiniApps et plan de test"
+    "Historical: python3 -m unittest discover -s solutions/company-memory/tests -p 'test_*.py': 61 tests passed when recorded (55 offline, 6 compose).",
+    "Historical: maurice module validate and maurice module test passed for module.yaml 0.3.0.",
+    "Historical: Agent Spec V2 validator checked Workflows including both internal children, MiniApps and the test plan."
   ],
   "exit_criteria": [
-    "Tous les cas runtime-new passent sur A, et sur B pour les cas d'isolation et de remplacement.",
-    "Le legacy-33 passe sur A et sur B avec les assertions compactes.",
-    "Aucun ticket ou fichier de preuve ne contient de secret ; les sorties restent hors dépôt."
+    "All runtime-new cases pass on A, and on B for isolation and supersession.",
+    "The legacy-33 cases pass on A and B with compact assertions.",
+    "No ticket or evidence file contains secrets; outputs remain outside the repository."
   ],
   "not_covered": [
-    "Installation via Module Catalog et publication publique.",
-    "Recherche sémantique, ingestion automatique, synthèse LLM.",
-    "Expiration temporelle d'une successeur (dépend de l'horloge ; à traiter par un cas daté).",
-    "Résolution atomique d'une modification concurrente ; le modèle reste single-writer.",
-    "Cloisonnement entre deux entreprises sur un sidecar partagé."
+    "Module Catalog installation and public publication.",
+    "Semantic search, automatic ingestion and LLM synthesis.",
+    "Time-based expiration of a successor; a dated case is required.",
+    "Atomic resolution of concurrent modification; the model is single-writer.",
+    "Isolation between two companies on one shared sidecar."
   ],
   "execution_scope": "Local composition uses this repository; runtime qualification requires an authorized external checkout and an isolated One.",
   "external_commands_not_distributed": [
     {
       "id": "replay-legacy",
-      "command": "python3 solutions/company-memory/tests/mcp-replay.py --cli <maurice> --config <config> --consumer-dir <consumer> --agent <agent-A> --output-dir <dossier hors dépôt>",
-      "note": "33 cas historiques, assertions adaptées au format compact. A relancer sur A puis sur B.",
+      "command": "python3 solutions/company-memory/tests/mcp-replay.py --cli <maurice> --config <config> --consumer-dir <consumer> --agent <agent-A> --output-dir <output-directory-outside-repository>",
+      "note": "33 historical cases with compact-output assertions; replay on A and then B.",
       "availability": "external_not_distributed",
       "source_repository": "mcpchatui/pilote-maurice",
       "source_commit": "8cb35a14b825dcdae4515d46e3b4c5149c154901",
@@ -291,8 +291,8 @@
     },
     {
       "id": "replay-search",
-      "command": "python3 solutions/company-memory/tests/search-replay.py --cli <maurice> --config <config> --consumer-dir <consumer> --agent <agent-A> --output-dir <dossier hors dépôt>",
-      "note": "memory-search sans sous-Workflow : révision indexée par memory-index-revision, document Brain forgé ensuite ; texte servi depuis la copie Memory ; candidat Brain sans ligne Memory exclu (completed, suppressed_count).",
+      "command": "python3 solutions/company-memory/tests/search-replay.py --cli <maurice> --config <config> --consumer-dir <consumer> --agent <agent-A> --output-dir <output-directory-outside-repository>",
+      "note": "memory-search without a child Workflow: index a revision, forge a Brain document, serve text from the Memory copy, and exercise Brain candidates missing from Memory.",
       "availability": "external_not_distributed",
       "source_repository": "mcpchatui/pilote-maurice",
       "source_commit": "8cb35a14b825dcdae4515d46e3b4c5149c154901",

@@ -3,9 +3,9 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "cib-direction-console",
-  "version": "3",
-  "title": "Briefing Direction",
-  "description": "Projection ACL des dossiers communs, sans autorité additionnelle.",
+  "version": "4",
+  "title": "Management briefing",
+  "description": "ACL projection of shared cases, without additional authority.",
   "ui": {
     "renderer": "component",
     "component": "company-in-a-box",
@@ -13,18 +13,18 @@
       "layout": [
         {
           "type": "text",
-          "value": "Briefing Direction ACL interne. Les entrées sont déjà filtrées par le broker."
+          "value": "Internal ACL management briefing. Entries are already filtered by the broker."
         },
         {
           "type": "metric",
-          "label": "Total autorisé",
+          "label": "Total accessible",
           "value": {
             "state": "result.summary.total"
           }
         },
         {
           "type": "text",
-          "value": "Dossiers bloqués"
+          "value": "Blocked cases"
         },
         {
           "type": "text",
@@ -34,7 +34,7 @@
         },
         {
           "type": "text",
-          "value": "Dossiers prêts à revoir"
+          "value": "Cases ready for review"
         },
         {
           "type": "text",
@@ -46,19 +46,19 @@
           "type": "table",
           "columns": [
             "case_id",
-            "statut",
-            "priorite",
-            "service",
-            "responsable_role",
+            "status_label",
+            "priority_label",
+            "service_label",
+            "role_label",
             "prochaine_action"
           ],
           "column_labels": {
-            "case_id": "Dossier",
-            "statut": "État déclaré",
-            "priorite": "Priorité",
-            "service": "Service",
-            "responsable_role": "Responsable",
-            "prochaine_action": "Prochaine action"
+            "case_id": "Case",
+            "status_label": "Declared status",
+            "priority_label": "Priority",
+            "service_label": "Service",
+            "role_label": "Owner role",
+            "prochaine_action": "Next action"
           },
           "rows": {
             "state": "result.items"
@@ -73,11 +73,11 @@
         },
         {
           "type": "section",
-          "title": "Dossier sélectionné",
+          "title": "Selected case",
           "children": [
             {
               "type": "text",
-              "value": "Révision"
+              "value": "Revision"
             },
             {
               "type": "text",
@@ -97,7 +97,7 @@
             },
             {
               "type": "text",
-              "value": "Objectif"
+              "value": "Objective"
             },
             {
               "type": "text",
@@ -147,13 +147,13 @@
         "ready": [],
         "ready_count": 0
       },
-      "message": "Aucun briefing consulté."
+      "message": "No briefing viewed."
     },
     "selected": {
       "content": "",
       "revision": 0,
       "permissions": {},
-      "permissions_summary": "Lecture : non · Modification : non · Partage : non",
+      "permissions_summary": "Read: no · Write: no · Share: no",
       "share_count": 0
     }
   },

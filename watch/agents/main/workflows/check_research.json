@@ -3,13 +3,13 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "check_research",
-  "version": "1",
-  "title": "Vérifier les preuves de la source",
+  "version": "2",
+  "title": "Check source evidence",
   "actions": [
     {
       "id": "check",
       "type": "code_execution",
-      "code": "const x = {{ json . }};\nconst dates = [x.source_date,x.date_revue].map(v=> typeof v === \"string\" && /^\\d{4}-\\d{2}-\\d{2}$/.test(v) ? Date.parse(v+\"T00:00:00Z\") : NaN);\nconst age = (dates[1]-dates[0])/86400000;\nconst present = [x.source_ref,x.faits,x.preuve_ref].every(v=>typeof v === \"string\" && v.trim().length > 0);\nconst validDate = dates.every(Number.isFinite) && age >= 0 && age <= 30;\nconst verdict = x.contradiction === true || !Number.isFinite(age) || age < 0 ? \"human_review\" : (present && validDate && x.confirmation_manuelle === true ? \"sufficient\" : \"collect_more\");\nreturn {verdict, mode:\"manual\", age_days: Number.isFinite(age)?age:null, max_age_days:30, web_fetched:false, reason:verdict===\"sufficient\"?\"Champs et date vérifiés ; contenu attesté manuellement\":\"Compléter ou revoir les preuves ; aucune vérification web automatique\"};",
+      "code": "const x = {{ json . }};\nconst dates = [x.source_date,x.date_revue].map(v=> typeof v === \"string\" && /^\\d{4}-\\d{2}-\\d{2}$/.test(v) ? Date.parse(v+\"T00:00:00Z\") : NaN);\nconst age = (dates[1]-dates[0])/86400000;\nconst present = [x.source_ref,x.faits,x.preuve_ref].every(v=>typeof v === \"string\" && v.trim().length > 0);\nconst validDate = dates.every(Number.isFinite) && age >= 0 && age <= 30;\nconst verdict = x.contradiction === true || !Number.isFinite(age) || age < 0 ? \"human_review\" : (present && validDate && x.confirmation_manuelle === true ? \"sufficient\" : \"collect_more\");\nreturn {verdict, mode:\"manual\", age_days: Number.isFinite(age)?age:null, max_age_days:30, web_fetched:false, reason:verdict===\"sufficient\"?\"Fields and date checked; content attested manually\":\"Complete or review evidence; no automatic web verification\"};",
       "output_key": "research"
     }
   ],

@@ -3,76 +3,76 @@
   "schema_version": 2,
   "workflow_id": "accompagnement-save",
   "kind": "workflow",
-  "title": "Enregistrer un dossier d'accompagnement",
-  "version": "3",
+  "title": "Save a support record",
+  "version": "4",
   "forms": [
     {
       "id": "save-dossier",
-      "title": "Enregistrer un suivi manuel",
+      "title": "Save a manual follow-up",
       "fields": [
         {
           "name": "dossier_id",
           "type": "string",
           "required": true,
-          "title": "Identifiant du dossier",
+          "title": "Record identifier",
           "default": "{{ state.selected.record.id }}"
         },
         {
           "name": "entreprise",
           "type": "string",
           "required": true,
-          "title": "Entreprise",
+          "title": "Company",
           "default": "{{ state.selected.record.entreprise }}"
         },
         {
           "name": "objectif",
           "type": "text",
           "required": true,
-          "title": "Objectif",
+          "title": "Objective",
           "default": "{{ state.selected.record.objectif }}"
         },
         {
           "name": "resultat_observe",
           "type": "text",
           "required": false,
-          "title": "Résultat observé",
+          "title": "Observed outcome",
           "default": "{{ state.selected.record.resultat_observe }}"
         },
         {
           "name": "preuve_ref",
           "type": "string",
           "required": false,
-          "title": "Référence de preuve",
+          "title": "Evidence reference",
           "default": "{{ state.selected.record.preuve_ref }}"
         },
         {
           "name": "blocage",
           "type": "text",
           "required": false,
-          "title": "Blocage",
+          "title": "Blocker",
           "default": "{{ state.selected.record.blocage }}"
         },
         {
           "name": "prochaine_etape",
           "type": "text",
           "required": true,
-          "title": "Prochaine étape",
+          "title": "Next step",
           "default": "{{ state.selected.record.prochaine_etape }}"
         },
         {
           "name": "confirmation_manuelle",
           "type": "select",
           "required": true,
-          "title": "Je confirme l'enregistrement interne",
-          "description": "Je confirme l'enregistrement interne",
+          "title": "I confirm this internal save",
+          "description": "I confirm this internal save",
           "options": [
             {
               "value": "non",
-              "label": "Non"
+              "label": "No"
             },
             {
               "value": "oui",
-              "label": "Oui"
+              "label": "Yes"
             }
           ],
           "default": "non"
@@ -97,7 +97,7 @@
       "id": "guard-save",
       "type": "workflow_call",
       "workflow_id": "accompagnement-guard-action",
-      "workflow_version": "1",
+      "workflow_version": "2",
       "execution": "sync",
       "input": {
         "action": "save_internal_draft",
@@ -119,7 +119,7 @@
           "recipe--application_data_v1"
         ]
       },
-      "code": "import { callTool } from './tools/nats_bridge.ts';\nconst input={{ json . }};\nconst data={{ json .dossier }};\nif(!data||typeof data!==\"object\") throw new Error(\"broker_save_data_invalid\");\nconst expected_revision=input.expected_revision==null||input.expected_revision===\"\"?0:Number(input.expected_revision);\nif(!Number.isSafeInteger(expected_revision)||expected_revision<0) throw new Error(\"expected_revision_invalid\");\nconst response=await callTool(\"recipe--application_data_v1\",{operation:\"save\",namespace:\"cib-accompagnement\",record_key:data.id,data,expected_revision});\nconst payload=response&&response.data?response.data:response;\nif(!payload||!payload.record||typeof payload.record!==\"object\") throw new Error(\"broker_record_invalid\");\nconst item=payload.record;\nif(item.namespace!==\"cib-accompagnement\"||item.key!==data.id) throw new Error(\"broker_record_identity_invalid\");\nif(!Number.isSafeInteger(item.revision)||item.revision<0) throw new Error(\"broker_revision_invalid\");\nif(!item.data||typeof item.data!==\"object\") throw new Error(\"broker_record_data_invalid\");\nconst permissions=item.permissions;\nif(!permissions||typeof permissions.can_read!==\"boolean\"||typeof permissions.can_write!==\"boolean\"||typeof permissions.can_manage!==\"boolean\") throw new Error(\"broker_permissions_invalid\");\nconst shares=Array.isArray(item.shares)?item.shares:[];const permissions_summary=\"Lecture : \"+(permissions.can_read===true?\"oui\":\"non\")+\" · Modification : \"+(permissions.can_write===true?\"oui\":\"non\")+\" · Partage : \"+(permissions.can_manage===true?\"oui\":\"non\");const share_count=shares.length;\nreturn {record:item.data,content:JSON.stringify(item.data,null,2),revision:item.revision,owner_user_id:typeof item.owner_user_id===\"string\"?item.owner_user_id:\"\",permissions,permissions_summary,shares,share_count,path:\"/company-in-a-box/accompagnement/\"+item.key};",
+      "code": "import { callTool } from './tools/nats_bridge.ts';\nconst input={{ json . }};\nconst data={{ json .dossier }};\nif(!data||typeof data!==\"object\") throw new Error(\"broker_save_data_invalid\");\nconst expected_revision=input.expected_revision==null||input.expected_revision===\"\"?0:Number(input.expected_revision);\nif(!Number.isSafeInteger(expected_revision)||expected_revision<0) throw new Error(\"expected_revision_invalid\");\nconst response=await callTool(\"recipe--application_data_v1\",{operation:\"save\",namespace:\"cib-accompagnement\",record_key:data.id,data,expected_revision});\nconst payload=response&&response.data?response.data:response;\nif(!payload||!payload.record||typeof payload.record!==\"object\") throw new Error(\"broker_record_invalid\");\nconst item=payload.record;\nif(item.namespace!==\"cib-accompagnement\"||item.key!==data.id) throw new Error(\"broker_record_identity_invalid\");\nif(!Number.isSafeInteger(item.revision)||item.revision<0) throw new Error(\"broker_revision_invalid\");\nif(!item.data||typeof item.data!==\"object\") throw new Error(\"broker_record_data_invalid\");\nconst permissions=item.permissions;\nif(!permissions||typeof permissions.can_read!==\"boolean\"||typeof permissions.can_write!==\"boolean\"||typeof permissions.can_manage!==\"boolean\") throw new Error(\"broker_permissions_invalid\");\nconst shares=Array.isArray(item.shares)?item.shares:[];const permissions_summary=\"Read: \"+(permissions.can_read===true?\"yes\":\"no\")+\" · Write: \"+(permissions.can_write===true?\"yes\":\"no\")+\" · Share: \"+(permissions.can_manage===true?\"yes\":\"no\");const share_count=shares.length;\nconst displayValue=(value, labels)=>labels[value]??value??\"\";\nconst source=item.data||{};const display={status:displayValue(source.etat,{pret_a_revoir:\"Ready for review\",a_qualifier:\"Needs review\",brouillon:\"Draft\",bloque:\"Blocked\",en_cours:\"In progress\"}),worker:displayValue(source.decision?.routing?.worker,{veille:\"Watch\",contenu:\"Content\",accompagnement:\"Support\",human_review:\"Human review\"}),verdict:displayValue(source.decision?.research?.verdict,{sufficient:\"Sufficient\",insufficient:\"Insufficient\",collect_more:\"Collect more evidence\",human_review:\"Human review\"}),review:displayValue(source.decision?.decision,{accepted:\"Accepted\",rework:\"Rework\",human_review:\"Human review\"})};\nreturn {display,record:item.data,content:JSON.stringify(item.data,null,2),revision:item.revision,owner_user_id:typeof item.owner_user_id===\"string\"?item.owner_user_id:\"\",permissions,permissions_summary,shares,share_count,path:\"/company-in-a-box/accompagnement/\"+item.key};",
       "output_key": "broker_result"
     }
   ],
@@ -132,6 +132,7 @@
     "shares": "{{ broker_result.shares }}",
     "path": "{{ broker_result.path }}",
     "permissions_summary": "{{ broker_result.permissions_summary }}",
-    "share_count": "{{ broker_result.share_count }}"
+    "share_count": "{{ broker_result.share_count }}",
+    "display": "{{ broker_result.display }}"
   }
 }

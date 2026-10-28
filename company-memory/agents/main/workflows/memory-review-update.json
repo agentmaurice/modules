@@ -3,36 +3,36 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "memory-review-update",
-  "version": "6",
-  "title": "Revoir manuellement une proposition",
+  "version": "7",
+  "title": "Review a proposal manually",
   "forms": [
     {
       "id": "submit",
-      "title": "Saisie manuelle",
+      "title": "Manual input",
       "fields": [
         {
           "name": "proposal_id",
           "type": "string",
           "required": true,
-          "title": "Proposition"
+          "title": "Proposal"
         },
         {
           "name": "decision",
           "type": "select",
           "required": true,
-          "title": "Décision",
+          "title": "Decision",
           "options": [
             {
               "value": "validated",
-              "label": "Validée"
+              "label": "Validated"
             },
             {
               "value": "refused",
-              "label": "Refusée"
+              "label": "Refused"
             },
             {
               "value": "disputed",
-              "label": "Contestée"
+              "label": "Disputed"
             }
           ]
         },
@@ -40,21 +40,21 @@
           "name": "review_note",
           "type": "text",
           "required": false,
-          "title": "Note de revue"
+          "title": "Review note"
         },
         {
           "name": "confirmation_manuelle",
           "type": "select",
           "required": true,
-          "title": "Confirmer la décision",
+          "title": "Confirm decision",
           "options": [
             {
               "value": "non",
-              "label": "Non"
+              "label": "No"
             },
             {
               "value": "oui",
-              "label": "Oui"
+              "label": "Yes"
             }
           ]
         }
@@ -137,7 +137,7 @@
     {
       "id": "review-check-absent",
       "type": "code_execution",
-      "code": "if (!Array.isArray(files)) throw new Error(\"storage_listing_unavailable\");\nconst p = \"/company-memory/review-\" + review.proposal_id + \".json\";\nif (files.some(f => f && f.path === p)) throw new Error(\"final_review_already_exists\");\n// Une révision déjà remplacée ne peut pas l'être une seconde fois : le marqueur natif est la source.\nconst previous = proposal.previous_revision;\nif (review.decision === \"validated\" && previous && files.some(f => f && f.path === \"/company-memory/superseded-\" + previous + \".json\")) throw new Error(\"successor_conflict\");\nreturn {path: p};",
+      "code": "if (!Array.isArray(files)) throw new Error(\"storage_listing_unavailable\");\nconst p = \"/company-memory/review-\" + review.proposal_id + \".json\";\nif (files.some(f => f && f.path === p)) throw new Error(\"final_review_already_exists\");\nconst previous = proposal.previous_revision;\nif (review.decision === \"validated\" && previous && files.some(f => f && f.path === \"/company-memory/superseded-\" + previous + \".json\")) throw new Error(\"successor_conflict\");\nreturn {path: p};",
       "context": {
         "files": "{{ files }}",
         "review": "{{ review }}",

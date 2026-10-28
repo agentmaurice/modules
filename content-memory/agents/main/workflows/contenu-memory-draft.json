@@ -3,50 +3,50 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "contenu-memory-draft",
-  "version": "2",
-  "title": "Contenu — Brouillon depuis une révision validée",
+  "version": "3",
+  "title": "Content — Draft from a validated revision",
   "forms": [
     {
       "id": "submit",
-      "title": "Contenu — Brouillon depuis une révision validée",
+      "title": "Content — Draft from a validated revision",
       "fields": [
         {
           "name": "dossier_id",
           "type": "string",
           "required": true,
-          "title": "Dossier du brouillon"
+          "title": "Draft case"
         },
         {
           "name": "entreprise",
           "type": "string",
           "required": true,
-          "title": "Entreprise"
+          "title": "Company"
         },
         {
           "name": "sujet",
           "type": "string",
           "required": true,
-          "title": "Sujet"
+          "title": "Subject"
         },
         {
           "name": "proposal_id",
           "type": "string",
           "required": true,
-          "title": "Révision mémoire validée"
+          "title": "Validated memory revision"
         },
         {
           "name": "confirmation_manuelle",
           "type": "select",
           "required": true,
-          "title": "Confirmer cet apport manuel",
+          "title": "Confirm this manual contribution",
           "options": [
             {
               "value": "non",
-              "label": "Non"
+              "label": "No"
             },
             {
               "value": "oui",
-              "label": "Oui"
+              "label": "Yes"
             }
           ]
         }
@@ -74,7 +74,7 @@
       "id": "consult",
       "type": "workflow_call",
       "workflow_id": "company-memory-query",
-      "workflow_version": "1",
+      "workflow_version": "2",
       "execution": "sync",
       "input": {
         "proposal_id": "{{ request.proposal_id }}"
@@ -84,7 +84,7 @@
     {
       "id": "require-validated",
       "type": "code_execution",
-      "code": "const m={{ json .memory.data }}; const x={{ json .request }}; if(m.status!==\"validated\"||m.proposal_id!==x.proposal_id||!m.answer||!Array.isArray(m.citations)||!m.citations.length||Date.parse(m.expires_at)<=Date.now()) throw new Error(\"validated_memory_required\"); return {facts:m.answer,source:m.citations.join(\"; \")+\" [révision \"+m.proposal_id+\"]\"};",
+      "code": "const m={{ json .memory.data }}; const x={{ json .request }}; if(m.status!==\"validated\"||m.proposal_id!==x.proposal_id||!m.answer||!Array.isArray(m.citations)||!m.citations.length||Date.parse(m.expires_at)<=Date.now()) throw new Error(\"validated_memory_required\"); return {facts:m.answer,source:m.citations.join(\"; \")+\" [revision \"+m.proposal_id+\"]\"};",
       "output_key": "validated"
     },
     {
@@ -96,14 +96,14 @@
     {
       "id": "prepare",
       "type": "code_execution",
-      "code": "const x = {{ json .draft_input }};\nif(x.confirmation_manuelle === \"oui\") x.confirmation_manuelle=true; else if(x.confirmation_manuelle === \"non\") x.confirmation_manuelle=false;\nif(x.contradiction === \"oui\") x.contradiction=true; else if(x.contradiction === \"non\" || x.contradiction == null) x.contradiction=false;\nif(typeof x.dossier_id!==\"string\" || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(x.dossier_id)) throw new Error(\"invalid_dossier_id\");\nif(x.confirmation_manuelle!==true) throw new Error(\"manual_confirmation_required\");\nfor(const f of [\"entreprise\",\"sujet\",\"faits\",\"source_ref\"]) if(typeof x[f]!==\"string\" || !x[f].trim() || x[f].length>8000) throw new Error(\"invalid_input_\"+f);\nif(x.brouillon!=null && (typeof x.brouillon!==\"string\" || x.brouillon.length>16000)) throw new Error(\"invalid_draft\");\nconst draft = x.brouillon && x.brouillon.trim() ? x.brouillon.trim() : [\"BROUILLON À RELIRE\",x.sujet,\"Faits fournis :\",x.faits,\"Source : \"+x.source_ref,\"Aucune publication effectuée.\"].join(\"\\n\\n\");\nreturn {id:x.dossier_id,entreprise:x.entreprise,role:\"contenu\",etat:\"brouillon\",sujet:x.sujet,faits:x.faits,source_ref:x.source_ref,brouillon:draft,external_effect:false};",
+      "code": "const x = {{ json .draft_input }};\nif(x.confirmation_manuelle === \"oui\") x.confirmation_manuelle=true; else if(x.confirmation_manuelle === \"non\") x.confirmation_manuelle=false;\nif(x.contradiction === \"oui\") x.contradiction=true; else if(x.contradiction === \"non\" || x.contradiction == null) x.contradiction=false;\nif(typeof x.dossier_id!==\"string\" || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(x.dossier_id)) throw new Error(\"invalid_dossier_id\");\nif(x.confirmation_manuelle!==true) throw new Error(\"manual_confirmation_required\");\nfor(const f of [\"entreprise\",\"sujet\",\"faits\",\"source_ref\"]) if(typeof x[f]!==\"string\" || !x[f].trim() || x[f].length>8000) throw new Error(\"invalid_input_\"+f);\nif(x.brouillon!=null && (typeof x.brouillon!==\"string\" || x.brouillon.length>16000)) throw new Error(\"invalid_draft\");\nconst draft = x.brouillon && x.brouillon.trim() ? x.brouillon.trim() : [\"DRAFT FOR REVIEW\",x.sujet,\"Supplied facts:\",x.faits,\"Source: \"+x.source_ref,\"No publication performed.\"].join(\"\\n\\n\");\nreturn {id:x.dossier_id,entreprise:x.entreprise,role:\"contenu\",etat:\"brouillon\",sujet:x.sujet,faits:x.faits,source_ref:x.source_ref,brouillon:draft,external_effect:false};",
       "output_key": "record"
     },
     {
       "id": "review",
       "type": "workflow_call",
       "workflow_id": "review_completion",
-      "workflow_version": "1",
+      "workflow_version": "2",
       "execution": "sync",
       "input": {
         "dossier_id": "{{ record.id }}",

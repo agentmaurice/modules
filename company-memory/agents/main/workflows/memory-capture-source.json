@@ -3,50 +3,50 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "memory-capture-source",
-  "version": "4",
-  "title": "Capturer une source mémoire",
+  "version": "5",
+  "title": "Capture a memory source",
   "forms": [
     {
       "id": "submit",
-      "title": "Saisie manuelle",
+      "title": "Manual input",
       "fields": [
         {
           "name": "source_id",
           "type": "string",
           "required": true,
-          "title": "Identifiant source"
+          "title": "Source ID"
         },
         {
           "name": "source_ref",
           "type": "string",
           "required": true,
-          "title": "Référence"
+          "title": "Reference"
         },
         {
           "name": "content",
           "type": "text",
           "required": true,
-          "title": "Contenu fourni"
+          "title": "Supplied content"
         },
         {
           "name": "source_date",
           "type": "string",
           "required": true,
-          "title": "Date ISO"
+          "title": "ISO date"
         },
         {
           "name": "confirmation_manuelle",
           "type": "select",
           "required": true,
-          "title": "Confirmer l’écriture",
+          "title": "Confirm write",
           "options": [
             {
               "value": "non",
-              "label": "Non"
+              "label": "No"
             },
             {
               "value": "oui",
-              "label": "Oui"
+              "label": "Yes"
             }
           ]
         }

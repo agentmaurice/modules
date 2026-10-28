@@ -154,6 +154,41 @@ class ComposeContractTest(unittest.TestCase):
                 consumer / "agents" / "veille" / "agent-spec.json",
             ])
 
+    def test_exact_previous_resource_and_plan_upgrade_without_touching_other_cases(self):
+        with tempfile.TemporaryDirectory() as temp:
+            consumer = make_consumer(Path(temp) / "consumer")
+            agent = consumer / "agents/veille"
+            target = agent / "workflows/cib-launch-read.json"
+            target.parent.mkdir(parents=True)
+            fixture = ROOT / "tests/fixtures/cib-launch-read-0.1.0.json"
+            target.write_bytes(fixture.read_bytes())
+            plan = json.loads((ROOT / "legacy-0.1.0-test-plan.json").read_text())
+            plan['cases'].append({'id':'consumer-case','description':'preserve'})
+            test_plan = agent / 'tests/test-plan.json'
+            test_plan.parent.mkdir(parents=True)
+            test_plan.write_text(json.dumps(plan))
+            result = run_compose(consumer, '--write')
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(target.read_text())['version'], '2')
+            self.assertIn({'id':'consumer-case','description':'preserve'}, json.loads(test_plan.read_text())['cases'])
+            target.write_bytes(fixture.read_bytes() + b' ')
+            result = run_compose(consumer)
+            self.assertEqual(result.returncode, 2)
+            self.assertIn('destination conflict', result.stderr)
+
+    def test_duplicate_existing_test_ids_refuse_upgrade(self):
+        with tempfile.TemporaryDirectory() as temp:
+            consumer = make_consumer(Path(temp) / 'consumer')
+            plan = json.loads((ROOT / 'legacy-0.1.0-test-plan.json').read_text())
+            plan['cases'].append(dict(plan['cases'][0]))
+            target = consumer / 'agents/veille/tests/test-plan.json'
+            target.parent.mkdir(parents=True)
+            target.write_text(json.dumps(plan))
+            result = run_compose(consumer, '--write')
+            self.assertEqual(result.returncode, 2)
+            self.assertIn('duplicate existing test case ID', result.stderr)
+            self.assertFalse((consumer / 'agents/veille/workflows/cib-launch-read.json').exists())
+
 
 if __name__ == "__main__":
     unittest.main()

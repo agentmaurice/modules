@@ -3,8 +3,8 @@
   "schema_version": 2,
   "kind": "workflow",
   "workflow_id": "veille-people",
-  "version": "1",
-  "title": "Veille — membres partageables",
+  "version": "2",
+  "title": "Watch — members available for sharing",
   "actions": [
     {
       "id": "people",

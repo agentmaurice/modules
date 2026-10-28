@@ -3,9 +3,9 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "cib-case-console",
-  "version": "5",
-  "title": "Dossiers communs",
-  "description": "Coordination interne ACL manuelle, portée par Veille.",
+  "version": "8",
+  "title": "Shared cases",
+  "description": "Manual internal ACL coordination, owned by Watch.",
   "ui": {
     "renderer": "component",
     "component": "company-in-a-box",
@@ -13,35 +13,39 @@
       "layout": [
         {
           "type": "text",
-          "value": "Dossier commun ACL interne. Le broker filtre les accès ; la révision est obligatoire pour toute mise à jour."
+          "value": "Internal ACL shared case. The broker filters access; revision is required for every update."
+        },
+        {
+          "type": "text",
+          "value": "To share or remove access, open cib-case-sharing-console from navigation and copy the selected case, revision and member."
         },
         {
           "type": "button",
-          "label": "Actualiser la liste",
+          "label": "Refresh list",
           "on_click": "refresh"
         },
         {
           "type": "button",
-          "label": "Actualiser les membres",
+          "label": "Refresh members",
           "on_click": "people"
         },
         {
           "type": "table",
           "columns": [
             "case_id",
-            "statut",
-            "priorite",
-            "service",
-            "responsable_role",
+            "status_label",
+            "priority_label",
+            "service_label",
+            "role_label",
             "prochaine_action"
           ],
           "column_labels": {
-            "case_id": "Dossier",
-            "statut": "État déclaré",
-            "priorite": "Priorité",
-            "service": "Service",
-            "responsable_role": "Responsable",
-            "prochaine_action": "Prochaine action"
+            "case_id": "Case",
+            "status_label": "Declared status",
+            "priority_label": "Priority",
+            "service_label": "Service",
+            "role_label": "Owner role",
+            "prochaine_action": "Next action"
           },
           "rows": {
             "state": "listing.items"
@@ -56,11 +60,11 @@
         },
         {
           "type": "section",
-          "title": "Dossier sélectionné",
+          "title": "Selected case",
           "children": [
             {
               "type": "text",
-              "value": "Révision"
+              "value": "Revision"
             },
             {
               "type": "text",
@@ -70,7 +74,7 @@
             },
             {
               "type": "text",
-              "value": "Propriétaire"
+              "value": "Owner"
             },
             {
               "type": "text",
@@ -90,7 +94,7 @@
             },
             {
               "type": "text",
-              "value": "Partages"
+              "value": "Shares"
             },
             {
               "type": "text",
@@ -100,7 +104,7 @@
             },
             {
               "type": "text",
-              "value": "Membres partageables"
+              "value": "Eligible members"
             },
             {
               "type": "table",
@@ -108,7 +112,7 @@
                 "display_name"
               ],
               "column_labels": {
-                "display_name": "Membre"
+                "display_name": "Member"
               },
               "rows": {
                 "state": "people.people"
@@ -117,7 +121,7 @@
             },
             {
               "type": "text",
-              "value": "Membre sélectionné"
+              "value": "Selected member"
             },
             {
               "type": "text",
@@ -127,7 +131,7 @@
             },
             {
               "type": "text",
-              "value": "Objectif"
+              "value": "Objective"
             },
             {
               "type": "text",
@@ -137,7 +141,7 @@
             },
             {
               "type": "text",
-              "value": "Critère de fin"
+              "value": "Completion criterion"
             },
             {
               "type": "text",
@@ -147,7 +151,7 @@
             },
             {
               "type": "text",
-              "value": "Blocage"
+              "value": "Blocker"
             },
             {
               "type": "text",
@@ -157,7 +161,7 @@
             },
             {
               "type": "text",
-              "value": "Prochaine action"
+              "value": "Next action"
             },
             {
               "type": "text",
@@ -167,7 +171,7 @@
             },
             {
               "type": "text",
-              "value": "Fiche Veille liée"
+              "value": "Linked Watch record"
             },
             {
               "type": "text",
@@ -255,9 +259,6 @@
       "confirmation_manuelle": {
         "type": "string"
       },
-      "share_permission": {
-        "type": "string"
-      },
       "result": {
         "type": "object"
       },
@@ -293,7 +294,6 @@
     "preuve_ref": "",
     "revue_manuelle": "non",
     "confirmation_manuelle": "non",
-    "share_permission": "read",
     "result": {},
     "listing": {
       "items": []
@@ -302,7 +302,7 @@
       "content": "",
       "revision": 0,
       "permissions": {},
-      "permissions_summary": "Lecture : non · Modification : non · Partage : non",
+      "permissions_summary": "Read: no · Write: no · Share: no",
       "shares": [],
       "share_count": 0,
       "message": ""
@@ -391,22 +391,6 @@
         }
       },
       "result_to_state": "people"
-    },
-    {
-      "event_id": "share",
-      "trigger": "form.submit",
-      "workflow": {
-        "workflow_id": "cib-case-share",
-        "input": {
-          "jeu": "{{ state.jeu }}",
-          "case_id": "{{ state.selected.record.case_id }}",
-          "expected_revision": "{{ state.selected.revision }}",
-          "subject_user_id": "{{ state.people.selected_target.user_id }}",
-          "permission": "{{ state.share_permission }}",
-          "confirmation_manuelle": "{{ state.confirmation_manuelle }}"
-        }
-      },
-      "result_to_state": "selected"
     }
   ]
 }

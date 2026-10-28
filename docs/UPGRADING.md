@@ -1,20 +1,18 @@
-# Mise à jour et retour de version
+# Upgrading and rollback
 
-Épingler la révision Git distribuée et conserver les manifests des Modules
-installés. Le projet consommateur, ses locks et sa surface doivent être
-versionnés séparément ; sauvegarder ses données et volumes par les procédures
-de l’instance avant une mise à jour. Le dépôt des Modules ne constitue pas
-une sauvegarde des données de l’entreprise.
+Pin the distributed Git revision and retain the manifests of installed
+Modules. Version the consumer project, its locks and surface separately; back
+up its data and volumes using the instance procedures before upgrading. The
+Modules repository is not a backup of company data.
 
-Comparer la nouvelle révision à celle installée. Exécuter le composeur en
-preview ; une divergence inconnue n’est pas une permission d’écraser. Les
-empreintes historiques reconnues sont explicites. Relire et résoudre les
-conflits, vérifier le contrat natif, committer, puis déployer chaque Agent et
-mettre à jour les versions publiées dans la surface.
+Compare the new revision with the installed one. Preview the composer; an
+unknown divergence is not permission to overwrite it. Recognized historical
+fingerprints are explicit. Review and resolve conflicts, check the native
+contract, commit, then deploy each Agent and update the versions published in
+the surface.
 
-Un retour de sources n’est pas un retour des données. Vérifier la compatibilité
-des formats et des références avant de redéployer une ancienne ressource.
-Ne jamais restaurer une base ancienne pour annuler une évolution de formulaire.
-Aucune migration majeure, suppression de données ou retour automatique n’est
-fourni par cette bibliothèque. Les volumes Memory/Brain restent attachés à
-leur mémoire ; les changements de sidecars suivent leur plan natif séparé.
+Rolling back source does not roll back data. Check format and reference
+compatibility before redeploying an older resource. Never restore an old
+database to undo a form change. This library provides no automatic major
+migration, data deletion or rollback. Memory and Brain volumes remain attached
+to their memory; sidecar changes follow their separate native plan.

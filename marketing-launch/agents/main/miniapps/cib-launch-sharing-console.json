@@ -3,9 +3,9 @@
   "schema_version": 2,
   "kind": "miniapp",
   "miniapp_id": "cib-launch-sharing-console",
-  "version": "1",
-  "title": "Marketing — partager ou retirer un accès",
-  "description": "Partagez une seule fiche : sélectionnez-la, chargez les membres, puis cliquez la personne pour ouvrir le formulaire. Retirez avec « Retirer ». Partager ne donne pas le droit d’utiliser un service ni de gérer les partages.",
+  "version": "2",
+  "title": "Marketing — share or revoke access",
+  "description": "Share one record: select it, load members, then select a person to open the form. Use Revoke to remove access. Sharing does not grant service use or sharing administration.",
   "ui": {
     "renderer": "component",
     "component": "company-in-a-box",
@@ -13,20 +13,20 @@
       "layout": [
         {
           "type": "text",
-          "value": "Partagez une seule fiche : sélectionnez-la, chargez les membres, puis cliquez la personne pour ouvrir le formulaire. Retirez avec « Retirer ». Partager ne donne pas le droit d’utiliser un service ni de gérer les partages."
+          "value": "Share one record: select it, load members, then select a person to open the form. Use Revoke to remove access. Sharing does not grant service use or sharing administration."
         },
         {
           "type": "text",
-          "value": "Ouvrez le formulaire par son titre dans les interactions disponibles. Les champs longs sont des mémos. Le responsable indiqué ne crée aucun droit AM."
+          "value": "Open the form by its title in the available interactions. Long fields are notes. The named owner grants no AM permissions."
         },
         {
           "type": "button",
-          "label": "Actualiser le travail réel",
+          "label": "Refresh real work",
           "on_click": "refresh-usage"
         },
         {
           "type": "button",
-          "label": "Actualiser les essais",
+          "label": "Refresh trials",
           "on_click": "refresh-qualification"
         },
         {
@@ -38,12 +38,19 @@
         {
           "type": "table",
           "columns": [
-            "kind",
+            "kind_label",
             "id",
-            "phase",
+            "phase_label",
             "revision",
             "objectif"
           ],
+          "column_labels": {
+            "kind_label": "Type",
+            "id": "ID",
+            "phase_label": "Stage",
+            "revision": "Revision",
+            "objectif": "Objective"
+          },
           "rows": {
             "state": "listing.items"
           },
@@ -81,7 +88,7 @@
         },
         {
           "type": "button",
-          "label": "Charger les membres existants",
+          "label": "Load existing members",
           "on_click": "people"
         },
         {
@@ -90,6 +97,10 @@
             "user_id",
             "display_name"
           ],
+          "column_labels": {
+            "user_id": "Identifier",
+            "display_name": "Member"
+          },
           "rows": {
             "state": "people.people"
           },
@@ -155,7 +166,7 @@
     "phase": "en_cours",
     "listing": {
       "items": [],
-      "message": "Aucune liste chargée.",
+      "message": "No list loaded.",
       "summary": {}
     },
     "selected": {
@@ -172,7 +183,7 @@
         "confirmation_resultat": "non",
         "phase": "en_cours"
       },
-      "message": "Aucune fiche sélectionnée."
+      "message": "No record selected."
     },
     "people": {
       "people": []

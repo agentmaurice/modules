@@ -1,0 +1,85 @@
+{
+  "$schema": "agentmaurice.test_plan/v2",
+  "schema_version": 2,
+  "test_plan_id": "cib-marketing-launch",
+  "cases": [
+    {
+      "id": "launch-technical-denied-campaign-save",
+      "description": "Le broker doit refuser une exécution technique sans identité humaine ; cas positifs par sessions CIB.",
+      "workflow": {
+        "workflow_id": "cib-launch-campaign-save",
+        "input": {
+          "jeu": "qualification",
+          "campaign_id": "mkt-technical-denied",
+          "objectif": "Qualification",
+          "audience": "Fictive",
+          "promesse": "Aucune promesse publique",
+          "canal": "interne",
+          "responsable": "test",
+          "echeance": "2026-12-31",
+          "critere_fin": "Qualification interne",
+          "expected_revision": "0",
+          "confirmation_manuelle": "oui"
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "failed"
+        }
+      ]
+    },
+    {
+      "id": "launch-technical-denied-read",
+      "description": "Le broker doit refuser une exécution technique sans identité humaine ; cas positifs par sessions CIB.",
+      "workflow": {
+        "workflow_id": "cib-launch-read",
+        "input": {
+          "jeu": "qualification",
+          "kind": "campaign",
+          "id": "mkt-technical-denied",
+          "form_id": "campaign"
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "failed"
+        }
+      ]
+    },
+    {
+      "id": "launch-technical-denied-list",
+      "description": "Le broker doit refuser une exécution technique sans identité humaine ; cas positifs par sessions CIB.",
+      "workflow": {
+        "workflow_id": "cib-launch-list",
+        "input": {
+          "jeu": "qualification",
+          "kind": "all"
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "failed"
+        }
+      ]
+    },
+    {
+      "id": "launch-technical-denied-summary",
+      "description": "Le broker doit refuser une exécution technique sans identité humaine ; cas positifs par sessions CIB.",
+      "workflow": {
+        "workflow_id": "cib-launch-summary",
+        "input": {
+          "jeu": "qualification"
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "failed"
+        }
+      ]
+    }
+  ]
+}

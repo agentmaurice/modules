@@ -43,6 +43,17 @@ SOURCES = {
     'company-memory': {'repository': 'gitlab.com/mcpchatui/pilote-maurice', 'commit': MEMORY_COMMIT,
                        'historical_library_commit': LIBRARY_COMMIT},
 }
+# Versioned observations describe this M5 candidate only. A later version is
+# not automatically treated as reviewed, published or qualified.
+M5_VERSIONS = {
+    'company-memory': ('0.3.0', '0.3.2'),
+    'watch': ('0.2.4', '0.2.5'), 'content': ('0.2.4', '0.2.5'),
+    'support': ('0.2.4', '0.2.5'),
+    'watch-memory': ('0.2.0', '0.2.1'), 'content-memory': ('0.2.0', '0.2.1'),
+    'support-memory': ('0.2.0', '0.2.1'),
+    'daily-routine': ('0.1.0', '0.1.1'), 'marketing-launch': ('0.1.0', '0.1.1'),
+    'enterprise-admin': ('0.2.2', '0.2.4'), 'work-cases': ('0.2.2', '0.2.5'),
+}
 CONSUMERS = {
     'watch-memory': ['watch', 'company-memory'], 'content-memory': ['content', 'company-memory'],
     'support-memory': ['support', 'company-memory'],
@@ -90,17 +101,25 @@ def render():
             raise ValueError(f'duplicate module key: {key}')
         seen.add(key)
         root = path.parent
-        if root.name not in OLD_PATHS or root.name not in GENERATORS or root.name not in SOURCES:
+        if root.name not in OLD_PATHS or root.name not in GENERATORS or root.name not in SOURCES or root.name not in M5_VERSIONS:
             raise ValueError(
                 f'Unreconciled provenance for {root.name}: add its source mapping to '
-                'OLD_PATHS, GENERATORS and SOURCES after reconciling its repository and commit before generating the inventory'
+                'OLD_PATHS, GENERATORS, SOURCES and M5_VERSIONS after reconciling its provenance before generating the inventory'
             )
         workflow_paths = sorted(root.glob('agents/main/workflows/*.json'))
         app_paths = sorted(root.glob('agents/main/miniapps/*.json'))
         row = {'key': key, 'version': version, 'manifest': str(path.relative_to(ROOT)),
                'workflows': len(workflow_paths), 'miniapps': len(app_paths)}
         rows.append(row)
-        details.append({**row, 'source': {**SOURCES[root.name], 'old_path': OLD_PATHS[root.name]},
+        baseline_version, m5_version = M5_VERSIONS[root.name]
+        is_m5_candidate = version == m5_version
+        details.append({**row, 'source': {
+            'current': {'repository': 'github.com/agentmaurice/modules',
+                        'package_path': root.name, 'version': version,
+                        'revision_resolution': 'Resolve the exact commit at import or release; it is not embedded in this generated inventory.'},
+            'historical_baseline': {**SOURCES[root.name], 'old_path': OLD_PATHS[root.name],
+                                    'version_basis': baseline_version,
+                                    'role': 'Historical source and pre-M5 version basis; not provenance of the current package bytes.'}},
             'generators_and_composers': GENERATORS.get(root.name, []),
             'resources': {'workflows': [str(p.relative_to(ROOT)) for p in workflow_paths],
                           'miniapps': [str(p.relative_to(ROOT)) for p in app_paths],
@@ -110,12 +129,16 @@ def render():
             'provides': module.get('provides', {}), 'requires': module.get('requires', {}),
             'composition_dependencies': CONSUMERS.get(root.name, []),
             'known_consumers': sorted(name for name, deps in CONSUMERS.items() if root.name in deps),
-            'language': 'Inherited French content is present in the library; M5 review remains pending and language is not qualified', 'runtime': 'Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred',
-            'publication': 'historical GitHub 0.2.0; 0.3.0 from GitLab source, local integration' if root.name == 'company-memory' else 'present in historical GitHub source at specified commit',
-            'migration_m5_m6': 'to define and qualify; deployment status is not inferred'})
+            'language': ('M5 English source candidate prepared; complete review and One and Viewer qualification remain pending.' if is_m5_candidate
+                         else 'Version outside the recorded M5 candidate; language review status is not inferred.'),
+            'runtime': 'Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred',
+            'publication': ('M5 candidate version is local and unpublished; no release or qualification is asserted.' if is_m5_candidate
+                            else 'Publication status of this version is not inferred.'),
+            'migration_m5_m6': ('M5 source candidate prepared, not fully qualified; M6 Go port and runtime qualification remain pending.' if is_m5_candidate
+                                else 'M5 and M6 status for this version is not inferred.')})
     catalogue = {'schema_version': 1, 'modules': rows}
     pins = {'schema_version': 1, 'modules': rows}
-    inventory = {'schema_version': 1, 'description': 'Documentary inventory, not a runtime contract.',
+    inventory = {'schema_version': 2, 'description': 'Documentary inventory, not a runtime contract.',
         'discovery': 'top-level */module.yaml; no numerical cap',
         'exclusions': ['fixtures', 'cache', '_archive', 'worktrees', 'artifacts and private replays'],
         'modules': details}

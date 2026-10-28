@@ -39,10 +39,10 @@ in a separate consumer project.
 Follow the [installation guide](docs/INSTALLATION.md), then use the native
 Agent Spec check/plan/apply/verify rail and verify the resulting UI. The current
 library uses local composition; URL/catalog installation and archive transport
-have separate implementation work. Existing UI text and business code remain
-on their current language/runtime until their qualified migrations.
+have separate implementation work. English source migration and runtime
+qualification are separate from the planned Go migration.
 
-Company Memory now carries the separately versioned 0.3.0 source. Its
+Company Memory derives from the separately versioned 0.3.0 source. Its
 [reconciliation notes](tooling/company-memory/README.md) explain supersession,
 the retired helper Workflow and the limits of upgrade/Viewer qualification.
 The historical 0.2.0 package remains recoverable from its original Git commit.

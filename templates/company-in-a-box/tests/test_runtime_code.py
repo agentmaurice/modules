@@ -18,17 +18,17 @@ def _fixture(role):
         "source_ref": "source-node",
         "source_date": "2026-10-10",
         "date_revue": "2026-10-11",
-        "faits": "faits de test",
+        "faits": "synthetic facts",
         "preuve_ref": "preuve-node",
         "role_demande": "veille",
         "contradiction": "non",
         "confirmation_manuelle": "oui",
-        "sujet": "sujet de test",
-        "brouillon": "brouillon de test",
-        "objectif": "objectif de test",
-        "resultat_observe": "résultat de test",
+        "sujet": "synthetic subject",
+        "brouillon": "test draft",
+        "objectif": "test objective",
+        "resultat_observe": "test result",
         "blocage": "",
-        "prochaine_etape": "étape suivante",
+        "prochaine_etape": "next step",
     }
 
 
@@ -39,7 +39,7 @@ def _context(role, workflow, action):
     data["service"] = "interne"
     data["jeu"] = "usage"
     data["case_id"] = data["id"]
-    data["critere_fin"] = "critère"
+    data["critere_fin"] = "criterion"
     data["priorite"] = "normale"
     data["statut"] = "en_cours"
     data["prochaine_action"] = "relire"
@@ -106,10 +106,10 @@ NODE_RUNNER = r'''
 const cases = JSON.parse(process.env.RUNTIME_CASES);
 const permissions = {can_read: true, can_write: true, can_manage: true};
 const dataFor = (key) => ({id: key, entreprise: "Fixture runtime", source_ref: "source-node",
-  source_date: "2026-10-10", date_revue: "2026-10-11", faits: "faits de test",
-  preuve_ref: "preuve-node", role_demande: "veille", sujet: "sujet de test",
-  brouillon: "brouillon de test", objectif: "objectif de test", resultat_observe: "résultat de test",
-  blocage: "", prochaine_etape: "étape suivante"});
+  source_date: "2026-10-10", date_revue: "2026-10-11", faits: "synthetic facts",
+  preuve_ref: "preuve-node", role_demande: "veille", sujet: "synthetic subject",
+  brouillon: "test draft", objectif: "test objective", resultat_observe: "test result",
+  blocage: "", prochaine_etape: "next step"});
 async function callTool(_name, args) {
   const key = args.record_key || "acl-share-node";
   const record = {namespace: args.namespace, key, revision: 4, data: dataFor(key),
