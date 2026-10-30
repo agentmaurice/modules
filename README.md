@@ -20,6 +20,7 @@ remains private and retains the history of `agentmaurice/company-in-a-box`.
 | Watch memory adapter | `cib-veille-memory` | [watch-memory](watch-memory/module.yaml) |
 | Content memory adapter | `cib-contenu-memory` | [content-memory](content-memory/module.yaml) |
 | Support memory adapter | `cib-accompagnement-memory` | [support-memory](support-memory/module.yaml) |
+| Image studio | `image-studio` | [image-studio](image-studio/module.yaml) |
 
 [modules.json](modules.json) is generated from the manifests. The detailed
 [source and migration inventory](inventory/modules.json) records resources,

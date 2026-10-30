@@ -1,0 +1,169 @@
+{
+  "schema": "image-studio.profile/v1",
+  "key": "ribin-avatar-item",
+  "title": "Ribin avatar item, cosmetic schema 1.0.0 (32x32 text grid)",
+  "planning": {
+    "guidance": "Plan wearable avatar items for a 32x32 pixel avatar seen from the front. Each item is one object with a large, simple silhouette that stays readable at 32x32: no small text, no thin lines, no scene. Spread the pack over the hat, top and accessory categories. Use rarity to grade effort: common items are simple and free, rare and epic items add a detail, legendary items are the showpieces; keep about half of the pack common or rare. Ids are short English snake_case names; titles are short display names of at most 40 characters.",
+    "max_assets": 20,
+    "id_pattern": "^[a-z0-9_]{1,32}$",
+    "categories": [
+      {
+        "key": "hat",
+        "id_prefix": "hat_",
+        "description": "headwear covering the top of the head: caps, beanies, crowns, antlers, headbands",
+        "framing": "the headwear alone, wider than tall, as seen on top of a head",
+        "review": "The export shows the headwear alone, in the top rows of the avatar grid."
+      },
+      {
+        "key": "top",
+        "id_prefix": "top_",
+        "description": "upper-body clothing seen from the shoulders down: sweaters, jackets, scarves worn over a top",
+        "framing": "the garment seen from the front, collar at the top, wide shoulders, with a bold pattern on the chest",
+        "review": "The export keeps only the shoulders and upper chest of the garment, cropped as it sits under an avatar head at the bottom of the grid; judge it as a torso seen from the front, not as a whole garment, and accept a simplified pattern."
+      },
+      {
+        "key": "accessory",
+        "id_prefix": "acc_",
+        "description": "an extra item drawn over the face or the neck",
+        "placements": [
+          "neck",
+          "face"
+        ],
+        "framing": "the accessory alone, wide and short",
+        "review": "The export shows the accessory alone, small, where it sits on the face or the neck."
+      }
+    ],
+    "attributes": {
+      "rarity": [
+        "common",
+        "rare",
+        "epic",
+        "legendary"
+      ]
+    }
+  },
+  "generation": {
+    "aspect_ratio": "1:1",
+    "style_prefix": "Pixel-art game sprite of a single wearable avatar item, chunky pixels, bold dark outline, flat cel shading with two tones per colour, front view, centered, large simple silhouette filling most of the frame.",
+    "composition": "One object only, no character, no head, no mannequin, no hands, no text, no frame.",
+    "background": "Flat uniform solid magenta background (#FF00FF) everywhere around the object, with no gradient, no shadow, no glow, no halo and no light effect around any part of the object.",
+    "avoid": "Do not use magenta or pink inside the object."
+  },
+  "export": {
+    "kind": "pixel-grid",
+    "size": 32,
+    "max_colors": 10,
+    "outline": "#1b1430",
+    "letters": "ABCEFGHIJMNOPQRTUVWXYZabcdefghijklmnopqrtuvwxyz",
+    "preview_scale": 8,
+    "background": {
+      "tolerance": 70,
+      "defringe": true,
+      "clear_enclosed": true
+    },
+    "boxes": {
+      "hat": {
+        "x": 5,
+        "y": 0,
+        "w": 22,
+        "h": 11
+      },
+      "top": {
+        "x": 4,
+        "y": 22,
+        "w": 24,
+        "h": 10,
+        "keep_top": 0.7
+      },
+      "accessory": {
+        "x": 6,
+        "y": 13,
+        "w": 20,
+        "h": 9
+      },
+      "accessory:neck": {
+        "x": 7,
+        "y": 20,
+        "w": 18,
+        "h": 7
+      },
+      "accessory:face": {
+        "x": 6,
+        "y": 10,
+        "w": 20,
+        "h": 6
+      }
+    }
+  },
+  "judge": {
+    "prompt": "You review one generated pixel-art avatar item, shown enlarged on a grey checkerboard. Score from 0 to 10 how well it reads as the expected item at this size: a single clear object, recognizable silhouette, clean edges, no stray pixels or background remnants, no pink fringe. Set pass to true when the score is 6 or more and the object is the expected one.",
+    "min_score": 6,
+    "min_opaque_cells": 40,
+    "min_box_fill_ratio": 0.35
+  },
+  "document": {
+    "file": "item.json",
+    "template": {
+      "kind": "avatar_item",
+      "animated": false,
+      "art_version": 1,
+      "license": "LicenseRef-Ribin",
+      "author": {
+        "name": "Ribin",
+        "agent": "AgentMaurice image-studio"
+      }
+    },
+    "fields": {
+      "item_id": "asset.id",
+      "title": "asset.title",
+      "slot": "asset.category",
+      "rarity": "asset.attributes.rarity",
+      "theme": "pack.theme",
+      "art": "export.art"
+    },
+    "by_attribute": {
+      "rarity": {
+        "common": {
+          "audiences": [
+            "adults",
+            "teens",
+            "kids",
+            "teams"
+          ]
+        },
+        "rare": {
+          "audiences": [
+            "adults",
+            "teens",
+            "teams"
+          ]
+        },
+        "epic": {
+          "audiences": [
+            "adults",
+            "teens",
+            "teams"
+          ]
+        },
+        "legendary": {
+          "audiences": [
+            "adults",
+            "teens",
+            "teams"
+          ]
+        }
+      }
+    }
+  },
+  "pricing": {
+    "attribute": "rarity",
+    "unit": "R",
+    "values": {
+      "common": 0,
+      "rare": 200,
+      "epic": 400,
+      "legendary": 700
+    },
+    "note": "Suggested price only, from the Ribin shop price grid; nothing is put on sale."
+  }
+}

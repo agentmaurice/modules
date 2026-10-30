@@ -1,0 +1,48 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "workflow_id": "image-studio-profile-save",
+  "kind": "workflow",
+  "title": "Save an output profile",
+  "version": "1",
+  "description": "Validates an image-studio.profile/v1 document and stores it in Storage.",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "profile",
+      "path"
+    ],
+    "properties": {
+      "profile": {
+        "type": "object",
+        "description": "Profile document"
+      },
+      "path": {
+        "type": "string",
+        "description": "Storage path, for example /image-studio/profiles/ribin-avatar-item.json"
+      }
+    }
+  },
+  "actions": [
+    {
+      "id": "save",
+      "type": "code_execution",
+      "runtime": "wasm",
+      "artifact": {
+        "sha256": "7c5f677a32b82c77e72b731127b33d85527e0dd31e9c3f19d0e06e7ef93ada67",
+        "size": 5408382
+      },
+      "context": {
+        "op": "save_profile",
+        "profile": "{{ profile }}",
+        "path": "{{ path }}"
+      },
+      "output_key": "saved"
+    }
+  ],
+  "output": {
+    "key": "{{ saved.key }}",
+    "kind": "{{ saved.kind }}",
+    "file": "{{ saved.file }}"
+  }
+}

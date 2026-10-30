@@ -1,0 +1,53 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "workflow_id": "image-studio-style-sheet",
+  "kind": "workflow",
+  "title": "Build the style sheet of a pack",
+  "version": "1",
+  "description": "Derives the prompt material shared by every image of a plan, stores style.json and returns one job per asset.",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "profile",
+      "plan"
+    ],
+    "properties": {
+      "profile": {
+        "type": "object",
+        "description": "Output profile"
+      },
+      "plan": {
+        "type": "object",
+        "description": "Normalized plan"
+      },
+      "root": {
+        "type": "string",
+        "description": "Storage folder of the packs; defaults to /image-studio/packs"
+      }
+    }
+  },
+  "actions": [
+    {
+      "id": "style",
+      "type": "code_execution",
+      "runtime": "wasm",
+      "artifact": {
+        "sha256": "7c5f677a32b82c77e72b731127b33d85527e0dd31e9c3f19d0e06e7ef93ada67",
+        "size": 5408382
+      },
+      "context": {
+        "op": "style_sheet",
+        "profile": "{{ profile }}",
+        "plan": "{{ plan }}",
+        "root": "{{ root | default \"\" }}"
+      },
+      "output_key": "sheet"
+    }
+  ],
+  "output": {
+    "style": "{{ sheet.style }}",
+    "jobs": "{{ sheet.jobs }}",
+    "style_file": "{{ sheet.file }}"
+  }
+}

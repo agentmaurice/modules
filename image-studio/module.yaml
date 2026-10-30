@@ -1,0 +1,94 @@
+{
+  "$schema": "agentmaurice.module/v2",
+  "schema_version": 2,
+  "key": "image-studio",
+  "name": "Image studio",
+  "version": "0.1.0",
+  "provides": {
+    "actions": [
+      {
+        "key": "image-studio-pack",
+        "name": "Produce an image pack",
+        "workflow_id": "image-studio-pack",
+        "workflow_version": "1"
+      },
+      {
+        "key": "image-studio-render",
+        "name": "Render one image",
+        "workflow_id": "image-studio-render",
+        "workflow_version": "1"
+      },
+      {
+        "key": "image-studio-plan",
+        "name": "Plan an image pack",
+        "workflow_id": "image-studio-plan",
+        "workflow_version": "1"
+      },
+      {
+        "key": "image-studio-style-sheet",
+        "name": "Build a style sheet",
+        "workflow_id": "image-studio-style-sheet",
+        "workflow_version": "1"
+      },
+      {
+        "key": "image-studio-produce-asset",
+        "name": "Produce one asset",
+        "workflow_id": "image-studio-produce-asset",
+        "workflow_version": "1"
+      },
+      {
+        "key": "image-studio-asset-finalize",
+        "name": "Keep an attempt",
+        "workflow_id": "image-studio-asset-finalize",
+        "workflow_version": "1"
+      },
+      {
+        "key": "image-studio-asset-retry",
+        "name": "Second attempt",
+        "workflow_id": "image-studio-asset-retry",
+        "workflow_version": "1"
+      },
+      {
+        "key": "image-studio-asset-hold",
+        "name": "Hold an asset",
+        "workflow_id": "image-studio-asset-hold",
+        "workflow_version": "1"
+      },
+      {
+        "key": "image-studio-publish",
+        "name": "Publish a pack to Storage",
+        "workflow_id": "image-studio-publish",
+        "workflow_version": "1"
+      },
+      {
+        "key": "image-studio-export",
+        "name": "Export a stored image",
+        "workflow_id": "image-studio-export",
+        "workflow_version": "1"
+      },
+      {
+        "key": "image-studio-profile-save",
+        "name": "Save an output profile",
+        "workflow_id": "image-studio-profile-save",
+        "workflow_version": "1"
+      }
+    ],
+    "queries": [
+      {
+        "key": "image-studio-review-read",
+        "name": "Read the review of a pack",
+        "workflow_id": "image-studio-review-read",
+        "workflow_version": "1"
+      }
+    ],
+    "apps": [
+      {
+        "key": "image-studio-review",
+        "name": "Image studio",
+        "miniapp_id": "image-studio-review",
+        "miniapp_version": "1"
+      }
+    ]
+  },
+  "requires": {}
+}

@@ -1,0 +1,66 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "workflow_id": "image-studio-publish",
+  "kind": "workflow",
+  "title": "Publish a pack to Storage",
+  "version": "1",
+  "description": "Writes the SHA-256 manifest, the review sheet and review.json of a pack. Nothing leaves Storage.",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "pack_id",
+      "assets"
+    ],
+    "properties": {
+      "pack_id": {
+        "type": "string",
+        "description": "Pack identifier: lowercase letters, digits and hyphens",
+        "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"
+      },
+      "root": {
+        "type": "string",
+        "description": "Storage folder of the packs; defaults to /image-studio/packs"
+      },
+      "title": {
+        "type": "string",
+        "description": "Pack title"
+      },
+      "profile": {
+        "type": "string",
+        "description": "Profile key"
+      },
+      "assets": {
+        "description": "Asset records, or Workflow outputs that contain them"
+      }
+    }
+  },
+  "actions": [
+    {
+      "id": "publish",
+      "type": "code_execution",
+      "runtime": "wasm",
+      "artifact": {
+        "sha256": "7c5f677a32b82c77e72b731127b33d85527e0dd31e9c3f19d0e06e7ef93ada67",
+        "size": 5408382
+      },
+      "context": {
+        "op": "publish",
+        "pack_id": "{{ pack_id }}",
+        "root": "{{ root | default \"\" }}",
+        "title": "{{ title | default \"\" }}",
+        "profile": "{{ profile }}",
+        "assets": "{{ assets }}"
+      },
+      "output_key": "published"
+    }
+  ],
+  "output": {
+    "pack_id": "{{ published.pack_id }}",
+    "manifest_path": "{{ published.manifest_path }}",
+    "manifest_sha256": "{{ published.manifest_sha256 }}",
+    "review_sheet_path": "{{ published.review_sheet_path }}",
+    "assets": "{{ published.assets }}",
+    "counts": "{{ published.counts }}"
+  }
+}

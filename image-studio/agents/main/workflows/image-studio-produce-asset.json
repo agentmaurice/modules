@@ -1,0 +1,133 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "workflow_id": "image-studio-produce-asset",
+  "kind": "workflow",
+  "title": "Produce one asset",
+  "version": "1",
+  "description": "Generates the image, stores it, exports it with the profile, has it reviewed by the vision tool, then keeps it or makes one corrected second attempt. Never fails on a weak image: it reports its status.",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "job"
+    ],
+    "properties": {
+      "job": {
+        "type": "object",
+        "description": "One asset job produced by the style sheet"
+      }
+    }
+  },
+  "actions": [
+    {
+      "id": "generate",
+      "type": "tool_call",
+      "tool": "multimodal--multimodal_image_generate_v1",
+      "params": {
+        "prompt": "{{ job.prompt }}",
+        "aspect_ratio": "{{ job.aspect_ratio }}",
+        "model": "{{ job.model }}"
+      },
+      "output_key": "generated"
+    },
+    {
+      "id": "attempt",
+      "type": "code_execution",
+      "runtime": "wasm",
+      "artifact": {
+        "sha256": "7c5f677a32b82c77e72b731127b33d85527e0dd31e9c3f19d0e06e7ef93ada67",
+        "size": 5408382
+      },
+      "context": {
+        "op": "attempt",
+        "job": "{{ job }}",
+        "generated": "{{ generated }}",
+        "attempt": 1
+      },
+      "output_key": "first"
+    },
+    {
+      "id": "review",
+      "type": "tool_call",
+      "tool": "multimodal--multimodal_vision_analyze_v1",
+      "params": {
+        "inputs": [
+          {
+            "type": "image",
+            "mime_type": "image/png",
+            "content": {
+              "data": "{{ first.judge_image }}"
+            }
+          }
+        ],
+        "tasks": [
+          "describe"
+        ],
+        "prompt": "{{ job.judge_prompt }}"
+      },
+      "output_key": "review"
+    },
+    {
+      "id": "read-review",
+      "type": "tool_call",
+      "tool": "multimodal--multimodal_ref_read_v1",
+      "params": {
+        "ref": "{{ (index .review.outputs 0).ref }}"
+      },
+      "output_key": "review_text"
+    },
+    {
+      "id": "judge",
+      "type": "code_execution",
+      "runtime": "wasm",
+      "artifact": {
+        "sha256": "7c5f677a32b82c77e72b731127b33d85527e0dd31e9c3f19d0e06e7ef93ada67",
+        "size": 5408382
+      },
+      "context": {
+        "op": "verdict",
+        "job": "{{ job }}",
+        "attempt": "{{ first }}",
+        "review": "{{ review_text }}",
+        "final": false
+      },
+      "output_key": "verdict"
+    },
+    {
+      "id": "decide",
+      "type": "decision",
+      "input": "{{ verdict.next }}",
+      "selector": {
+        "mode": "input"
+      },
+      "choices": [
+        {
+          "id": "accept",
+          "description": "The first attempt passed",
+          "workflow_id": "image-studio-asset-finalize"
+        },
+        {
+          "id": "retry",
+          "description": "One corrected second attempt",
+          "workflow_id": "image-studio-asset-retry"
+        }
+      ],
+      "fallback": {
+        "id": "hold",
+        "description": "Unexpected verdict: write nothing and report the asset as held",
+        "workflow_id": "image-studio-asset-hold"
+      },
+      "child_input": {
+        "job": "{{ job }}",
+        "attempt": "{{ first }}",
+        "verdict": "{{ verdict }}"
+      },
+      "output_key": "decision",
+      "result_key": "outcome"
+    }
+  ],
+  "output": {
+    "asset": "{{ outcome.asset }}",
+    "decision": "{{ decision.choice }}"
+  }
+}

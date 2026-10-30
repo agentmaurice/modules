@@ -1,0 +1,114 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "workflow_id": "image-studio-render",
+  "kind": "workflow",
+  "title": "Render one image",
+  "version": "1",
+  "description": "One image from a brief with any profile (for example a raster shop banner): job, production with two bounded attempts, manifest and review sheet.",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "brief",
+      "pack_id",
+      "asset_id",
+      "profile_path"
+    ],
+    "properties": {
+      "brief": {
+        "type": "string",
+        "description": "What the image shows"
+      },
+      "asset_id": {
+        "type": "string",
+        "description": "Asset identifier"
+      },
+      "title": {
+        "type": "string",
+        "description": "Display title"
+      },
+      "category": {
+        "type": "string",
+        "description": "Profile category; defaults to the first one"
+      },
+      "placement": {
+        "type": "string",
+        "description": "Category placement, when the profile defines placements"
+      },
+      "pack_id": {
+        "type": "string",
+        "description": "Pack identifier: lowercase letters, digits and hyphens",
+        "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"
+      },
+      "theme": {
+        "type": "string",
+        "description": "Theme written into the documents; defaults to the pack id"
+      },
+      "profile_path": {
+        "type": "string",
+        "description": "Storage path of the output profile"
+      },
+      "root": {
+        "type": "string",
+        "description": "Storage folder of the packs; defaults to /image-studio/packs"
+      }
+    }
+  },
+  "actions": [
+    {
+      "id": "prepare",
+      "type": "code_execution",
+      "runtime": "wasm",
+      "artifact": {
+        "sha256": "7c5f677a32b82c77e72b731127b33d85527e0dd31e9c3f19d0e06e7ef93ada67",
+        "size": 5408382
+      },
+      "context": {
+        "op": "single_job",
+        "brief": "{{ brief }}",
+        "asset_id": "{{ asset_id }}",
+        "title": "{{ title | default \"\" }}",
+        "category": "{{ category | default \"\" }}",
+        "placement": "{{ placement | default \"\" }}",
+        "pack_id": "{{ pack_id }}",
+        "theme": "{{ theme | default \"\" }}",
+        "profile_path": "{{ profile_path }}",
+        "root": "{{ root | default \"\" }}"
+      },
+      "output_key": "prepared"
+    },
+    {
+      "id": "produce",
+      "type": "workflow_call",
+      "workflow_id": "image-studio-produce-asset",
+      "workflow_version": "1",
+      "execution": "sync",
+      "input": {
+        "job": "{{ prepared.job }}"
+      },
+      "output_key": "produced"
+    },
+    {
+      "id": "publish",
+      "type": "workflow_call",
+      "workflow_id": "image-studio-publish",
+      "workflow_version": "1",
+      "execution": "sync",
+      "input": {
+        "pack_id": "{{ pack_id }}",
+        "root": "{{ root | default \"\" }}",
+        "title": "{{ title | default \"\" }}",
+        "profile": "{{ prepared.job.profile }}",
+        "assets": "{{ produced }}"
+      },
+      "output_key": "published"
+    }
+  ],
+  "output": {
+    "pack_id": "{{ pack_id }}",
+    "manifest_path": "{{ published.data.manifest_path }}",
+    "manifest_sha256": "{{ published.data.manifest_sha256 }}",
+    "review_sheet_path": "{{ published.data.review_sheet_path }}",
+    "counts": "{{ published.data.counts }}"
+  }
+}

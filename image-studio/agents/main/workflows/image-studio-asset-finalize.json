@@ -1,0 +1,52 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "workflow_id": "image-studio-asset-finalize",
+  "kind": "workflow",
+  "title": "Keep an attempt",
+  "version": "1",
+  "description": "Writes the kept attempt as the asset: exported file, profile document and file hashes.",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "job",
+      "attempt",
+      "verdict"
+    ],
+    "properties": {
+      "job": {
+        "type": "object",
+        "description": "Asset job"
+      },
+      "attempt": {
+        "type": "object",
+        "description": "Result of the attempt op"
+      },
+      "verdict": {
+        "type": "object",
+        "description": "Result of the verdict op"
+      }
+    }
+  },
+  "actions": [
+    {
+      "id": "finalize",
+      "type": "code_execution",
+      "runtime": "wasm",
+      "artifact": {
+        "sha256": "7c5f677a32b82c77e72b731127b33d85527e0dd31e9c3f19d0e06e7ef93ada67",
+        "size": 5408382
+      },
+      "context": {
+        "op": "finalize",
+        "job": "{{ job }}",
+        "attempt": "{{ attempt }}",
+        "verdict": "{{ verdict }}"
+      },
+      "output_key": "asset"
+    }
+  ],
+  "output": {
+    "asset": "{{ asset }}"
+  }
+}

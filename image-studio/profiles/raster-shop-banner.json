@@ -1,0 +1,34 @@
+{
+  "schema": "image-studio.profile/v1",
+  "key": "raster-shop-banner",
+  "title": "Shop banner, 1600x400 PNG",
+  "planning": {
+    "guidance": "Plan wide promotional banners for an online shop section. Each banner is one illustrated scene with a clear focal point on the right half and a calm area on the left half where the shop overlays its own text.",
+    "max_assets": 4,
+    "id_pattern": "^[a-z0-9_]{1,32}$",
+    "categories": [
+      {
+        "key": "banner",
+        "id_prefix": "banner_",
+        "description": "a wide shop banner illustration"
+      }
+    ]
+  },
+  "generation": {
+    "aspect_ratio": "16:9",
+    "style_prefix": "Wide digital illustration for a shop banner, bright and festive, clean shapes, soft lighting, high detail on the focal subject.",
+    "composition": "Wide horizontal composition: the main subject sits in the right half, the left half stays simple and uncluttered; keep every important element inside the central horizontal band, because the top and bottom are cropped.",
+    "avoid": "No text, no letters, no logo, no watermark, no border."
+  },
+  "export": {
+    "kind": "raster",
+    "width": 1600,
+    "height": 400,
+    "fit": "cover",
+    "file": "banner.png"
+  },
+  "judge": {
+    "prompt": "You review one generated shop banner. Score from 0 to 10 its quality as a banner: one clear focal subject matching the expected subject, a calm area on the left for text, no visible text or letters, no artefacts or deformed shapes. Set pass to true when the score is 6 or more.",
+    "min_score": 6
+  }
+}

@@ -1405,6 +1405,376 @@
       "migration_m5_m6": "to define and qualify; deployment status is not inferred"
     },
     {
+      "key": "image-studio",
+      "version": "0.1.0",
+      "manifest": "image-studio/module.yaml",
+      "workflows": 12,
+      "miniapps": 1,
+      "source": {
+        "repository": "github.com/agentmaurice/modules",
+        "native": true
+      },
+      "generators_and_composers": [
+        "tooling/image-studio/build.py"
+      ],
+      "resources": {
+        "workflows": [
+          "image-studio/agents/main/workflows/image-studio-asset-finalize.json",
+          "image-studio/agents/main/workflows/image-studio-asset-hold.json",
+          "image-studio/agents/main/workflows/image-studio-asset-retry.json",
+          "image-studio/agents/main/workflows/image-studio-export.json",
+          "image-studio/agents/main/workflows/image-studio-pack.json",
+          "image-studio/agents/main/workflows/image-studio-plan.json",
+          "image-studio/agents/main/workflows/image-studio-produce-asset.json",
+          "image-studio/agents/main/workflows/image-studio-profile-save.json",
+          "image-studio/agents/main/workflows/image-studio-publish.json",
+          "image-studio/agents/main/workflows/image-studio-render.json",
+          "image-studio/agents/main/workflows/image-studio-review-read.json",
+          "image-studio/agents/main/workflows/image-studio-style-sheet.json"
+        ],
+        "miniapps": [
+          "image-studio/agents/main/miniapps/image-studio-review.json"
+        ],
+        "sha256": {
+          "image-studio/module.yaml": "b29f62142e391df84b705394d87392d7f790a575c294ecce3e6451c2a4714122",
+          "image-studio/agents/main/workflows/image-studio-asset-finalize.json": "2822bf9eb107c44e1c37568c206d9ee6f98d02edcd7a3f6a4193f8b8da0a9135",
+          "image-studio/agents/main/workflows/image-studio-asset-hold.json": "1e47d6df16455334f053df69dbe4d0f17db5a4fb8a22bd90fda307f8b19eeb64",
+          "image-studio/agents/main/workflows/image-studio-asset-retry.json": "3672e1a719f3c6ba7b884ba702cfc06a1f19e4ebaeaa9e505e22de7f74e33d39",
+          "image-studio/agents/main/workflows/image-studio-export.json": "5b00992605272ba8a0b82321852871c35c140db9242c38aded16c73c49e34171",
+          "image-studio/agents/main/workflows/image-studio-pack.json": "529cf15073da98a6aad947f2df9ef404e8866d86f7c2a452ce9dafd36935e6f5",
+          "image-studio/agents/main/workflows/image-studio-plan.json": "e768351038dcce5c17e1f44fcfca54ee2e57e267a3146e49574cbcdb41fc8e80",
+          "image-studio/agents/main/workflows/image-studio-produce-asset.json": "d5b3d56a0a1f5040e1b5659d3af0716362b2e3e6d273f9b99863ef2cc2d9180b",
+          "image-studio/agents/main/workflows/image-studio-profile-save.json": "ba4fb9ac11b652c8c8ca0b28ce066d3231ef242a7dee2c28229e88c95fc2ffec",
+          "image-studio/agents/main/workflows/image-studio-publish.json": "3e5de0ed490fba801b92436839853b09ac5c1ed164d608ef67ec701a673d4ff4",
+          "image-studio/agents/main/workflows/image-studio-render.json": "c2f2471d5fcd34abd26023d8a305b6cdbdab816be1dcae505f3e4f558875b1d8",
+          "image-studio/agents/main/workflows/image-studio-review-read.json": "05ae09d2f00fd840aeebd833ed799eeef1faf371c58ea9187fa7255aa7395328",
+          "image-studio/agents/main/workflows/image-studio-style-sheet.json": "9ea2f1184520c3aad0a5dc7448ee12495144a6d062c251a0bb80bfc15cedd8ef",
+          "image-studio/agents/main/miniapps/image-studio-review.json": "2f9f08059e1d5c8ff1e8b40cec44ea2b6318bfc0d54664d1ddf6532459d8967b"
+        }
+      },
+      "workflow_actions": {
+        "image-studio/agents/main/workflows/image-studio-asset-finalize.json": {
+          "workflow_id": "image-studio-asset-finalize",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "finalize",
+              "type": "code_execution",
+              "runtime": "wasm",
+              "runtime_source": "declared"
+            }
+          ]
+        },
+        "image-studio/agents/main/workflows/image-studio-asset-hold.json": {
+          "workflow_id": "image-studio-asset-hold",
+          "actions": []
+        },
+        "image-studio/agents/main/workflows/image-studio-asset-retry.json": {
+          "workflow_id": "image-studio-asset-retry",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "generate",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/1",
+              "id": "attempt",
+              "type": "code_execution",
+              "runtime": "wasm",
+              "runtime_source": "declared"
+            },
+            {
+              "path": "/actions/2",
+              "id": "review",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/3",
+              "id": "read-review",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/4",
+              "id": "judge",
+              "type": "code_execution",
+              "runtime": "wasm",
+              "runtime_source": "declared"
+            },
+            {
+              "path": "/actions/5",
+              "id": "finalize",
+              "type": "code_execution",
+              "runtime": "wasm",
+              "runtime_source": "declared"
+            }
+          ]
+        },
+        "image-studio/agents/main/workflows/image-studio-export.json": {
+          "workflow_id": "image-studio-export",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "export",
+              "type": "code_execution",
+              "runtime": "wasm",
+              "runtime_source": "declared"
+            }
+          ]
+        },
+        "image-studio/agents/main/workflows/image-studio-pack.json": {
+          "workflow_id": "image-studio-pack",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "plan",
+              "type": "workflow_call"
+            },
+            {
+              "path": "/actions/1",
+              "id": "style",
+              "type": "workflow_call"
+            },
+            {
+              "path": "/actions/2",
+              "id": "produce",
+              "type": "for_each"
+            },
+            {
+              "path": "/actions/3",
+              "id": "publish",
+              "type": "workflow_call"
+            }
+          ]
+        },
+        "image-studio/agents/main/workflows/image-studio-plan.json": {
+          "workflow_id": "image-studio-plan",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "prepare",
+              "type": "code_execution",
+              "runtime": "wasm",
+              "runtime_source": "declared"
+            },
+            {
+              "path": "/actions/1",
+              "id": "draft",
+              "type": "llm_call"
+            },
+            {
+              "path": "/actions/2",
+              "id": "normalize",
+              "type": "code_execution",
+              "runtime": "wasm",
+              "runtime_source": "declared"
+            }
+          ]
+        },
+        "image-studio/agents/main/workflows/image-studio-produce-asset.json": {
+          "workflow_id": "image-studio-produce-asset",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "generate",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/1",
+              "id": "attempt",
+              "type": "code_execution",
+              "runtime": "wasm",
+              "runtime_source": "declared"
+            },
+            {
+              "path": "/actions/2",
+              "id": "review",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/3",
+              "id": "read-review",
+              "type": "tool_call"
+            },
+            {
+              "path": "/actions/4",
+              "id": "judge",
+              "type": "code_execution",
+              "runtime": "wasm",
+              "runtime_source": "declared"
+            },
+            {
+              "path": "/actions/5",
+              "id": "decide",
+              "type": "decision"
+            }
+          ]
+        },
+        "image-studio/agents/main/workflows/image-studio-profile-save.json": {
+          "workflow_id": "image-studio-profile-save",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "save",
+              "type": "code_execution",
+              "runtime": "wasm",
+              "runtime_source": "declared"
+            }
+          ]
+        },
+        "image-studio/agents/main/workflows/image-studio-publish.json": {
+          "workflow_id": "image-studio-publish",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "publish",
+              "type": "code_execution",
+              "runtime": "wasm",
+              "runtime_source": "declared"
+            }
+          ]
+        },
+        "image-studio/agents/main/workflows/image-studio-render.json": {
+          "workflow_id": "image-studio-render",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "prepare",
+              "type": "code_execution",
+              "runtime": "wasm",
+              "runtime_source": "declared"
+            },
+            {
+              "path": "/actions/1",
+              "id": "produce",
+              "type": "workflow_call"
+            },
+            {
+              "path": "/actions/2",
+              "id": "publish",
+              "type": "workflow_call"
+            }
+          ]
+        },
+        "image-studio/agents/main/workflows/image-studio-review-read.json": {
+          "workflow_id": "image-studio-review-read",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "read",
+              "type": "code_execution",
+              "runtime": "wasm",
+              "runtime_source": "declared"
+            }
+          ]
+        },
+        "image-studio/agents/main/workflows/image-studio-style-sheet.json": {
+          "workflow_id": "image-studio-style-sheet",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "style",
+              "type": "code_execution",
+              "runtime": "wasm",
+              "runtime_source": "declared"
+            }
+          ]
+        }
+      },
+      "provides": {
+        "actions": [
+          {
+            "key": "image-studio-pack",
+            "name": "Produce an image pack",
+            "workflow_id": "image-studio-pack",
+            "workflow_version": "1"
+          },
+          {
+            "key": "image-studio-render",
+            "name": "Render one image",
+            "workflow_id": "image-studio-render",
+            "workflow_version": "1"
+          },
+          {
+            "key": "image-studio-plan",
+            "name": "Plan an image pack",
+            "workflow_id": "image-studio-plan",
+            "workflow_version": "1"
+          },
+          {
+            "key": "image-studio-style-sheet",
+            "name": "Build a style sheet",
+            "workflow_id": "image-studio-style-sheet",
+            "workflow_version": "1"
+          },
+          {
+            "key": "image-studio-produce-asset",
+            "name": "Produce one asset",
+            "workflow_id": "image-studio-produce-asset",
+            "workflow_version": "1"
+          },
+          {
+            "key": "image-studio-asset-finalize",
+            "name": "Keep an attempt",
+            "workflow_id": "image-studio-asset-finalize",
+            "workflow_version": "1"
+          },
+          {
+            "key": "image-studio-asset-retry",
+            "name": "Second attempt",
+            "workflow_id": "image-studio-asset-retry",
+            "workflow_version": "1"
+          },
+          {
+            "key": "image-studio-asset-hold",
+            "name": "Hold an asset",
+            "workflow_id": "image-studio-asset-hold",
+            "workflow_version": "1"
+          },
+          {
+            "key": "image-studio-publish",
+            "name": "Publish a pack to Storage",
+            "workflow_id": "image-studio-publish",
+            "workflow_version": "1"
+          },
+          {
+            "key": "image-studio-export",
+            "name": "Export a stored image",
+            "workflow_id": "image-studio-export",
+            "workflow_version": "1"
+          },
+          {
+            "key": "image-studio-profile-save",
+            "name": "Save an output profile",
+            "workflow_id": "image-studio-profile-save",
+            "workflow_version": "1"
+          }
+        ],
+        "queries": [
+          {
+            "key": "image-studio-review-read",
+            "name": "Read the review of a pack",
+            "workflow_id": "image-studio-review-read",
+            "workflow_version": "1"
+          }
+        ],
+        "apps": [
+          {
+            "key": "image-studio-review",
+            "name": "Image studio",
+            "miniapp_id": "image-studio-review",
+            "miniapp_version": "1"
+          }
+        ]
+      },
+      "requires": {},
+      "composition_dependencies": [],
+      "known_consumers": [],
+      "language": "English source",
+      "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
+      "publication": "native to this repository, unpublished"
+    },
+    {
       "key": "cib-marketing-launch",
       "version": "0.1.0",
       "manifest": "marketing-launch/module.yaml",

@@ -1,0 +1,12 @@
+{
+  "sha256": "7c5f677a32b82c77e72b731127b33d85527e0dd31e9c3f19d0e06e7ef93ada67",
+  "size": 5408382,
+  "sdk": "am-go/v2",
+  "sdk_sha256": "a06b5c4a7d8e33d1afb858520166c4f0dc97d0d597753bc27eeae5459bcfc009",
+  "capabilities": [
+    "call_tool",
+    "buffer_load",
+    "wasi.clock",
+    "wasi.random"
+  ]
+}
