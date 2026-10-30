@@ -1,0 +1,154 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "workflow_id": "image-studio-pack",
+  "kind": "workflow",
+  "title": "Produce an image pack",
+  "version": "1",
+  "description": "From a brief to a reviewed pack in Storage: plan, style sheet, one production per asset (two bounded attempts), then manifest and review sheet. Publication outside Storage stays a human step.",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "brief",
+      "pack_id",
+      "profile_path"
+    ],
+    "properties": {
+      "brief": {
+        "type": "string",
+        "description": "Brief of the pack"
+      },
+      "max_assets": {
+        "type": [
+          "integer",
+          "string"
+        ],
+        "description": "Number of assets to plan, capped by the profile"
+      },
+      "pack_id": {
+        "type": "string",
+        "description": "Pack identifier: lowercase letters, digits and hyphens",
+        "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"
+      },
+      "theme": {
+        "type": "string",
+        "description": "Theme written into the documents; defaults to the pack id"
+      },
+      "profile_path": {
+        "type": "string",
+        "description": "Storage path of the output profile"
+      },
+      "root": {
+        "type": "string",
+        "description": "Storage folder of the packs; defaults to /image-studio/packs"
+      }
+    }
+  },
+  "forms": [
+    {
+      "id": "pack",
+      "title": "Produce a pack",
+      "fields": [
+        {
+          "name": "brief",
+          "type": "text",
+          "required": true,
+          "title": "Brief",
+          "description": "What the pack is about, in a few sentences"
+        },
+        {
+          "name": "pack_id",
+          "type": "string",
+          "required": true,
+          "title": "Pack id",
+          "description": "noel-2026"
+        },
+        {
+          "name": "profile_path",
+          "type": "string",
+          "required": true,
+          "title": "Profile",
+          "default": "/image-studio/profiles/ribin-avatar-item.json"
+        },
+        {
+          "name": "max_assets",
+          "type": "number",
+          "required": true,
+          "title": "Number of assets",
+          "default": 12
+        }
+      ],
+      "actions_on_submit": [
+        "plan",
+        "style",
+        "produce",
+        "publish"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "plan",
+      "type": "workflow_call",
+      "workflow_id": "image-studio-plan",
+      "workflow_version": "1",
+      "execution": "sync",
+      "input": {
+        "brief": "{{ brief }}",
+        "pack_id": "{{ pack_id }}",
+        "theme": "{{ theme | default \"\" }}",
+        "profile_path": "{{ profile_path }}",
+        "root": "{{ root | default \"\" }}",
+        "max_assets": "{{ max_assets | default \"\" }}"
+      },
+      "output_key": "planned"
+    },
+    {
+      "id": "style",
+      "type": "workflow_call",
+      "workflow_id": "image-studio-style-sheet",
+      "workflow_version": "1",
+      "execution": "sync",
+      "input": {
+        "profile": "{{ planned.data.profile }}",
+        "plan": "{{ planned.data.plan }}",
+        "root": "{{ root | default \"\" }}"
+      },
+      "output_key": "styled"
+    },
+    {
+      "id": "produce",
+      "type": "for_each",
+      "items": "{{ styled.data.jobs }}",
+      "item_key": "job",
+      "max_items": 20,
+      "on_empty": "fail",
+      "workflow_id": "image-studio-produce-asset",
+      "output_key": "produced"
+    },
+    {
+      "id": "publish",
+      "type": "workflow_call",
+      "workflow_id": "image-studio-publish",
+      "workflow_version": "1",
+      "execution": "sync",
+      "input": {
+        "pack_id": "{{ pack_id }}",
+        "root": "{{ root | default \"\" }}",
+        "title": "{{ planned.data.plan.title }}",
+        "profile": "{{ planned.data.profile.key }}",
+        "assets": "{{ produced }}"
+      },
+      "output_key": "published"
+    }
+  ],
+  "output": {
+    "pack_id": "{{ pack_id }}",
+    "title": "{{ planned.data.plan.title }}",
+    "manifest_path": "{{ published.data.manifest_path }}",
+    "manifest_sha256": "{{ published.data.manifest_sha256 }}",
+    "review_sheet_path": "{{ published.data.review_sheet_path }}",
+    "counts": "{{ published.data.counts }}",
+    "plan_issues": "{{ planned.data.plan.issues }}"
+  }
+}

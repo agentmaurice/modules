@@ -43,6 +43,12 @@ SOURCES = {
     'company-memory': {'repository': 'gitlab.com/mcpchatui/pilote-maurice', 'commit': MEMORY_COMMIT,
                        'historical_library_commit': LIBRARY_COMMIT},
 }
+# Modules created in this repository: no historical source to reconcile and
+# not part of the Company in a Box template.
+NATIVE = {
+    'image-studio': {'generators': ['tooling/image-studio/build.py'],
+                     'language': 'English source', 'publication': 'native to this repository, unpublished'},
+}
 CONSUMERS = {
     'watch-memory': ['watch', 'company-memory'], 'content-memory': ['content', 'company-memory'],
     'support-memory': ['support', 'company-memory'],
@@ -90,6 +96,26 @@ def render():
             raise ValueError(f'duplicate module key: {key}')
         seen.add(key)
         root = path.parent
+        if root.name in NATIVE:
+            workflow_paths = sorted(root.glob('agents/main/workflows/*.json'))
+            app_paths = sorted(root.glob('agents/main/miniapps/*.json'))
+            row = {'key': key, 'version': version, 'manifest': str(path.relative_to(ROOT)),
+                   'workflows': len(workflow_paths), 'miniapps': len(app_paths)}
+            rows.append(row)
+            native = NATIVE[root.name]
+            details.append({**row, 'source': {'repository': 'github.com/agentmaurice/modules', 'native': True},
+                'generators_and_composers': native['generators'],
+                'resources': {'workflows': [str(p.relative_to(ROOT)) for p in workflow_paths],
+                              'miniapps': [str(p.relative_to(ROOT)) for p in app_paths],
+                              'sha256': {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
+                                         for p in [path, *workflow_paths, *app_paths]}},
+                'workflow_actions': {str(p.relative_to(ROOT)): workflow_actions(p) for p in workflow_paths},
+                'provides': module.get('provides', {}), 'requires': module.get('requires', {}),
+                'composition_dependencies': [], 'known_consumers': [],
+                'language': native['language'],
+                'runtime': 'Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred',
+                'publication': native['publication']})
+            continue
         if root.name not in OLD_PATHS or root.name not in GENERATORS or root.name not in SOURCES:
             raise ValueError(
                 f'Unreconciled provenance for {root.name}: add its source mapping to '
@@ -114,7 +140,7 @@ def render():
             'publication': 'historical GitHub 0.2.0; 0.3.0 from GitLab source, local integration' if root.name == 'company-memory' else 'present in historical GitHub source at specified commit',
             'migration_m5_m6': 'to define and qualify; deployment status is not inferred'})
     catalogue = {'schema_version': 1, 'modules': rows}
-    pins = {'schema_version': 1, 'modules': rows}
+    pins = {'schema_version': 1, 'modules': [r for r in rows if r['manifest'].split('/')[0] not in NATIVE]}
     inventory = {'schema_version': 1, 'description': 'Documentary inventory, not a runtime contract.',
         'discovery': 'top-level */module.yaml; no numerical cap',
         'exclusions': ['fixtures', 'cache', '_archive', 'worktrees', 'artifacts and private replays'],

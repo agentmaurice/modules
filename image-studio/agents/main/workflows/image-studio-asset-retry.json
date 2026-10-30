@@ -1,0 +1,126 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "workflow_id": "image-studio-asset-retry",
+  "kind": "workflow",
+  "title": "Second attempt",
+  "version": "1",
+  "description": "Generates again with the reasons of the first refusal, reviews the result and keeps it; a weak second attempt is kept with the needs_review status.",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "job",
+      "attempt",
+      "verdict"
+    ],
+    "properties": {
+      "job": {
+        "type": "object",
+        "description": "Asset job"
+      },
+      "attempt": {
+        "type": "object",
+        "description": "Result of the attempt op"
+      },
+      "verdict": {
+        "type": "object",
+        "description": "Result of the verdict op"
+      }
+    }
+  },
+  "actions": [
+    {
+      "id": "generate",
+      "type": "tool_call",
+      "tool": "multimodal--multimodal_image_generate_v1",
+      "params": {
+        "prompt": "{{ verdict.retry_prompt }}",
+        "aspect_ratio": "{{ job.aspect_ratio }}",
+        "model": "{{ job.model }}"
+      },
+      "output_key": "generated"
+    },
+    {
+      "id": "attempt",
+      "type": "code_execution",
+      "runtime": "wasm",
+      "artifact": {
+        "sha256": "7c5f677a32b82c77e72b731127b33d85527e0dd31e9c3f19d0e06e7ef93ada67",
+        "size": 5408382
+      },
+      "context": {
+        "op": "attempt",
+        "job": "{{ job }}",
+        "generated": "{{ generated }}",
+        "attempt": 2
+      },
+      "output_key": "second"
+    },
+    {
+      "id": "review",
+      "type": "tool_call",
+      "tool": "multimodal--multimodal_vision_analyze_v1",
+      "params": {
+        "inputs": [
+          {
+            "type": "image",
+            "mime_type": "image/png",
+            "content": {
+              "data": "{{ second.judge_image }}"
+            }
+          }
+        ],
+        "tasks": [
+          "describe"
+        ],
+        "prompt": "{{ job.judge_prompt }}"
+      },
+      "output_key": "review"
+    },
+    {
+      "id": "read-review",
+      "type": "tool_call",
+      "tool": "multimodal--multimodal_ref_read_v1",
+      "params": {
+        "ref": "{{ (index .review.outputs 0).ref }}"
+      },
+      "output_key": "review_text"
+    },
+    {
+      "id": "judge",
+      "type": "code_execution",
+      "runtime": "wasm",
+      "artifact": {
+        "sha256": "7c5f677a32b82c77e72b731127b33d85527e0dd31e9c3f19d0e06e7ef93ada67",
+        "size": 5408382
+      },
+      "context": {
+        "op": "verdict",
+        "job": "{{ job }}",
+        "attempt": "{{ second }}",
+        "review": "{{ review_text }}",
+        "final": true
+      },
+      "output_key": "final_verdict"
+    },
+    {
+      "id": "finalize",
+      "type": "code_execution",
+      "runtime": "wasm",
+      "artifact": {
+        "sha256": "7c5f677a32b82c77e72b731127b33d85527e0dd31e9c3f19d0e06e7ef93ada67",
+        "size": 5408382
+      },
+      "context": {
+        "op": "finalize",
+        "job": "{{ job }}",
+        "attempt": "{{ second }}",
+        "verdict": "{{ final_verdict }}"
+      },
+      "output_key": "asset"
+    }
+  ],
+  "output": {
+    "asset": "{{ asset }}"
+  }
+}

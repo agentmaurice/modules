@@ -37,6 +37,13 @@
       "miniapps": 3
     },
     {
+      "key": "image-studio",
+      "version": "0.1.0",
+      "manifest": "image-studio/module.yaml",
+      "workflows": 12,
+      "miniapps": 1
+    },
+    {
       "key": "cib-marketing-launch",
       "version": "0.1.0",
       "manifest": "marketing-launch/module.yaml",

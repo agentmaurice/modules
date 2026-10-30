@@ -1,0 +1,122 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "miniapp_id": "image-studio-review",
+  "kind": "miniapp",
+  "title": "Image studio",
+  "version": "1",
+  "description": "Review a produced pack before any human publication.",
+  "ui": {
+    "renderer": "component",
+    "component": "image-studio-review",
+    "configuration": {
+      "layout": [
+        {
+          "type": "callout",
+          "title": "Human review",
+          "tone": "info",
+          "value": "Packs stay in Storage. Run image-studio-pack, then open its review here: check the review sheet and every asset before publishing with your own tools."
+        },
+        {
+          "type": "section",
+          "title": "Pack review",
+          "children": [
+            {
+              "type": "kpi_grid",
+              "items": [
+                {
+                  "label": "Accepted",
+                  "value": {
+                    "state": "review.counts.accepted"
+                  },
+                  "tone": "success"
+                },
+                {
+                  "label": "Needs review",
+                  "value": {
+                    "state": "review.counts.needs_review"
+                  },
+                  "tone": "warning"
+                }
+              ]
+            },
+            {
+              "type": "stat",
+              "label": "Review sheet",
+              "value": {
+                "state": "review.review_sheet"
+              }
+            },
+            {
+              "type": "stat",
+              "label": "Manifest",
+              "value": {
+                "state": "review.manifest"
+              }
+            },
+            {
+              "type": "table",
+              "columns": [
+                "index",
+                "id",
+                "title",
+                "category",
+                "status",
+                "score",
+                "attempts"
+              ],
+              "column_labels": {
+                "index": "#",
+                "id": "Id",
+                "title": "Title",
+                "category": "Category",
+                "status": "Status",
+                "score": "Score",
+                "attempts": "Attempts"
+              },
+              "rows": {
+                "state": "review.assets"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "pack_id": {
+        "type": "string"
+      },
+      "review": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "pack_id": "",
+    "review": {
+      "counts": {
+        "accepted": 0,
+        "needs_review": 0
+      },
+      "assets": [],
+      "review_sheet": "",
+      "manifest": ""
+    }
+  },
+  "events": [
+    {
+      "event_id": "review-pack",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "image-studio-review-read",
+        "input": {
+          "pack_id": "{{ state.pack_id }}"
+        }
+      },
+      "result_to_state": "review"
+    }
+  ]
+}

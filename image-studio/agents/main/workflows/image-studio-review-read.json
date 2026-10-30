@@ -1,0 +1,70 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "workflow_id": "image-studio-review-read",
+  "kind": "workflow",
+  "title": "Read the review of a pack",
+  "version": "1",
+  "description": "Returns review.json of a pack for the review MiniApp.",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "pack_id"
+    ],
+    "properties": {
+      "pack_id": {
+        "type": "string",
+        "description": "Pack identifier: lowercase letters, digits and hyphens",
+        "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"
+      },
+      "root": {
+        "type": "string",
+        "description": "Storage folder of the packs; defaults to /image-studio/packs"
+      }
+    }
+  },
+  "forms": [
+    {
+      "id": "review",
+      "title": "Review a pack",
+      "fields": [
+        {
+          "name": "pack_id",
+          "type": "string",
+          "required": true,
+          "title": "Pack id",
+          "description": "noel-2026"
+        }
+      ],
+      "actions_on_submit": [
+        "read"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "read",
+      "type": "code_execution",
+      "runtime": "wasm",
+      "artifact": {
+        "sha256": "7c5f677a32b82c77e72b731127b33d85527e0dd31e9c3f19d0e06e7ef93ada67",
+        "size": 5408382
+      },
+      "context": {
+        "op": "read_review",
+        "pack_id": "{{ pack_id }}",
+        "root": "{{ root | default \"\" }}"
+      },
+      "output_key": "review"
+    }
+  ],
+  "output": {
+    "pack_id": "{{ review.pack_id }}",
+    "title": "{{ review.title }}",
+    "assets": "{{ review.assets }}",
+    "counts": "{{ review.counts }}",
+    "manifest": "{{ review.manifest }}",
+    "manifest_sha256": "{{ review.manifest_sha256 }}",
+    "review_sheet": "{{ review.review_sheet }}"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "workflow_id": "image-studio-asset-hold",
+  "kind": "workflow",
+  "title": "Hold an asset",
+  "version": "1",
+  "description": "Fallback of the production decision: writes nothing and reports the asset as held for a human. The verdict op only answers accept or retry, so this branch is a guard.",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "job",
+      "attempt",
+      "verdict"
+    ],
+    "properties": {
+      "job": {
+        "type": "object",
+        "description": "Asset job"
+      },
+      "attempt": {
+        "type": "object",
+        "description": "Result of the attempt op"
+      },
+      "verdict": {
+        "type": "object",
+        "description": "Result of the verdict op"
+      }
+    }
+  },
+  "actions": [],
+  "output": {
+    "asset": {
+      "record": "image-studio.held/v1",
+      "id": "{{ job.asset.id }}",
+      "index": "{{ job.index }}",
+      "dir": "{{ job.dir }}",
+      "status": "held"
+    }
+  }
+}

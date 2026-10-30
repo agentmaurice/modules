@@ -1,0 +1,178 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "workflow_id": "image-studio-plan",
+  "kind": "workflow",
+  "title": "Plan an image pack",
+  "version": "1",
+  "description": "Turns a brief into an art direction and a typed asset list that satisfies the output profile, and stores plan.json.",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "brief",
+      "pack_id",
+      "profile_path"
+    ],
+    "properties": {
+      "brief": {
+        "type": "string",
+        "description": "Brief of the pack"
+      },
+      "max_assets": {
+        "type": [
+          "integer",
+          "string"
+        ],
+        "description": "Number of assets to plan, capped by the profile"
+      },
+      "pack_id": {
+        "type": "string",
+        "description": "Pack identifier: lowercase letters, digits and hyphens",
+        "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"
+      },
+      "theme": {
+        "type": "string",
+        "description": "Theme written into the documents; defaults to the pack id"
+      },
+      "profile_path": {
+        "type": "string",
+        "description": "Storage path of the output profile"
+      },
+      "root": {
+        "type": "string",
+        "description": "Storage folder of the packs; defaults to /image-studio/packs"
+      }
+    }
+  },
+  "actions": [
+    {
+      "id": "prepare",
+      "type": "code_execution",
+      "runtime": "wasm",
+      "artifact": {
+        "sha256": "7c5f677a32b82c77e72b731127b33d85527e0dd31e9c3f19d0e06e7ef93ada67",
+        "size": 5408382
+      },
+      "context": {
+        "op": "prepare_plan",
+        "profile_path": "{{ profile_path }}",
+        "brief": "{{ brief }}",
+        "max_assets": "{{ max_assets | default \"\" }}"
+      },
+      "output_key": "prep"
+    },
+    {
+      "id": "draft",
+      "type": "llm_call",
+      "llm_prompt": "{{ prep.planner_prompt }}",
+      "llm_system_prompt": "You are the art director of a small game studio. You answer with JSON only.",
+      "llm_temperature": 0.4,
+      "llm_max_tokens": 8000,
+      "llm_response_format": "json",
+      "llm_response_schema": {
+        "type": "object",
+        "required": [
+          "title",
+          "art_direction",
+          "assets"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "art_direction": {
+            "type": "object",
+            "required": [
+              "summary",
+              "palette",
+              "mood",
+              "rules"
+            ],
+            "properties": {
+              "summary": {
+                "type": "string"
+              },
+              "palette": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "mood": {
+                "type": "string"
+              },
+              "rules": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "assets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "title",
+                "category",
+                "subject",
+                "attributes"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "category": {
+                  "type": "string"
+                },
+                "placement": {
+                  "type": "string"
+                },
+                "subject": {
+                  "type": "string"
+                },
+                "attributes": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "output_key": "draft"
+    },
+    {
+      "id": "normalize",
+      "type": "code_execution",
+      "runtime": "wasm",
+      "artifact": {
+        "sha256": "7c5f677a32b82c77e72b731127b33d85527e0dd31e9c3f19d0e06e7ef93ada67",
+        "size": 5408382
+      },
+      "context": {
+        "op": "plan",
+        "profile": "{{ prep.profile }}",
+        "draft": "{{ draft }}",
+        "brief": "{{ brief }}",
+        "pack_id": "{{ pack_id }}",
+        "theme": "{{ theme | default \"\" }}",
+        "root": "{{ root | default \"\" }}",
+        "max_assets": "{{ prep.max_assets }}"
+      },
+      "output_key": "planned"
+    }
+  ],
+  "output": {
+    "plan": "{{ planned.plan }}",
+    "profile": "{{ prep.profile }}",
+    "plan_file": "{{ planned.file }}"
+  }
+}

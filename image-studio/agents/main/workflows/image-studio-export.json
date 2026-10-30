@@ -1,0 +1,64 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "workflow_id": "image-studio-export",
+  "kind": "workflow",
+  "title": "Export a stored image",
+  "version": "1",
+  "description": "Exports an image already in Storage with a profile, without generating anything.",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "source_path",
+      "out_dir",
+      "profile_path"
+    ],
+    "properties": {
+      "source_path": {
+        "type": "string",
+        "description": "Storage path of the source image"
+      },
+      "out_dir": {
+        "type": "string",
+        "description": "Storage folder of the export"
+      },
+      "profile_path": {
+        "type": "string",
+        "description": "Storage path of the output profile"
+      },
+      "category": {
+        "type": "string",
+        "description": "Profile category; defaults to the first one"
+      },
+      "placement": {
+        "type": "string",
+        "description": "Category placement"
+      }
+    }
+  },
+  "actions": [
+    {
+      "id": "export",
+      "type": "code_execution",
+      "runtime": "wasm",
+      "artifact": {
+        "sha256": "7c5f677a32b82c77e72b731127b33d85527e0dd31e9c3f19d0e06e7ef93ada67",
+        "size": 5408382
+      },
+      "context": {
+        "op": "export",
+        "source_path": "{{ source_path }}",
+        "out_dir": "{{ out_dir }}",
+        "profile_path": "{{ profile_path }}",
+        "category": "{{ category | default \"\" }}",
+        "placement": "{{ placement | default \"\" }}"
+      },
+      "output_key": "exported"
+    }
+  ],
+  "output": {
+    "file": "{{ exported.file }}",
+    "stats": "{{ exported.stats }}",
+    "source": "{{ exported.source }}"
+  }
+}
