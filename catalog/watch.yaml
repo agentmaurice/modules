@@ -1,0 +1,17 @@
+{
+  "schema": "agentmaurice.module_catalog_entry/v1",
+  "description": {
+    "fr": "Veille : dossiers de veille manuels (enregistrer, lister, lire, partager), avec routage d'un travail de recherche et contrôle de ses résultats.",
+    "en": "Watch: manual monitoring files (save, list, read, share), with research work routing and result checks."
+  },
+  "capabilities": [
+    "watch",
+    "research",
+    "case-files",
+    "sharing"
+  ],
+  "credentials": [],
+  "price": {
+    "model": "free"
+  }
+}

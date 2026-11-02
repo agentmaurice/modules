@@ -18,6 +18,7 @@ jobs:
         with:
           node-version: '22'
       - run: python3 scripts/inventory.py --check
+      - run: python3 scripts/catalog.py --check
       - run: python3 scripts/check.py
       - run: python3 scripts/test.py
       - run: git diff --exit-code

@@ -1,0 +1,17 @@
+{
+  "schema": "agentmaurice.module_catalog_entry/v1",
+  "description": {
+    "fr": "Contenu : dossiers de contenu manuels (enregistrer, lister, lire, partager), avec contrôle de fin de relecture.",
+    "en": "Content: manual content files (save, list, read, share), with a review-completion check."
+  },
+  "capabilities": [
+    "content",
+    "drafts",
+    "review",
+    "sharing"
+  ],
+  "credentials": [],
+  "price": {
+    "model": "free"
+  }
+}

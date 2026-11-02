@@ -1,6 +1,6 @@
 # Repository migration to agentmaurice/modules
 
-The existing private `agentmaurice/company-in-a-box` repository is reused as
+The existing `agentmaurice/company-in-a-box` repository (private at the time of the migration, public since 2026-11-02) is reused as
 `agentmaurice/modules`. The migration preserves its Git history, repository
 identity, historical resource IDs and versions. Repository visibility and
 runtime deployments are separate from this layout change.

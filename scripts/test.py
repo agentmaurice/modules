@@ -3,13 +3,13 @@
 import os, shutil, subprocess, sys, tempfile
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
-PYTHON_SUITES = ['templates/company-in-a-box/tests'] + [f'tooling/{name}/tests' for name in ('company-memory', 'memory-integration', 'daily-routine', 'work-cases', 'enterprise-admin', 'marketing-launch', 'image-studio')]
+PYTHON_SUITES = ['templates/company-in-a-box/tests'] + [f'tooling/{name}/tests' for name in ('company-memory', 'memory-integration', 'daily-routine', 'work-cases', 'enterprise-admin', 'marketing-launch', 'image-studio', 'catalog')]
 NODE_TESTS = [f'tooling/{path}' for path in ('memory-integration/tests/test_publication.mjs', 'daily-routine/tests/metrics.test.mjs', 'work-cases/tests/domain.test.mjs', 'marketing-launch/tests/test_domain.cjs', 'marketing-launch/tests/test_generated_runtime.cjs')]
 def main():
     env = {**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'}
     with tempfile.TemporaryDirectory(prefix='modules-offline-') as temp:
         work = Path(temp)
-        for name in ('templates', 'tooling'):
+        for name in ('templates', 'tooling', 'scripts'):
             shutil.copytree(ROOT / name, work / name)
         for manifest in ROOT.glob('*/module.yaml'):
             shutil.copytree(manifest.parent, work / manifest.parent.name)
@@ -28,5 +28,5 @@ def main():
             if before != after or any(p.read_bytes() != data for p, data in extra_before.items()):
                 raise SystemExit(f'{name}: le générateur ne reproduit pas les ressources publiées')
 
-    print('PASS: 8 suites unittest, contrat ACL Python et 5 contrôles Node et 5 reconstructions à octets identiques, sans réseau ni runtime.')
+    print('PASS: 9 suites unittest, contrat ACL Python et 5 contrôles Node et 5 reconstructions à octets identiques, sans réseau ni runtime.')
 if __name__ == '__main__': main()

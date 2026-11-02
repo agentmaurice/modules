@@ -1,0 +1,17 @@
+{
+  "schema": "agentmaurice.module_catalog_entry/v1",
+  "description": {
+    "fr": "Veille et mémoire : proposer un extrait de veille à la mémoire d'entreprise, consulter une révision et chercher dans la mémoire.",
+    "en": "Watch and memory: contribute a monitoring excerpt to company memory, read a revision and search the memory."
+  },
+  "capabilities": [
+    "watch",
+    "memory",
+    "search",
+    "contribution"
+  ],
+  "credentials": [],
+  "price": {
+    "model": "free"
+  }
+}

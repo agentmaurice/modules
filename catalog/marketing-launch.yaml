@@ -1,0 +1,17 @@
+{
+  "schema": "agentmaurice.module_catalog_entry/v1",
+  "description": {
+    "fr": "Marketing de lancement : campagne, preuves et contenu liés, demandes d'essai, progression, partage et vue Direction.",
+    "en": "Launch marketing: campaign, linked proofs and content, trial requests, progress, sharing and a management view."
+  },
+  "capabilities": [
+    "marketing",
+    "campaigns",
+    "trials",
+    "direction"
+  ],
+  "credentials": [],
+  "price": {
+    "model": "free"
+  }
+}
