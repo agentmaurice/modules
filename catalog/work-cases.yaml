@@ -1,0 +1,16 @@
+{
+  "capabilities": [
+    "case-files",
+    "sharing",
+    "direction-briefing"
+  ],
+  "credentials": [],
+  "description": {
+    "en": "Shared case files: save, list, read and share files, with a briefing for management.",
+    "fr": "Dossiers communs : enregistrer, lister, lire et partager des dossiers, avec un briefing pour la Direction."
+  },
+  "price": {
+    "model": "free"
+  },
+  "schema": "agentmaurice.module_catalog_entry/v1"
+}

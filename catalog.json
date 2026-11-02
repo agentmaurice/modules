@@ -1,0 +1,685 @@
+{
+  "schema": "agentmaurice.module_catalog/v1",
+  "schema_version": 1,
+  "modules": [
+    {
+      "key": "cib-accompagnement",
+      "name": "Company-in-a-Box — Accompagnement",
+      "version": "0.2.4",
+      "subpath": "support",
+      "manifest": "support/module.yaml",
+      "manifest_sha256": "26527b3975fa92c8fbf9ea85f9b0531f431037946c101f5413cc01a4db71265c",
+      "tree_sha256": "461afc86087a8436ee3c1c38773f28d4304c7bbb08ae50ef7081397c847317af",
+      "description": {
+        "en": "Support: manual support files (save, list, read, share), with a guard on actions.",
+        "fr": "Accompagnement : dossiers d'accompagnement manuels (enregistrer, lister, lire, partager), avec garde sur les actions."
+      },
+      "capabilities": [
+        "support",
+        "case-files",
+        "sharing"
+      ],
+      "actions": [
+        {
+          "key": "save",
+          "name": "save"
+        },
+        {
+          "key": "share",
+          "name": "share"
+        },
+        {
+          "key": "guard_action",
+          "name": "guard_action"
+        }
+      ],
+      "queries": [
+        "list",
+        "read",
+        "people"
+      ],
+      "requires": {
+        "runtimes": [
+          "deno"
+        ],
+        "language_model": false,
+        "connectors": [],
+        "credentials": [],
+        "modules": []
+      },
+      "price": {
+        "model": "free"
+      },
+      "maturity": "preview",
+      "workflows": 6,
+      "miniapps": 2
+    },
+    {
+      "key": "cib-accompagnement-memory",
+      "name": "Company-in-a-Box — Accompagnement — raccordement mémoire",
+      "version": "0.2.0",
+      "subpath": "support-memory",
+      "manifest": "support-memory/module.yaml",
+      "manifest_sha256": "9ed65127ed0709ba3a58060c90a3dcd3a9ddbd0c9b34abb12d3c4576394079d3",
+      "tree_sha256": "7479fa6e70af460c22e1443a83d1aba2654f8680bfc3663ab1cd9b4f0aa5d045",
+      "description": {
+        "en": "Support and memory: contribute an excerpt to company memory, read a revision and search the memory.",
+        "fr": "Accompagnement et mémoire : proposer un extrait à la mémoire d'entreprise, consulter une révision et chercher dans la mémoire."
+      },
+      "capabilities": [
+        "support",
+        "memory",
+        "search",
+        "contribution"
+      ],
+      "actions": [
+        {
+          "key": "accompagnement-memory-contribute",
+          "name": "accompagnement-memory-contribute"
+        }
+      ],
+      "queries": [
+        "accompagnement-memory-query",
+        "accompagnement-memory-search"
+      ],
+      "requires": {
+        "runtimes": [
+          "deno"
+        ],
+        "language_model": false,
+        "connectors": [],
+        "credentials": [],
+        "modules": [
+          "cib-accompagnement",
+          "company-memory"
+        ]
+      },
+      "price": {
+        "model": "free"
+      },
+      "maturity": "preview",
+      "workflows": 3,
+      "miniapps": 3
+    },
+    {
+      "key": "cib-contenu",
+      "name": "Company-in-a-Box — Contenu",
+      "version": "0.2.4",
+      "subpath": "content",
+      "manifest": "content/module.yaml",
+      "manifest_sha256": "0089a7cb29ce5c2e332a1f7436d4c60febbb9fda11b0515b8128fd8e6c0d4181",
+      "tree_sha256": "1af55c7df9103155604b40f03313307e5e8c2128cb99f394267343263086d593",
+      "description": {
+        "en": "Content: manual content files (save, list, read, share), with a review-completion check.",
+        "fr": "Contenu : dossiers de contenu manuels (enregistrer, lister, lire, partager), avec contrôle de fin de relecture."
+      },
+      "capabilities": [
+        "content",
+        "drafts",
+        "review",
+        "sharing"
+      ],
+      "actions": [
+        {
+          "key": "save",
+          "name": "save"
+        },
+        {
+          "key": "share",
+          "name": "share"
+        },
+        {
+          "key": "review_completion",
+          "name": "review_completion"
+        }
+      ],
+      "queries": [
+        "list",
+        "read",
+        "people"
+      ],
+      "requires": {
+        "runtimes": [
+          "deno"
+        ],
+        "language_model": false,
+        "connectors": [],
+        "credentials": [],
+        "modules": []
+      },
+      "price": {
+        "model": "free"
+      },
+      "maturity": "preview",
+      "workflows": 6,
+      "miniapps": 2
+    },
+    {
+      "key": "cib-contenu-memory",
+      "name": "Company-in-a-Box — Contenu — raccordement mémoire",
+      "version": "0.2.0",
+      "subpath": "content-memory",
+      "manifest": "content-memory/module.yaml",
+      "manifest_sha256": "249e56e9533bece539d2ac0c1d2bfefb0dc65b6d42a7e93cc40022bdc240e2fb",
+      "tree_sha256": "dede4e31151069c2863666a3497d2ff6889f02efed432289e8a3a5abbcb844cc",
+      "description": {
+        "en": "Content and memory: contribute an excerpt to company memory, read or search a revision, and draft from a validated revision.",
+        "fr": "Contenu et mémoire : proposer un extrait à la mémoire d'entreprise, consulter ou chercher une révision, et rédiger un brouillon depuis une révision validée."
+      },
+      "capabilities": [
+        "content",
+        "memory",
+        "search",
+        "drafts"
+      ],
+      "actions": [
+        {
+          "key": "contenu-memory-contribute",
+          "name": "contenu-memory-contribute"
+        },
+        {
+          "key": "contenu-memory-draft",
+          "name": "contenu-memory-draft"
+        }
+      ],
+      "queries": [
+        "contenu-memory-query",
+        "contenu-memory-search"
+      ],
+      "requires": {
+        "runtimes": [
+          "deno"
+        ],
+        "language_model": false,
+        "connectors": [],
+        "credentials": [],
+        "modules": [
+          "cib-contenu",
+          "company-memory"
+        ]
+      },
+      "price": {
+        "model": "free"
+      },
+      "maturity": "preview",
+      "workflows": 4,
+      "miniapps": 4
+    },
+    {
+      "key": "cib-daily-routine",
+      "name": "Routine quotidienne — dossiers, mémoire et temps",
+      "version": "0.1.0",
+      "subpath": "daily-routine",
+      "manifest": "daily-routine/module.yaml",
+      "manifest_sha256": "8cd81a40c20c0f44a037055785a1e276f64c90082b670df546e0291b1ae4c6bb",
+      "tree_sha256": "e34b14d8344e039a282202838d05e0881930df749305b2b5dc0ab45b4423f5b5",
+      "description": {
+        "en": "Daily routine: time journal, briefing and report, and the day's context drawn from case files and memory.",
+        "fr": "Routine quotidienne : journal du temps, briefing et bilan, et contexte du jour tiré des dossiers et de la mémoire."
+      },
+      "capabilities": [
+        "time-tracking",
+        "daily-report",
+        "context"
+      ],
+      "actions": [
+        {
+          "key": "daily-time-save",
+          "name": "daily-time-save"
+        }
+      ],
+      "queries": [
+        "daily-time-read",
+        "daily-report",
+        "daily-context"
+      ],
+      "requires": {
+        "runtimes": [
+          "deno"
+        ],
+        "language_model": false,
+        "connectors": [],
+        "credentials": [],
+        "modules": [
+          "cib-accompagnement",
+          "cib-contenu",
+          "cib-veille",
+          "company-memory"
+        ]
+      },
+      "price": {
+        "model": "free"
+      },
+      "maturity": "preview",
+      "workflows": 4,
+      "miniapps": 3
+    },
+    {
+      "key": "cib-enterprise-admin",
+      "name": "Company-in-a-Box — administration entreprise",
+      "version": "0.2.2",
+      "subpath": "enterprise-admin",
+      "manifest": "enterprise-admin/module.yaml",
+      "manifest_sha256": "b70c51ca0d95f494a49b349a9997ce328f8cd0f73ae9b2db92af57839e49f543",
+      "tree_sha256": "56e6d0b9675ecf4e515e3de3ab2703c36a2cbf0bf6113d357be89926b23f6f8e",
+      "description": {
+        "en": "Enterprise administration: overview, management, import and sharing of historical records, approval check.",
+        "fr": "Administration de l'entreprise : vue d'ensemble, gestion, reprise et partage de fiches historiques, contrôle d'approbation."
+      },
+      "capabilities": [
+        "administration",
+        "records",
+        "sharing",
+        "approval"
+      ],
+      "actions": [
+        {
+          "key": "manage",
+          "name": "manage"
+        },
+        {
+          "key": "import-record",
+          "name": "import-record"
+        },
+        {
+          "key": "record-share",
+          "name": "record-share"
+        }
+      ],
+      "queries": [
+        "overview",
+        "approval-check",
+        "record-read",
+        "record-people"
+      ],
+      "requires": {
+        "runtimes": [
+          "deno"
+        ],
+        "language_model": false,
+        "connectors": [],
+        "credentials": [],
+        "modules": []
+      },
+      "price": {
+        "model": "free"
+      },
+      "maturity": "preview",
+      "workflows": 7,
+      "miniapps": 3
+    },
+    {
+      "key": "cib-marketing-launch",
+      "name": "Company in a Box — Marketing de lancement",
+      "version": "0.1.0",
+      "subpath": "marketing-launch",
+      "manifest": "marketing-launch/module.yaml",
+      "manifest_sha256": "d6e2d73144a40d2d4695ec77593949434aa841f9fe9343dc9bdff28a3d22f16f",
+      "tree_sha256": "7d46b90ad8bcb4ebaa49d6c09f51390c17c952e2c9c424ffdca827000110afce",
+      "description": {
+        "en": "Launch marketing: campaign, linked proofs and content, trial requests, progress, sharing and a management view.",
+        "fr": "Marketing de lancement : campagne, preuves et contenu liés, demandes d'essai, progression, partage et vue Direction."
+      },
+      "capabilities": [
+        "marketing",
+        "campaigns",
+        "trials",
+        "direction"
+      ],
+      "actions": [
+        {
+          "key": "campaign-save",
+          "name": "campaign-save"
+        },
+        {
+          "key": "content-link",
+          "name": "content-link"
+        },
+        {
+          "key": "request",
+          "name": "request"
+        },
+        {
+          "key": "progress",
+          "name": "progress"
+        },
+        {
+          "key": "share",
+          "name": "share"
+        }
+      ],
+      "queries": [
+        "read",
+        "list",
+        "people",
+        "summary"
+      ],
+      "requires": {
+        "runtimes": [
+          "deno"
+        ],
+        "language_model": false,
+        "connectors": [],
+        "credentials": [],
+        "modules": []
+      },
+      "price": {
+        "model": "free"
+      },
+      "maturity": "preview",
+      "workflows": 9,
+      "miniapps": 6
+    },
+    {
+      "key": "cib-veille",
+      "name": "Company-in-a-Box — Veille",
+      "version": "0.2.4",
+      "subpath": "watch",
+      "manifest": "watch/module.yaml",
+      "manifest_sha256": "f32db870687d26e4763a3d8eb615ad307bd98b8815963b70eb1cbc191f66fc4c",
+      "tree_sha256": "09609ae3d3fe36f66815c60f1d456fb3c527c63341654ecfe459f67c3ae6705e",
+      "description": {
+        "en": "Watch: manual monitoring files (save, list, read, share), with research work routing and result checks.",
+        "fr": "Veille : dossiers de veille manuels (enregistrer, lister, lire, partager), avec routage d'un travail de recherche et contrôle de ses résultats."
+      },
+      "capabilities": [
+        "watch",
+        "research",
+        "case-files",
+        "sharing"
+      ],
+      "actions": [
+        {
+          "key": "save",
+          "name": "save"
+        },
+        {
+          "key": "share",
+          "name": "share"
+        },
+        {
+          "key": "route_worker",
+          "name": "route_worker"
+        },
+        {
+          "key": "check_research",
+          "name": "check_research"
+        }
+      ],
+      "queries": [
+        "list",
+        "read",
+        "people"
+      ],
+      "requires": {
+        "runtimes": [
+          "deno"
+        ],
+        "language_model": false,
+        "connectors": [],
+        "credentials": [],
+        "modules": []
+      },
+      "price": {
+        "model": "free"
+      },
+      "maturity": "preview",
+      "workflows": 7,
+      "miniapps": 2
+    },
+    {
+      "key": "cib-veille-memory",
+      "name": "Company-in-a-Box — Veille — raccordement mémoire",
+      "version": "0.2.0",
+      "subpath": "watch-memory",
+      "manifest": "watch-memory/module.yaml",
+      "manifest_sha256": "bf295664b5b9410516edf1c91280d2d4a3199d0b13ecac20c63705a020d9ba59",
+      "tree_sha256": "853222eabafa65e06f9a29f9da7585466292d81413e4fd97de24d284fc82455b",
+      "description": {
+        "en": "Watch and memory: contribute a monitoring excerpt to company memory, read a revision and search the memory.",
+        "fr": "Veille et mémoire : proposer un extrait de veille à la mémoire d'entreprise, consulter une révision et chercher dans la mémoire."
+      },
+      "capabilities": [
+        "watch",
+        "memory",
+        "search",
+        "contribution"
+      ],
+      "actions": [
+        {
+          "key": "veille-memory-contribute",
+          "name": "veille-memory-contribute"
+        }
+      ],
+      "queries": [
+        "veille-memory-query",
+        "veille-memory-search"
+      ],
+      "requires": {
+        "runtimes": [
+          "deno"
+        ],
+        "language_model": false,
+        "connectors": [],
+        "credentials": [],
+        "modules": [
+          "cib-veille",
+          "company-memory"
+        ]
+      },
+      "price": {
+        "model": "free"
+      },
+      "maturity": "preview",
+      "workflows": 3,
+      "miniapps": 3
+    },
+    {
+      "key": "cib-work-dossiers",
+      "name": "Company-in-a-Box — dossiers communs",
+      "version": "0.2.2",
+      "subpath": "work-cases",
+      "manifest": "work-cases/module.yaml",
+      "manifest_sha256": "65ef645f3e093cfa5bc68df154e8b762da1e48df14ae5ab94131bf23af4566cf",
+      "tree_sha256": "996bb140c42b1847feec99baab2177006d91d2069bb18c49ae8bc72e0e668395",
+      "description": {
+        "en": "Shared case files: save, list, read and share files, with a briefing for management.",
+        "fr": "Dossiers communs : enregistrer, lister, lire et partager des dossiers, avec un briefing pour la Direction."
+      },
+      "capabilities": [
+        "case-files",
+        "sharing",
+        "direction-briefing"
+      ],
+      "actions": [
+        {
+          "key": "save",
+          "name": "save"
+        },
+        {
+          "key": "share",
+          "name": "share"
+        }
+      ],
+      "queries": [
+        "read",
+        "list",
+        "direction-brief",
+        "people"
+      ],
+      "requires": {
+        "runtimes": [
+          "deno"
+        ],
+        "language_model": false,
+        "connectors": [],
+        "credentials": [],
+        "modules": []
+      },
+      "price": {
+        "model": "free"
+      },
+      "maturity": "preview",
+      "workflows": 6,
+      "miniapps": 2
+    },
+    {
+      "key": "company-memory",
+      "name": "Company Memory",
+      "version": "0.3.0",
+      "subpath": "company-memory",
+      "manifest": "company-memory/module.yaml",
+      "manifest_sha256": "a26d8495505180a3d75be3ef6b6ea017aaf2467e87e0da0f2e653a4da719314e",
+      "tree_sha256": "647a0524f2d1e6745ff58dbead425fbff935b86876862d909e337b535774725e",
+      "description": {
+        "en": "Company memory: capture sources, propose and review updates, index revisions, then query or keyword-search them.",
+        "fr": "Mémoire d'entreprise : capturer des sources, proposer et relire des mises à jour, indexer des révisions et les interroger ou les chercher par mots-clés."
+      },
+      "capabilities": [
+        "memory",
+        "knowledge-base",
+        "search",
+        "review",
+        "indexing"
+      ],
+      "actions": [
+        {
+          "key": "capture_source",
+          "name": "capture_source"
+        },
+        {
+          "key": "propose_update",
+          "name": "propose_update"
+        },
+        {
+          "key": "review_update",
+          "name": "review_update"
+        },
+        {
+          "key": "index_revision",
+          "name": "index_revision"
+        }
+      ],
+      "queries": [
+        "inspect",
+        "query",
+        "health",
+        "search"
+      ],
+      "requires": {
+        "runtimes": [
+          "deno"
+        ],
+        "language_model": false,
+        "connectors": [
+          {
+            "name": "company_memory",
+            "tools": [
+              "memory.entities.upsert",
+              "memory.query"
+            ]
+          },
+          {
+            "name": "brain",
+            "tools": [
+              "brain.document.upsert",
+              "brain.keyword"
+            ]
+          }
+        ],
+        "credentials": [],
+        "modules": []
+      },
+      "price": {
+        "model": "free"
+      },
+      "maturity": "preview",
+      "workflows": 10,
+      "miniapps": 6
+    },
+    {
+      "key": "image-studio",
+      "name": "Image studio",
+      "version": "0.1.0",
+      "subpath": "image-studio",
+      "manifest": "image-studio/module.yaml",
+      "manifest_sha256": "b29f62142e391df84b705394d87392d7f790a575c294ecce3e6451c2a4714122",
+      "tree_sha256": "ff67c21cdf4c87dcc4e192e315f280af1ea763441cdc16ad26af550c396fee82",
+      "description": {
+        "en": "Image studio: plan, produce, review, publish and export image packs, with a style sheet and output profiles.",
+        "fr": "Studio d'images : planifier, produire, relire, publier et exporter des lots d'images, avec feuille de style et profils de sortie."
+      },
+      "capabilities": [
+        "images",
+        "generation",
+        "review",
+        "export",
+        "storage"
+      ],
+      "actions": [
+        {
+          "key": "image-studio-pack",
+          "name": "Produce an image pack"
+        },
+        {
+          "key": "image-studio-render",
+          "name": "Render one image"
+        },
+        {
+          "key": "image-studio-plan",
+          "name": "Plan an image pack"
+        },
+        {
+          "key": "image-studio-style-sheet",
+          "name": "Build a style sheet"
+        },
+        {
+          "key": "image-studio-produce-asset",
+          "name": "Produce one asset"
+        },
+        {
+          "key": "image-studio-asset-finalize",
+          "name": "Keep an attempt"
+        },
+        {
+          "key": "image-studio-asset-retry",
+          "name": "Second attempt"
+        },
+        {
+          "key": "image-studio-asset-hold",
+          "name": "Hold an asset"
+        },
+        {
+          "key": "image-studio-publish",
+          "name": "Publish a pack to Storage"
+        },
+        {
+          "key": "image-studio-export",
+          "name": "Export a stored image"
+        },
+        {
+          "key": "image-studio-profile-save",
+          "name": "Save an output profile"
+        }
+      ],
+      "queries": [
+        "image-studio-review-read"
+      ],
+      "requires": {
+        "runtimes": [
+          "wasm"
+        ],
+        "language_model": true,
+        "connectors": [],
+        "credentials": [],
+        "modules": []
+      },
+      "price": {
+        "model": "free"
+      },
+      "maturity": "preview",
+      "workflows": 12,
+      "miniapps": 1
+    }
+  ]
+}

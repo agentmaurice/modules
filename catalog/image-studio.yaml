@@ -1,0 +1,18 @@
+{
+  "capabilities": [
+    "images",
+    "generation",
+    "review",
+    "export",
+    "storage"
+  ],
+  "credentials": [],
+  "description": {
+    "en": "Image studio: plan, produce, review, publish and export image packs, with a style sheet and output profiles.",
+    "fr": "Studio d'images : planifier, produire, relire, publier et exporter des lots d'images, avec feuille de style et profils de sortie."
+  },
+  "price": {
+    "model": "free"
+  },
+  "schema": "agentmaurice.module_catalog_entry/v1"
+}

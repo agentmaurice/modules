@@ -2,7 +2,7 @@
 
 ## Préparer le consommateur
 
-Cloner le dépôt privé avec un compte autorisé :
+Cloner le dépôt (public depuis le 2026-11-02) :
 
 ```sh
 git clone https://github.com/agentmaurice/modules.git

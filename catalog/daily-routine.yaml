@@ -1,0 +1,16 @@
+{
+  "capabilities": [
+    "time-tracking",
+    "daily-report",
+    "context"
+  ],
+  "credentials": [],
+  "description": {
+    "en": "Daily routine: time journal, briefing and report, and the day's context drawn from case files and memory.",
+    "fr": "Routine quotidienne : journal du temps, briefing et bilan, et contexte du jour tiré des dossiers et de la mémoire."
+  },
+  "price": {
+    "model": "free"
+  },
+  "schema": "agentmaurice.module_catalog_entry/v1"
+}
