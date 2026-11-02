@@ -75,6 +75,11 @@ def load_json(path):
     return json.loads(Path(path).read_text(encoding='utf-8'))
 
 
+def canonical(value):
+    """The one text form of a catalog entry: any other spelling of the same entry (whitespace, key order) is a diff."""
+    return json.dumps(value, ensure_ascii=False, indent=2) + '\n'
+
+
 def walk(value):
     if isinstance(value, dict):
         yield value
@@ -147,7 +152,7 @@ def render():
     import inventory  # composition dependencies are declared once, there
     index = load_json(ROOT / 'modules.json')['modules']
     keys_by_directory = {Path(item['manifest']).parent.name: item['key'] for item in index}
-    problems, modules = [], []
+    problems, modules, noncanonical = [], [], []
     sidecars = {path.stem for path in (ROOT / 'catalog').glob('*.yaml')}
     for extra in sorted(sidecars - set(keys_by_directory)):
         problems.append(f'catalog/{extra}.yaml: aucun module de ce dossier dans modules.json')
@@ -162,6 +167,9 @@ def render():
             continue
         entry = load_json(sidecar)
         problems += entry_problems(name, entry)
+        if sidecar.read_text(encoding='utf-8') != canonical(entry):
+            noncanonical.append(sidecar)
+            problems.append(f'catalog/{name}.yaml: forme non canonique (espaces, ordre des clés) : python3 scripts/catalog.py la réécrit')
         provides = module.get('provides', {})
         runtimes, llm = workflow_facts(ROOT / directory)
         connectors = [{'name': mcp['name'], 'tools': sorted(mcp.get('required_tools', []))}
@@ -184,6 +192,7 @@ def render():
             'workflows': item['workflows'], 'miniapps': item['miniapps'],
         })
     modules.sort(key=lambda module: module['key'])
+    render.noncanonical = noncanonical
     return {'schema': SCHEMA, 'schema_version': 1, 'modules': modules}, problems
 
 
@@ -192,6 +201,11 @@ def main():
     parser.add_argument('--check', action='store_true')
     args = parser.parse_args()
     catalog, problems = render()
+    if not args.check and render.noncanonical:
+        # Writing normalises the hand-written entries; only their form can change, never their content.
+        for sidecar in render.noncanonical:
+            sidecar.write_text(canonical(load_json(sidecar)), encoding='utf-8')
+        catalog, problems = render()
     if problems:
         print('\n'.join(problems), file=sys.stderr)
         return 1

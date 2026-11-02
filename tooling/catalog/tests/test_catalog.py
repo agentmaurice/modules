@@ -106,10 +106,10 @@ def module_repo(root, with_sidecar=True, extra_sidecar=False):
     write(root, 'demo-memory/module.yaml', json.dumps({'key': 'cib-demo-memory', 'name': 'Demo memory', 'version': '1.0.0', 'schema_version': 2, 'provides': {}}))
     write(root, 'demo-memory/agents/main/workflows/w.json', json.dumps({'workflow_id': 'w2', 'actions': []}))
     if with_sidecar:
-        write(root, 'catalog/demo.yaml', json.dumps(entry(credentials=['demo-key'])))
-        write(root, 'catalog/demo-memory.yaml', json.dumps(entry()))
+        write(root, 'catalog/demo.yaml', catalog.canonical(entry(credentials=['demo-key'])))
+        write(root, 'catalog/demo-memory.yaml', catalog.canonical(entry()))
     if extra_sidecar:
-        write(root, 'catalog/ghost.yaml', json.dumps(entry()))
+        write(root, 'catalog/ghost.yaml', catalog.canonical(entry()))
 
 
 class RenderTest(unittest.TestCase):
@@ -141,6 +141,23 @@ class RenderTest(unittest.TestCase):
         self.assertEqual(2, len(problems))
         _, (_, problems) = self.render(extra_sidecar=True)
         self.assertTrue(any('ghost' in problem for problem in problems))
+
+    def test_a_hand_written_entry_must_be_in_canonical_form(self):
+        root = tempfile.TemporaryDirectory()
+        self.addCleanup(root.cleanup)
+        module_repo(root.name)
+        sidecar = Path(root.name) / 'catalog/demo.yaml'
+        with mock.patch.object(catalog, 'ROOT', Path(root.name)):
+            with mock.patch('sys.argv', ['catalog.py']):
+                self.assertEqual(0, catalog.main())
+            for spelling in (sidecar.read_text() + '\n', json.dumps(json.loads(sidecar.read_text())), json.dumps(json.loads(sidecar.read_text()), indent=2, sort_keys=True) + '\n'):
+                sidecar.write_text(spelling)
+                with mock.patch('sys.argv', ['catalog.py', '--check']):
+                    self.assertEqual(1, catalog.main(), spelling[:30])
+                with mock.patch('sys.argv', ['catalog.py']):
+                    self.assertEqual(0, catalog.main())
+                with mock.patch('sys.argv', ['catalog.py', '--check']):
+                    self.assertEqual(0, catalog.main())
 
     def test_check_flags_a_stale_catalog_and_accepts_a_fresh_one(self):
         root = tempfile.TemporaryDirectory()
