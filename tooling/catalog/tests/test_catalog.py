@@ -112,6 +112,24 @@ def module_repo(root, with_sidecar=True, extra_sidecar=False):
         write(root, 'catalog/ghost.yaml', catalog.canonical(entry()))
 
 
+class BytecodeTest(unittest.TestCase):
+    def test_a_check_run_leaves_no_bytecode_in_the_repository(self):
+        # The CI runs catalog.py --check right before check.py, which refuses any bytecode file (AGENT-1642, PR 7).
+        import shutil
+        import subprocess
+        import sys
+        root = tempfile.TemporaryDirectory()
+        self.addCleanup(root.cleanup)
+        module_repo(root.name)
+        (Path(root.name) / 'scripts').mkdir()
+        for name in ('catalog.py', 'inventory.py'):
+            shutil.copy(SCRIPT.parent / name, Path(root.name) / 'scripts' / name)
+        env = {key: value for key, value in os.environ.items() if key != 'PYTHONDONTWRITEBYTECODE'}
+        subprocess.run([sys.executable, str(Path(root.name) / 'scripts/catalog.py')], env=env, check=True, capture_output=True)
+        subprocess.run([sys.executable, str(Path(root.name) / 'scripts/catalog.py'), '--check'], env=env, check=True, capture_output=True)
+        self.assertEqual([], [str(p) for p in Path(root.name).rglob('*.pyc')])
+
+
 class RenderTest(unittest.TestCase):
     def render(self, **options):
         root = tempfile.TemporaryDirectory()

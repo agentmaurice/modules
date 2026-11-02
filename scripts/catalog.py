@@ -148,6 +148,8 @@ def entry_problems(directory, entry):
 
 
 def render():
+    # Importing inventory must not leave a scripts/__pycache__ behind: check.py refuses any bytecode file.
+    sys.dont_write_bytecode = True
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import inventory  # composition dependencies are declared once, there
     index = load_json(ROOT / 'modules.json')['modules']
