@@ -168,6 +168,13 @@ class RenderTest(unittest.TestCase):
         with mock.patch.object(catalog, 'ROOT', Path(root.name)):
             with mock.patch('sys.argv', ['catalog.py']):
                 self.assertEqual(0, catalog.main())
+            crlf = sidecar.read_bytes().replace(b'\n', b'\r\n')
+            sidecar.write_bytes(crlf)
+            with mock.patch('sys.argv', ['catalog.py', '--check']):
+                self.assertEqual(1, catalog.main(), 'CRLF')
+            with mock.patch('sys.argv', ['catalog.py']):
+                self.assertEqual(0, catalog.main())
+            self.assertNotIn(b'\r', sidecar.read_bytes())
             for spelling in (sidecar.read_text() + '\n', json.dumps(json.loads(sidecar.read_text())), json.dumps(dict(reversed(list(json.loads(sidecar.read_text()).items()))), indent=2) + '\n'):
                 sidecar.write_text(spelling)
                 with mock.patch('sys.argv', ['catalog.py', '--check']):
@@ -188,6 +195,13 @@ class RenderTest(unittest.TestCase):
                 self.assertEqual(0, catalog.main())
                 write(root.name, 'demo/agents/main/workflows/w.json', json.dumps({'workflow_id': 'w', 'actions': []}))
                 self.assertEqual(1, catalog.main())
+            write(root.name, 'demo/agents/main/workflows/w.json', json.dumps({'workflow_id': 'w', 'actions': [
+                {'id': 'a', 'type': 'code_execution'}, {'id': 'b', 'type': 'code_execution', 'runtime': 'wasm'}, {'id': 'c', 'type': 'llm_call'}]}))
+            with mock.patch('sys.argv', ['catalog.py', '--check']):
+                self.assertEqual(0, catalog.main())
+                published = Path(root.name) / 'catalog.json'
+                published.write_bytes(published.read_bytes().replace(b'\n', b'\r\n'))
+                self.assertEqual(1, catalog.main(), 'CRLF in catalog.json')
 
 
 if __name__ == '__main__':

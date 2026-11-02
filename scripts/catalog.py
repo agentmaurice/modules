@@ -169,7 +169,7 @@ def render():
             continue
         entry = load_json(sidecar)
         problems += entry_problems(name, entry)
-        if sidecar.read_text(encoding='utf-8') != canonical(entry):
+        if sidecar.read_bytes() != canonical(entry).encode('utf-8'):  # bytes: a CRLF is a difference too
             noncanonical.append(sidecar)
             problems.append(f'catalog/{name}.yaml: forme non canonique (espaces, ordre des clés) : python3 scripts/catalog.py la réécrit')
         provides = module.get('provides', {})
@@ -206,7 +206,7 @@ def main():
     if not args.check and render.noncanonical:
         # Writing normalises the hand-written entries; only their form can change, never their content.
         for sidecar in render.noncanonical:
-            sidecar.write_text(canonical(load_json(sidecar)), encoding='utf-8')
+            sidecar.write_bytes(canonical(load_json(sidecar)).encode('utf-8'))
         catalog, problems = render()
     if problems:
         print('\n'.join(problems), file=sys.stderr)
@@ -214,12 +214,12 @@ def main():
     data = json.dumps(catalog, ensure_ascii=False, indent=2) + '\n'
     path = ROOT / 'catalog.json'
     if args.check:
-        if not path.exists() or path.read_text(encoding='utf-8') != data:
+        if not path.exists() or path.read_bytes() != data.encode('utf-8'):
             print('catalog.json differs: run python3 scripts/catalog.py', file=sys.stderr)
             return 1
         print('Catalog consistent')
         return 0
-    path.write_text(data, encoding='utf-8')
+    path.write_bytes(data.encode('utf-8'))
     print('Catalog generated')
     return 0
 
