@@ -1,9 +1,4 @@
 {
-  "schema": "agentmaurice.module_catalog_entry/v1",
-  "description": {
-    "fr": "Contenu et mémoire : proposer un extrait à la mémoire d'entreprise, consulter ou chercher une révision, et rédiger un brouillon depuis une révision validée.",
-    "en": "Content and memory: contribute an excerpt to company memory, read or search a revision, and draft from a validated revision."
-  },
   "capabilities": [
     "content",
     "memory",
@@ -11,7 +6,12 @@
     "drafts"
   ],
   "credentials": [],
+  "description": {
+    "en": "Content and memory: contribute an excerpt to company memory, read or search a revision, and draft from a validated revision.",
+    "fr": "Contenu et mémoire : proposer un extrait à la mémoire d'entreprise, consulter ou chercher une révision, et rédiger un brouillon depuis une révision validée."
+  },
   "price": {
     "model": "free"
-  }
+  },
+  "schema": "agentmaurice.module_catalog_entry/v1"
 }

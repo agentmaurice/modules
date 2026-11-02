@@ -150,7 +150,7 @@ class RenderTest(unittest.TestCase):
         with mock.patch.object(catalog, 'ROOT', Path(root.name)):
             with mock.patch('sys.argv', ['catalog.py']):
                 self.assertEqual(0, catalog.main())
-            for spelling in (sidecar.read_text() + '\n', json.dumps(json.loads(sidecar.read_text())), json.dumps(json.loads(sidecar.read_text()), indent=2, sort_keys=True) + '\n'):
+            for spelling in (sidecar.read_text() + '\n', json.dumps(json.loads(sidecar.read_text())), json.dumps(dict(reversed(list(json.loads(sidecar.read_text()).items()))), indent=2) + '\n'):
                 sidecar.write_text(spelling)
                 with mock.patch('sys.argv', ['catalog.py', '--check']):
                     self.assertEqual(1, catalog.main(), spelling[:30])

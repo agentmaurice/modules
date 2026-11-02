@@ -1,9 +1,4 @@
 {
-  "schema": "agentmaurice.module_catalog_entry/v1",
-  "description": {
-    "fr": "Administration de l'entreprise : vue d'ensemble, gestion, reprise et partage de fiches historiques, contrôle d'approbation.",
-    "en": "Enterprise administration: overview, management, import and sharing of historical records, approval check."
-  },
   "capabilities": [
     "administration",
     "records",
@@ -11,7 +6,12 @@
     "approval"
   ],
   "credentials": [],
+  "description": {
+    "en": "Enterprise administration: overview, management, import and sharing of historical records, approval check.",
+    "fr": "Administration de l'entreprise : vue d'ensemble, gestion, reprise et partage de fiches historiques, contrôle d'approbation."
+  },
   "price": {
     "model": "free"
-  }
+  },
+  "schema": "agentmaurice.module_catalog_entry/v1"
 }

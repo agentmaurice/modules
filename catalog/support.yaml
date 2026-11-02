@@ -1,16 +1,16 @@
 {
-  "schema": "agentmaurice.module_catalog_entry/v1",
-  "description": {
-    "fr": "Accompagnement : dossiers d'accompagnement manuels (enregistrer, lister, lire, partager), avec garde sur les actions.",
-    "en": "Support: manual support files (save, list, read, share), with a guard on actions."
-  },
   "capabilities": [
     "support",
     "case-files",
     "sharing"
   ],
   "credentials": [],
+  "description": {
+    "en": "Support: manual support files (save, list, read, share), with a guard on actions.",
+    "fr": "Accompagnement : dossiers d'accompagnement manuels (enregistrer, lister, lire, partager), avec garde sur les actions."
+  },
   "price": {
     "model": "free"
-  }
+  },
+  "schema": "agentmaurice.module_catalog_entry/v1"
 }

@@ -76,8 +76,8 @@ def load_json(path):
 
 
 def canonical(value):
-    """The one text form of a catalog entry: any other spelling of the same entry (whitespace, key order) is a diff."""
-    return json.dumps(value, ensure_ascii=False, indent=2) + '\n'
+    """The one text form of a catalog entry: any other spelling of the same entry (whitespace, key order: keys are sorted) is a diff."""
+    return json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + '\n'
 
 
 def walk(value):

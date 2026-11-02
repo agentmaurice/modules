@@ -1,9 +1,4 @@
 {
-  "schema": "agentmaurice.module_catalog_entry/v1",
-  "description": {
-    "fr": "Mémoire d'entreprise : capturer des sources, proposer et relire des mises à jour, indexer des révisions et les interroger ou les chercher par mots-clés.",
-    "en": "Company memory: capture sources, propose and review updates, index revisions, then query or keyword-search them."
-  },
   "capabilities": [
     "memory",
     "knowledge-base",
@@ -12,7 +7,12 @@
     "indexing"
   ],
   "credentials": [],
+  "description": {
+    "en": "Company memory: capture sources, propose and review updates, index revisions, then query or keyword-search them.",
+    "fr": "Mémoire d'entreprise : capturer des sources, proposer et relire des mises à jour, indexer des révisions et les interroger ou les chercher par mots-clés."
+  },
   "price": {
     "model": "free"
-  }
+  },
+  "schema": "agentmaurice.module_catalog_entry/v1"
 }
