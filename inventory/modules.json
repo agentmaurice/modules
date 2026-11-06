@@ -2063,8 +2063,8 @@
         ],
         "sha256": {
           "profile/module.yaml": "92c00919b3051a5229e3bba7bc9d0979c85cb91a4ff5fb9a0cd0b576b7add09e",
-          "profile/agents/main/workflows/cib-admin-profile-save.json": "ded6f5c9f700c0625a01fe229ce1af22a64504cf34f2e0c146b4f15206d950d6",
-          "profile/agents/main/workflows/cib-profile-read.json": "7fd6907dd0ce5b080dae611a16abc554c5254bc3e0d588882440f6e5e7d2deb9",
+          "profile/agents/main/workflows/cib-admin-profile-save.json": "9a9e0e216160591f76827638cc5b8fd0fb530514b84c590ed7193bbc1d81e05b",
+          "profile/agents/main/workflows/cib-profile-read.json": "02fa00329517e2562a2b6fce355fd68c7fdc3d05d7ccb5e9341e954cff4b94ab",
           "profile/agents/main/miniapps/cib-profile-console.json": "3182daee089e86898b9b4989ab9f8e363d01abdea7e60756d185300f4aaf0659"
         }
       },
@@ -2078,7 +2078,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "bc65bc419138e913ee7a653108c22451fce734a580d5830fd03fa618c0a0059e"
+              "code_sha256": "5853fe3e005b5ce2b39f93cf9cde9cbcda2c126d6146e7b0d90e4b971aceb98f"
             }
           ]
         },
@@ -2091,7 +2091,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "80d25789eeb7a3d5965f6aa7a29711ccea692d173efeef3dd75da56bf7405c38"
+              "code_sha256": "94421698ed14a05dd012ecf5e7f44906576fe91f9cf93c75a86caeddc8c7bcc0"
             }
           ]
         }

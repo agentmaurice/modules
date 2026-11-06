@@ -8,7 +8,7 @@ from urllib.parse import urljoin
 
 ANNOTATIONS = {"$schema", "$id", "title", "description", "$defs", "format"}
 KEYWORDS = {"$ref", "type", "enum", "required", "properties", "additionalProperties", "items", "pattern",
-            "minLength", "maxLength", "minimum"}
+            "minLength", "maxLength", "minimum", "not"}
 TYPES = {"object": dict, "array": list, "string": str, "boolean": bool}
 
 
@@ -47,6 +47,8 @@ def validate(schema, instance, registry, doc=None, path=""):
     if "$ref" in schema:
         node, target = _resolve(schema["$ref"], doc, registry)
         errors += validate(node, instance, registry, target, path)
+    if "not" in schema and not validate(schema["not"], instance, registry, doc, path):
+        errors.append(f"{path}: matches a forbidden schema")
     kind = schema.get("type")
     if kind and not _type_ok(kind, instance):
         return errors + [f"{path or '(root)'}: expected {kind}"]

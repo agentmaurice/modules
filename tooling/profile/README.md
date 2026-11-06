@@ -30,7 +30,9 @@ computed.
 
 The save Workflow validates strictly and the read Workflow validates the stored
 body again, so a record written by something else is refused rather than
-projected. A save needs an explicit `expected_revision` (`0` to create); a
+projected. A stored body is projected as it is, never rewritten: if it is not already canonical
+(trimmed, no empty value, IBAN and BIC normalised) the read fails with
+`stored_body_not_canonical`. The projection adds nothing but `company.logo`. A save needs an explicit `expected_revision` (`0` to create); a
 conflict is the broker's answer and is not retried.
 
 ## Contract copy
@@ -65,8 +67,11 @@ by the studio.
 
 - **Broker not wired (AGENT-1305).** `recipe--application_data_v1` is not wired
   in the One yet. This Module is code and offline tests on fixtures: it has not
-  run on a One, and its handling of a missing record (a `not found` error or an
-  empty record) is an assumption to qualify when the broker exists.
+  run on a One. Only the broker's explicit `NOT_FOUND` code (taken from the
+  unmerged AGENT-1305 broker source, not from the wiki, which names none) means
+  "no profile yet"; `permission_denied`, an empty or record-less response and any
+  other error are explicit errors. How the sandbox surfaces that code is to be
+  qualified when the broker exists.
 - **Sharing is per person.** A record is private to its owner until the owner or
   a recovery administrator shares it with each person (`read` or `write`). There
   is no "everyone in the company" read with the current broker, and this Module

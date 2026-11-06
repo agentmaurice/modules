@@ -51,7 +51,7 @@ const scenario = JSON.parse(scenarioJson);
 const calls = [];
 async function callTool(name, args) {
   calls.push({name, args});
-  if (scenario.throw) throw new Error(scenario.throw);
+  if (scenario.throw) { const e = typeof scenario.throw === "string" ? new Error(scenario.throw) : Object.assign(new Error(scenario.throw.message), scenario.throw); throw e; }
   if (scenario.mode === "echo-save") {
     return {data: {record: {namespace: args.namespace, key: args.record_key, revision: args.expected_revision + 1, owner_user_id: "user-1", permissions: {can_read: true, can_write: true, can_manage: true}, shares: [], data: scenario.stored || args.data}}};
   }
@@ -109,7 +109,7 @@ class ContractPinTest(unittest.TestCase):
 
     def test_subset_validator_rejects_contract_violations(self):
         bad = json.loads(json.dumps(BODY))
-        for key, value in (("iban", "fr7600000000000000000000000"), ("iban", "FR76 0000"), ("iban", "FR7600000000"), ("bic", "exmp"), ("account_holder", 3)):
+        for key, value in (("iban", "fr7600000000000000000000000"), ("iban", "FR76 0000"), ("iban", "FR7600000000"), ("bic", "exmp"), ("account_holder", 3), ("iban", "FR7600000000000000000000000\n"), ("bic", "EXMPFRPP\n")):
             bad["company"]["bank"][key] = value
             self.assertTrue(contract_errors({"company": bad["company"], "brand": bad["brand"]}), (key, value))
             bad["company"]["bank"] = dict(BODY["company"]["bank"])
@@ -197,6 +197,7 @@ class ReadTest(unittest.TestCase):
     def test_stored_body_is_revalidated(self):
         for mutate, error in (
             (lambda b: b["company"]["bank"].update(iban="FR76"), "iban_invalid"),
+            (lambda b: b["company"]["bank"].update(iban="FR7600000000000000000000000\n"), "stored_body_not_canonical"),
             (lambda b: b["brand"]["colors"].update(primary="red"), "color_primary_invalid"),
             (lambda b: b["brand"]["logo"].update(ref="logo.svg"), "logo_ref_invalid"),
             (lambda b: b.update(schema_version=2), "body_schema_invalid"),
@@ -214,12 +215,51 @@ class ReadTest(unittest.TestCase):
         wrong["data"]["record"]["permissions"] = {}
         self.assertEqual(run_workflow(READ, {}, {"response": wrong})["error"], "broker_permissions_invalid")
 
-    def test_missing_record_returns_a_creation_hint(self):
-        for scenario in ({"throw": "record_not_found"}, {"response": {"data": {"record": None}}}):
+    def test_only_the_explicit_not_found_code_means_no_profile_yet(self):
+        for scenario in ({"throw": {"code": "NOT_FOUND", "message": "application data record not found"}}, {"response": {"error": {"code": "NOT_FOUND"}}}):
             result = run_workflow(READ, {}, scenario)["result"]
             self.assertEqual((result["found"], result["revision"], result["profile"]), (False, 0, None))
             self.assertEqual(result["effects"][0]["payload"]["prefill"]["expected_revision"], "0")
-        self.assertEqual(run_workflow(READ, {}, {"throw": "boom"})["error"], "boom")
+
+    def test_every_other_broker_outcome_is_an_explicit_error(self):
+        cases = (
+            ({"throw": {"code": "PERMISSION_DENIED", "message": "permission_denied"}}, "permission_denied"),
+            ({"throw": {"message": "record_not_found"}}, "record_not_found"),
+            ({"throw": {"message": "boom"}}, "boom"),
+            ({"throw": {"code": "NOT_FOUND_OTHER", "message": "application not found"}}, "application not found"),
+            ({"response": {"error": {"code": "PERMISSION_DENIED"}}}, "broker_error_permission_denied"),
+            ({"response": {"error": {}}}, "broker_error_unknown"),
+            ({"response": {}}, "broker_record_identity_invalid"),
+            ({"response": {"data": {}}}, "broker_record_identity_invalid"),
+            ({"response": {"data": {"record": None}}}, "broker_record_identity_invalid"),
+            ({"response": None}, "broker_record_identity_invalid"),
+            ({"response": "ok"}, "broker_record_identity_invalid"),
+        )
+        for scenario, error in cases:
+            out = run_workflow(READ, {}, scenario)
+            self.assertNotIn("result", out, scenario)
+            self.assertEqual(out["error"], error, scenario)
+
+    def test_save_never_reports_a_missing_record_as_success(self):
+        for scenario, error in (({"throw": {"code": "NOT_FOUND", "message": "gone"}}, "gone"), ({"response": {}}, "broker_record_identity_invalid"),
+                                ({"response": {"error": {"code": "PERMISSION_DENIED"}}}, "broker_error_permission_denied")):
+            out = run_workflow(SAVE, fields_input(), scenario)
+            self.assertEqual((out.get("error"), "result" in out), (error, False), scenario)
+
+    def test_projection_is_the_body_up_to_the_logo_derivation(self):
+        for body in (BODY, MINIMAL):
+            profile = read(body)["result"]["profile"]
+            expected_company = json.loads(json.dumps(body["company"]))
+            expected_company["logo"] = {"ref": body["brand"]["logo"]["ref"]}
+            self.assertEqual(profile, {"company": expected_company, "brand": body["brand"]})
+        self.assertEqual(read(MINIMAL)["result"]["profile"]["company"], {"legal_name": "Atelier Minimal", "logo": {"ref": "storage://company-profile/logo.svg"}})
+
+    def test_a_stored_body_is_projected_as_is_or_refused(self):
+        for mutate in (lambda b: b["company"].update(trade_name=""), lambda b: b["company"].update(legal_name=" Atelier "), lambda b: b["company"]["bank"].update(iban="fr7600000000000000000000000"),
+                       lambda b: b["brand"]["fonts"]["body"].update(family="Libertinus Serif "), lambda b: b["company"].update(address={})):
+            stored = json.loads(json.dumps(BODY))
+            mutate(stored)
+            self.assertEqual(read(stored)["error"], "stored_body_not_canonical")
 
     def test_color_preview_has_contrast(self):
         preview = {row["token"]: row for row in read(BODY)["result"]["color_preview"]}

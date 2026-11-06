@@ -195,8 +195,31 @@ function toFields(body) {
 
 // The template/v1 context pair. The body maps onto company and brand as is; only company.logo is derived, from the single brand.logo source.
 function project(body) {
-  return {company: {...body.company, logo: {ref: body.brand.logo.ref}}, brand: body.brand};
+  const company = {...body.company};
+  if (isObject(body.brand) && isObject(body.brand.logo) && typeof body.brand.logo.ref === "string" && body.brand.logo.ref !== "") company.logo = {ref: body.brand.logo.ref};
+  return {company, brand: body.brand};
 }
+
+function deepEqual(a, b) {
+  if (a === b) return true;
+  if (!a || !b || typeof a !== "object" || typeof b !== "object" || Array.isArray(a) !== Array.isArray(b)) return false;
+  const ka = Object.keys(a), kb = Object.keys(b);
+  return ka.length === kb.length && ka.every((key) => Object.prototype.hasOwnProperty.call(b, key) && deepEqual(a[key], b[key]));
+}
+
+// A stored body must already be canonical: it is projected as it is, never rewritten (no trimming, no dropped or added key).
+function checkedBody(raw) {
+  if (!deepEqual(normalizeBody(raw), raw)) fail("stored_body_not_canonical");
+  return raw;
+}
+
+// Only the broker's explicit not-found code (NOT_FOUND, "application data record not found") means "no profile yet".
+function brokerCode(value) {
+  if (isObject(value) && isObject(value.error)) return typeof value.error.code === "string" ? value.error.code : "unknown";
+  return null;
+}
+function isNotFound(error) { return isObject(error) && error.code === "NOT_FOUND"; }
+function brokerFailure(code) { return "broker_error_" + String(code || "unknown").toLowerCase().replace(/[^a-z0-9_]/g, "_"); }
 
 function luminance(hex) {
   const channel = (offset) => { const v = parseInt(hex.slice(offset, offset + 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
@@ -207,7 +230,9 @@ function colorPreview(brand) {
   return COLOR_TOKENS.map((token) => ({token, hex: brand.colors[token], contrast_on_background: contrast(brand.colors[token], brand.colors.background)}));
 }
 
-function brokerRecord(response, revisionRequired) {
+function brokerRecord(response) {
+  const code = brokerCode(response);
+  if (code !== null) fail(brokerFailure(code));
   const payload = response && response.data ? response.data : response;
   const item = payload && payload.record;
   if (!item || item.namespace !== NAMESPACE || item.key !== RECORD_KEY) fail("broker_record_identity_invalid");
@@ -219,18 +244,21 @@ function brokerRecord(response, revisionRequired) {
 '''
 
 READ_CODE = "import { callTool } from './tools/nats_bridge.ts';\n" + LIB + r'''
-let response;
+let response, missing = false;
 try {
   response = await callTool("recipe--application_data_v1", {operation: "read", namespace: NAMESPACE, record_key: RECORD_KEY});
 } catch (error) {
-  if (/not[_ -]?found/i.test(String((error && error.message) || error))) response = null; else throw error;
+  if (isNotFound(error)) missing = true; else throw error;
 }
-const payload = response && response.data ? response.data : response;
-if (!payload || payload.record === null || payload.record === undefined) {
+if (!missing) {
+  const code = brokerCode(response);
+  if (code === "NOT_FOUND") missing = true; else if (code !== null) fail(brokerFailure(code));
+}
+if (missing) {
   return {found: false, namespace: NAMESPACE, record_key: RECORD_KEY, revision: 0, owner_user_id: "", permissions: {can_read: false, can_write: false, can_manage: false}, body: null, profile: null, color_preview: [], fields: {}, message: "No company profile saved yet. Save one with expected revision 0.", effects: [{type: "open_form", payload: {form_id: "save", submit_event: "save", prefill: {expected_revision: "0", page_size: "A4", confirmation_manuelle: "false"}}}], external_effect: false};
 }
 const item = brokerRecord(response);
-const body = normalizeBody(item.data);
+const body = checkedBody(item.data);
 const fields = toFields(body);
 return {found: true, namespace: NAMESPACE, record_key: RECORD_KEY, revision: item.revision, owner_user_id: typeof item.owner_user_id === "string" ? item.owner_user_id : "", permissions: item.permissions, body, profile: project(body), color_preview: colorPreview(body.brand), fields, message: "Company profile read. The projection is ready for template/v1.", effects: [{type: "open_form", payload: {form_id: "save", submit_event: "save", prefill: {...fields, expected_revision: String(item.revision), confirmation_manuelle: "false"}}}], external_effect: false};'''
 
@@ -244,7 +272,7 @@ if (!Number.isSafeInteger(expected_revision) || expected_revision < 0) fail("exp
 const body = normalizeBody(bodyFromFields(input));
 const response = await callTool("recipe--application_data_v1", {operation: "save", namespace: NAMESPACE, record_key: RECORD_KEY, data: body, expected_revision});
 const item = brokerRecord(response);
-const stored = normalizeBody(item.data);
+const stored = checkedBody(item.data);
 return {namespace: NAMESPACE, record_key: RECORD_KEY, revision: item.revision, owner_user_id: typeof item.owner_user_id === "string" ? item.owner_user_id : "", permissions: item.permissions, shares: Array.isArray(item.shares) ? item.shares.length : 0, profile: project(stored), color_preview: colorPreview(stored.brand), message: "Company profile saved in the internal ACL store; no external effect. Other people read it only after an explicit per-person share.", external_effect: false};'''
 
 
