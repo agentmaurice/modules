@@ -1,0 +1,5 @@
+{
+  "workflows": {
+    "cib-admin-profile-save": "cib_admin"
+  }
+}

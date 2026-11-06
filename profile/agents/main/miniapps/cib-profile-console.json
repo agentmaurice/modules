@@ -1,0 +1,350 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "kind": "miniapp",
+  "miniapp_id": "cib-profile-console",
+  "version": "1",
+  "title": "Company profile",
+  "description": "Edit the company profile (identity, address, optional bank details, colours, fonts, logo reference and page margins) used by generated documents. One record, saved by a cib_admin with a manual confirmation.",
+  "ui": {
+    "renderer": "component",
+    "component": "company-in-a-box",
+    "configuration": {
+      "layout": [
+        {
+          "type": "callout",
+          "title": "Company profile",
+          "tone": "info",
+          "value": "One shared profile for your documents. Load it, check the colour preview, then open the form \"Company profile - save\" in the available interactions. The logo is a storage:// reference to a file already in Storage; uploading a logo is not available here."
+        },
+        {
+          "type": "button",
+          "label": "Load the company profile",
+          "on_click": "read"
+        },
+        {
+          "type": "section",
+          "title": "Current record",
+          "children": [
+            {
+              "type": "stat",
+              "label": "Revision",
+              "value": {
+                "state": "profile.revision"
+              }
+            },
+            {
+              "type": "stat",
+              "label": "Legal name",
+              "value": {
+                "state": "profile.fields.legal_name"
+              }
+            },
+            {
+              "type": "stat",
+              "label": "Logo reference",
+              "value": {
+                "state": "profile.fields.logo_ref"
+              }
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "profile.message"
+              }
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "title": "Colour preview",
+          "children": [
+            {
+              "type": "table",
+              "columns": [
+                "token",
+                "hex",
+                "contrast_on_background"
+              ],
+              "column_labels": {
+                "token": "Token",
+                "hex": "Colour",
+                "contrast_on_background": "Contrast on background"
+              },
+              "rows": {
+                "state": "profile.color_preview"
+              }
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "title": "Last save",
+          "children": [
+            {
+              "type": "text",
+              "value": {
+                "state": "result.message"
+              }
+            },
+            {
+              "type": "table",
+              "columns": [
+                "token",
+                "hex",
+                "contrast_on_background"
+              ],
+              "column_labels": {
+                "token": "Token",
+                "hex": "Colour",
+                "contrast_on_background": "Contrast on background"
+              },
+              "rows": {
+                "state": "result.color_preview"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "legal_name": {
+        "type": "string"
+      },
+      "trade_name": {
+        "type": "string"
+      },
+      "legal_form": {
+        "type": "string"
+      },
+      "share_capital": {
+        "type": "string"
+      },
+      "siren": {
+        "type": "string"
+      },
+      "siret": {
+        "type": "string"
+      },
+      "vat_number": {
+        "type": "string"
+      },
+      "rcs": {
+        "type": "string"
+      },
+      "address_line1": {
+        "type": "string"
+      },
+      "address_line2": {
+        "type": "string"
+      },
+      "address_postal_code": {
+        "type": "string"
+      },
+      "address_city": {
+        "type": "string"
+      },
+      "address_country": {
+        "type": "string"
+      },
+      "email": {
+        "type": "string"
+      },
+      "phone": {
+        "type": "string"
+      },
+      "website": {
+        "type": "string"
+      },
+      "legal_mentions": {
+        "type": "string"
+      },
+      "bank_account_holder": {
+        "type": "string"
+      },
+      "bank_iban": {
+        "type": "string"
+      },
+      "bank_bic": {
+        "type": "string"
+      },
+      "bank_name": {
+        "type": "string"
+      },
+      "color_primary": {
+        "type": "string"
+      },
+      "color_secondary": {
+        "type": "string"
+      },
+      "color_accent": {
+        "type": "string"
+      },
+      "color_text": {
+        "type": "string"
+      },
+      "color_muted": {
+        "type": "string"
+      },
+      "color_background": {
+        "type": "string"
+      },
+      "font_heading": {
+        "type": "string"
+      },
+      "font_body": {
+        "type": "string"
+      },
+      "font_mono": {
+        "type": "string"
+      },
+      "logo_ref": {
+        "type": "string"
+      },
+      "logo_alt": {
+        "type": "string"
+      },
+      "margin_top": {
+        "type": "string"
+      },
+      "margin_right": {
+        "type": "string"
+      },
+      "margin_bottom": {
+        "type": "string"
+      },
+      "margin_left": {
+        "type": "string"
+      },
+      "page_size": {
+        "type": "string"
+      },
+      "expected_revision": {
+        "type": "string"
+      },
+      "confirmation_manuelle": {
+        "type": "string"
+      },
+      "profile": {
+        "type": "object"
+      },
+      "result": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "legal_name": "",
+    "trade_name": "",
+    "legal_form": "",
+    "share_capital": "",
+    "siren": "",
+    "siret": "",
+    "vat_number": "",
+    "rcs": "",
+    "address_line1": "",
+    "address_line2": "",
+    "address_postal_code": "",
+    "address_city": "",
+    "address_country": "",
+    "email": "",
+    "phone": "",
+    "website": "",
+    "legal_mentions": "",
+    "bank_account_holder": "",
+    "bank_iban": "",
+    "bank_bic": "",
+    "bank_name": "",
+    "color_primary": "",
+    "color_secondary": "",
+    "color_accent": "",
+    "color_text": "",
+    "color_muted": "",
+    "color_background": "",
+    "font_heading": "",
+    "font_body": "",
+    "font_mono": "",
+    "logo_ref": "",
+    "logo_alt": "",
+    "margin_top": "",
+    "margin_right": "",
+    "margin_bottom": "",
+    "margin_left": "",
+    "page_size": "A4",
+    "expected_revision": "0",
+    "confirmation_manuelle": "false",
+    "profile": {
+      "found": false,
+      "revision": 0,
+      "color_preview": [],
+      "fields": {},
+      "message": "No profile loaded."
+    },
+    "result": {
+      "message": "No action."
+    }
+  },
+  "events": [
+    {
+      "event_id": "read",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "cib-profile-read",
+        "input": {}
+      },
+      "result_to_state": "profile"
+    },
+    {
+      "event_id": "save",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "cib-admin-profile-save",
+        "input": {
+          "legal_name": "{{ state.legal_name }}",
+          "trade_name": "{{ state.trade_name }}",
+          "legal_form": "{{ state.legal_form }}",
+          "share_capital": "{{ state.share_capital }}",
+          "siren": "{{ state.siren }}",
+          "siret": "{{ state.siret }}",
+          "vat_number": "{{ state.vat_number }}",
+          "rcs": "{{ state.rcs }}",
+          "address_line1": "{{ state.address_line1 }}",
+          "address_line2": "{{ state.address_line2 }}",
+          "address_postal_code": "{{ state.address_postal_code }}",
+          "address_city": "{{ state.address_city }}",
+          "address_country": "{{ state.address_country }}",
+          "email": "{{ state.email }}",
+          "phone": "{{ state.phone }}",
+          "website": "{{ state.website }}",
+          "legal_mentions": "{{ state.legal_mentions }}",
+          "bank_account_holder": "{{ state.bank_account_holder }}",
+          "bank_iban": "{{ state.bank_iban }}",
+          "bank_bic": "{{ state.bank_bic }}",
+          "bank_name": "{{ state.bank_name }}",
+          "color_primary": "{{ state.color_primary }}",
+          "color_secondary": "{{ state.color_secondary }}",
+          "color_accent": "{{ state.color_accent }}",
+          "color_text": "{{ state.color_text }}",
+          "color_muted": "{{ state.color_muted }}",
+          "color_background": "{{ state.color_background }}",
+          "font_heading": "{{ state.font_heading }}",
+          "font_body": "{{ state.font_body }}",
+          "font_mono": "{{ state.font_mono }}",
+          "logo_ref": "{{ state.logo_ref }}",
+          "logo_alt": "{{ state.logo_alt }}",
+          "margin_top": "{{ state.margin_top }}",
+          "margin_right": "{{ state.margin_right }}",
+          "margin_bottom": "{{ state.margin_bottom }}",
+          "margin_left": "{{ state.margin_left }}",
+          "page_size": "{{ state.page_size }}",
+          "expected_revision": "{{ state.expected_revision }}",
+          "confirmation_manuelle": "{{ state.confirmation_manuelle }}"
+        }
+      },
+      "result_to_state": "result"
+    }
+  ]
+}

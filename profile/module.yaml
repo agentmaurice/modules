@@ -1,0 +1,31 @@
+{
+  "$schema": "agentmaurice.module/v2",
+  "schema_version": 2,
+  "key": "cib-profile",
+  "name": "Company-in-a-Box — company profile",
+  "version": "0.1.0",
+  "provides": {
+    "actions": [
+      {
+        "key": "save",
+        "workflow_id": "cib-admin-profile-save",
+        "workflow_version": "1"
+      }
+    ],
+    "queries": [
+      {
+        "key": "read",
+        "workflow_id": "cib-profile-read",
+        "workflow_version": "1"
+      }
+    ],
+    "apps": [
+      {
+        "key": "profile-console",
+        "miniapp_id": "cib-profile-console",
+        "miniapp_version": "1"
+      }
+    ]
+  },
+  "requires": {}
+}

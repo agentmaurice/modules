@@ -23,6 +23,7 @@ identifier belongs in it.
 | Content memory adapter | `cib-contenu-memory` | [content-memory](content-memory/module.yaml) |
 | Support memory adapter | `cib-accompagnement-memory` | [support-memory](support-memory/module.yaml) |
 | Image studio | `image-studio` | [image-studio](image-studio/module.yaml) |
+| Company profile | `cib-profile` | [profile](profile/module.yaml) |
 
 [modules.json](modules.json) is generated from the manifests. The enriched
 [catalog.json](catalog.json) is the public index of the Modules: for each one a

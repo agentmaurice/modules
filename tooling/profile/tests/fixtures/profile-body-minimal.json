@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "company": { "legal_name": "Atelier Minimal" },
+  "brand": {
+    "colors": {
+      "primary": "#112233",
+      "secondary": "#223344",
+      "accent": "#334455",
+      "text": "#000000",
+      "muted": "#777777",
+      "background": "#FFFFFF"
+    },
+    "fonts": {
+      "heading": { "family": "Libertinus Serif" },
+      "body": { "family": "Libertinus Serif" },
+      "mono": { "family": "DejaVu Sans Mono" }
+    },
+    "logo": { "ref": "storage://company-profile/logo.svg", "alt": "Logo" },
+    "page": { "size": "Letter", "margins_mm": { "top": 20, "right": 20, "bottom": 20, "left": 20 } }
+  }
+}
