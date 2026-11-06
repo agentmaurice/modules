@@ -367,6 +367,45 @@ class ComposeTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 compose.compose(consumer, "admin")
 
+    def test_composed_surface_declares_cib_admin_on_save_and_not_on_read(self):
+        with tempfile.TemporaryDirectory() as directory:
+            consumer = self.consumer(directory)
+            subprocess.run([sys.executable, str(TOOLING / "compose.py"), "--consumer-dir", str(consumer), "--owner-alias", "admin", "--write"], check=True, capture_output=True)
+            draft = load(consumer / "surface-drafts/cib-profile.surface-draft.json")["public_surface"]
+            workflows = {w["workflow_id"]: w for w in draft["workflows"]}
+            self.assertEqual(workflows["cib-admin-profile-save"]["required_role"], "cib_admin")
+            self.assertNotIn("required_role", workflows["cib-profile-read"])
+            self.assertEqual({w["agent_id"] for w in draft["workflows"]}, {"abcdefghijklmnopqrst"})
+            self.assertEqual([m["miniapp_id"] for m in draft["miniapps"]], ["cib-profile-console"])
+            self.assertTrue((consumer / "agents/admin/workflows/cib-admin-profile-save.json").is_file())
+            # idempotent, and a divergent draft is refused
+            compose.apply(consumer, "admin")
+            (consumer / "surface-drafts/cib-profile.surface-draft.json").write_text("{}\n")
+            with self.assertRaises(ValueError):
+                compose.apply(consumer, "admin")
+
+    def test_plan_mode_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            consumer = self.consumer(directory)
+            proc = subprocess.run([sys.executable, str(TOOLING / "compose.py"), "--consumer-dir", str(consumer)], check=True, capture_output=True, text=True)
+            self.assertIn("required_role on save", proc.stdout)
+            self.assertFalse((consumer / "surface-drafts").exists())
+
+    def test_the_gate_file_names_only_provided_workflows_and_only_save(self):
+        gates = load(TOOLING / "service-gates.json")["workflows"]
+        self.assertEqual(gates, {"cib-admin-profile-save": "cib_admin"})
+
+    def test_workflow_code_cannot_see_roles_and_ignores_a_forged_one(self):
+        # The role is enforced by the platform on the published surface and revalidated by the broker; the code gets
+        # no caller identity. A non-admin call is refused before the code runs, which a mocked broker cannot show;
+        # here we only prove the code never trusts a role sent in its input.
+        code = SAVE["actions"][0]["code"]
+        self.assertNotIn("cib_admin", code)
+        out = run_workflow(SAVE, {**fields_input(), "role": "cib_admin", "roles": ["cib_admin"], "required_role": "cib_admin"}, {"mode": "echo-save"})
+        self.assertEqual(set(out["calls"][0]["args"]), {"operation", "namespace", "record_key", "data", "expected_revision"})
+        refused = run_workflow(SAVE, fields_input(), {"throw": {"code": "PERMISSION_DENIED", "message": "required_role_missing"}})
+        self.assertEqual((refused["error"], "result" in refused), ("required_role_missing", False))
+
 
 if __name__ == "__main__":
     unittest.main()

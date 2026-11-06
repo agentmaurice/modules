@@ -46,13 +46,21 @@ pin; the SHA-256 values are authoritative if the source commit is rewritten.
 
 ## Roles
 
-Workflow roles live in the published surface, not in the manifest. The save
-Workflow is named `cib-admin-profile-save` so that
-`tooling/enterprise-admin/service_roles.py` maps it to `cib_admin` with the rest
-of the `cib-admin-` Workflows; the read Workflow is not gated by it. A test
-checks both. The role, the form confirmation and the broker ACL are cumulative;
-none of them replaces another, and the identity always comes from the server,
-never from the form.
+Workflow roles live in the published Application surface, not in the manifest,
+and the platform checks them at admission; the broker revalidates the required
+role. The Workflow code receives no caller identity and cannot check a role
+itself, so it ignores any role sent in its input. A person who has write access
+to the record but not the `cib_admin` role is refused only if the surface says so.
+
+`compose.py --write` therefore also writes a **surface draft**,
+`<consumer>/surface-drafts/cib-profile.surface-draft.json`, that carries
+`required_role: cib_admin` explicitly on `cib-admin-profile-save` (from
+`service-gates.json`) and none on `cib-profile-read`. Merge it into the surface
+you review, then publish the surface yourself; compose publishes nothing and
+refuses a divergent existing draft. The `cib-admin-` name still lets
+`tooling/enterprise-admin/service_roles.py` agree, but the gate no longer
+depends on that convention. The role, the form confirmation and the broker ACL
+are cumulative; none replaces another, and the identity comes from the server.
 
 ## How document-studio reads the profile
 
@@ -96,7 +104,7 @@ python3 tooling/profile/compose.py --consumer-dir /path/to/consumer --owner-alia
 ```
 
 `build.py` generates the three resources and `module.yaml`; `compose.py` plans
-or copies them under a consumer Agent and refuses a divergent file. The tests
+or copies them under a consumer Agent, writes the surface draft with the explicit role gate, and refuses a divergent file. The tests
 (`tooling/profile/tests`) run the Workflow code under Node with a mocked broker
 on synthetic fixtures; they use a small built-in JSON Schema validator, so no
 extra package is needed. Passing them is not a runtime qualification: after
