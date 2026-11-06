@@ -371,6 +371,49 @@
       "miniapps": 6
     },
     {
+      "key": "cib-profile",
+      "name": "Company-in-a-Box — company profile",
+      "version": "0.1.0",
+      "subpath": "profile",
+      "manifest": "profile/module.yaml",
+      "manifest_sha256": "92c00919b3051a5229e3bba7bc9d0979c85cb91a4ff5fb9a0cd0b576b7add09e",
+      "tree_sha256": "cda14f3b56f67b8743bd137a7b3728d5d6cf939c4736a7cb3ae5a1182249232a",
+      "description": {
+        "en": "Company profile: identity, address, optional bank details, colours, fonts and logo reference, saved once and projected as the company and brand context of document templates.",
+        "fr": "Fiche entreprise : identité, adresse, coordonnées bancaires facultatives, couleurs, polices et référence du logo, enregistrées une fois et projetées en contexte company et brand des gabarits de documents."
+      },
+      "capabilities": [
+        "profile",
+        "company",
+        "brand",
+        "documents"
+      ],
+      "actions": [
+        {
+          "key": "save",
+          "name": "save"
+        }
+      ],
+      "queries": [
+        "read"
+      ],
+      "requires": {
+        "runtimes": [
+          "deno"
+        ],
+        "language_model": false,
+        "connectors": [],
+        "credentials": [],
+        "modules": []
+      },
+      "price": {
+        "model": "free"
+      },
+      "maturity": "preview",
+      "workflows": 2,
+      "miniapps": 1
+    },
+    {
       "key": "cib-veille",
       "name": "Company-in-a-Box — Veille",
       "version": "0.2.4",

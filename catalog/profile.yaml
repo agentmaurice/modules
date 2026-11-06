@@ -1,0 +1,17 @@
+{
+  "capabilities": [
+    "profile",
+    "company",
+    "brand",
+    "documents"
+  ],
+  "credentials": [],
+  "description": {
+    "en": "Company profile: identity, address, optional bank details, colours, fonts and logo reference, saved once and projected as the company and brand context of document templates.",
+    "fr": "Fiche entreprise : identité, adresse, coordonnées bancaires facultatives, couleurs, polices et référence du logo, enregistrées une fois et projetées en contexte company et brand des gabarits de documents."
+  },
+  "price": {
+    "model": "free"
+  },
+  "schema": "agentmaurice.module_catalog_entry/v1"
+}

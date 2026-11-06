@@ -2040,6 +2040,93 @@
       "migration_m5_m6": "to define and qualify; deployment status is not inferred"
     },
     {
+      "key": "cib-profile",
+      "version": "0.1.0",
+      "manifest": "profile/module.yaml",
+      "workflows": 2,
+      "miniapps": 1,
+      "source": {
+        "repository": "github.com/agentmaurice/modules",
+        "native": true
+      },
+      "generators_and_composers": [
+        "tooling/profile/build.py",
+        "tooling/profile/compose.py"
+      ],
+      "resources": {
+        "workflows": [
+          "profile/agents/main/workflows/cib-admin-profile-save.json",
+          "profile/agents/main/workflows/cib-profile-read.json"
+        ],
+        "miniapps": [
+          "profile/agents/main/miniapps/cib-profile-console.json"
+        ],
+        "sha256": {
+          "profile/module.yaml": "92c00919b3051a5229e3bba7bc9d0979c85cb91a4ff5fb9a0cd0b576b7add09e",
+          "profile/agents/main/workflows/cib-admin-profile-save.json": "ded6f5c9f700c0625a01fe229ce1af22a64504cf34f2e0c146b4f15206d950d6",
+          "profile/agents/main/workflows/cib-profile-read.json": "7fd6907dd0ce5b080dae611a16abc554c5254bc3e0d588882440f6e5e7d2deb9",
+          "profile/agents/main/miniapps/cib-profile-console.json": "3182daee089e86898b9b4989ab9f8e363d01abdea7e60756d185300f4aaf0659"
+        }
+      },
+      "workflow_actions": {
+        "profile/agents/main/workflows/cib-admin-profile-save.json": {
+          "workflow_id": "cib-admin-profile-save",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "save",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "bc65bc419138e913ee7a653108c22451fce734a580d5830fd03fa618c0a0059e"
+            }
+          ]
+        },
+        "profile/agents/main/workflows/cib-profile-read.json": {
+          "workflow_id": "cib-profile-read",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "read",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "80d25789eeb7a3d5965f6aa7a29711ccea692d173efeef3dd75da56bf7405c38"
+            }
+          ]
+        }
+      },
+      "provides": {
+        "actions": [
+          {
+            "key": "save",
+            "workflow_id": "cib-admin-profile-save",
+            "workflow_version": "1"
+          }
+        ],
+        "queries": [
+          {
+            "key": "read",
+            "workflow_id": "cib-profile-read",
+            "workflow_version": "1"
+          }
+        ],
+        "apps": [
+          {
+            "key": "profile-console",
+            "miniapp_id": "cib-profile-console",
+            "miniapp_version": "1"
+          }
+        ]
+      },
+      "requires": {},
+      "composition_dependencies": [],
+      "known_consumers": [],
+      "language": "English source",
+      "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
+      "publication": "native to this repository, unpublished"
+    },
+    {
       "key": "cib-accompagnement",
       "version": "0.2.4",
       "manifest": "support/module.yaml",

@@ -1,0 +1,10 @@
+{
+  "contract": "agentmaurice.template/v1",
+  "source_path": "contracts/template/v1",
+  "source_commit": "ef644ebdc251d260b66059830d09031617cdf778",
+  "note": "Frozen copy, byte for byte. The sha256 values are authoritative: if the source commit is rewritten on merge, keep the hashes and update source_commit. Refresh with a new commit only through a reviewed change.",
+  "files": {
+    "namespaces.schema.json": "b4bb7d605575ccdc5f2794cd4d8ea5c234428270e27c106e665845a007fbcdee",
+    "tokens.schema.json": "ead27a0ad3690ee2977c2f9c41a31ca8d2d234a0809796682f44e067d9f4dd82"
+  }
+}

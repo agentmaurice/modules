@@ -51,6 +51,13 @@
       "miniapps": 6
     },
     {
+      "key": "cib-profile",
+      "version": "0.1.0",
+      "manifest": "profile/module.yaml",
+      "workflows": 2,
+      "miniapps": 1
+    },
+    {
       "key": "cib-accompagnement",
       "version": "0.2.4",
       "manifest": "support/module.yaml",
