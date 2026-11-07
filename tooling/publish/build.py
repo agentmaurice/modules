@@ -114,10 +114,10 @@ function unwrap(r) {
   return r;
 }
 // Absence is recognised on a structured signal only, never on free text: a code in the list, an explicit HTTP 404, or the exact
-// message of the storage tools for an absent file ("failed to download file: ... status 404 / object not found", read from
-// the chatserver storage MCP). Anything else, "Storage credential not found" included, is storage_unavailable.
+// message of the storage tools for an absent file, optionally behind the "Error executing tool '...': " prefix of the One
+// ("failed to download file: lstat <path>: no such file or directory", or status 404 / object not found). Anything else, "Storage credential not found" included, is storage_unavailable.
 const MISSING_CODES = ["not_found", "file_not_found", "enoent", "no_such_file"];
-const MISSING_MESSAGE = /^failed to (?:download file|list files): [^\n]*(?:status 404|object not found)[^\n]*$/;
+const MISSING_MESSAGE = /(?:^|: )failed to (?:download file|list files): [^\n]*(?:no such file or directory|status 404|object not found)[^\n]*$/;
 function isMissing(info) {
   if (!info) return false;
   if (typeof info.code === "string" && MISSING_CODES.includes(info.code.toLowerCase())) return true;
@@ -187,7 +187,7 @@ function mcpUnwrap(r, isRead) {
     const t = r.content[0].text;
     let parsed;
     try { parsed = JSON.parse(t); } catch (e) { parsed = undefined; }
-    if (isRead) return isObject(parsed) && typeof parsed.content === "string" && Object.keys(parsed).every((k) => ["content", "encoding", "path", "size"].includes(k)) ? parsed : {content: t};
+    if (isRead) return isObject(parsed) && typeof parsed.content === "string" && Object.keys(parsed).every((k) => ["content", "encoding", "path", "size", "success"].includes(k)) ? parsed : {content: t};
     if (isObject(parsed) || Array.isArray(parsed)) return parsed;
   }
   return r;
@@ -444,6 +444,8 @@ function externalError(name, message, thrown) {
   const err = new Error(code + ": " + name);
   err.code = code;
   err.unknown = !!thrown && !m;
+  // A tool that is not registered fails before anything is sent: a definitive, documented refusal.
+  if (!m && /\btool [\w-]+ not (?:found|registered)/i.test(message)) { err.code = "tool_unavailable"; err.unknown = false; }
   err.detail = clip(redact(message), 300);
   return err;
 }
@@ -640,7 +642,7 @@ try { await writeDest("web", destKey, rec.publication_id, src.sha256, "pending_o
 let res;
 try { res = await callExternal("ssh_upload_v1", {target, path: remotePath, file: {content_base64: src.b64}, overwrite}); } catch (e) {
   // A definitive refusal wrote nothing: the reservation is cancelled and the previous owner gets the destination back (read back).
-  const refused = ["file_exists", "publish_not_enabled", "invalid_arguments", "file_too_large", "atomic_replace_unavailable"].includes(e && e.code);
+  const refused = ["tool_unavailable", "file_exists", "publish_not_enabled", "invalid_arguments", "file_too_large", "atomic_replace_unavailable"].includes(e && e.code);
   if (!refused) e.unknown = true;
   if (prior && refused && !e.unknown) {
     try { await restoreDest("web", destKey, prior, rec.publication_id, rec.attempts); } catch (r) { e.detail = clip((e.detail || "") + " ; restauration de l'index non confirmée : " + clip(String(r && r.message), 80), 300); }
@@ -692,7 +694,7 @@ if (begun.done) return begun.done;
 const rec = begun.rec;
 let res;
 // Only a code known to happen BEFORE the sending proves that nothing was sent; any other error leaves the outcome unknown.
-const PRESEND = ["not_connected", "authorization_required", "identity_unproven"];
+const PRESEND = ["not_connected", "authorization_required", "identity_unproven", "tool_unavailable"];
 try { res = await callExternal("google_mail_send", {to: to.join(", "), subject, body}); } catch (e) { if (!PRESEND.includes(e && e.code)) e.unknown = true; await markFailed(rec, e); }
 // Published only on proof: a 2xx status and the Gmail message id. The body may arrive as JSON text.
 let answer = res.body;
@@ -757,7 +759,7 @@ if (scheduleAt) args.schedule_at = scheduleAt;
 if (media.length) args.media = media;
 let res;
 // Only the codes documented as a refusal before any write allow failed; any other error (no code, status error, free text) is an unknown outcome.
-const REFUSED = ["invalid_arguments", "invalid_request", "validation_failed", "not_configured", "rate_limited", "channel_not_found", "content_too_long", "invalid_schedule", "invalid_media", "media_too_large"];
+const REFUSED = ["tool_unavailable", "invalid_arguments", "invalid_request", "validation_failed", "not_configured", "rate_limited", "channel_not_found", "content_too_long", "invalid_schedule", "invalid_media", "media_too_large"];
 try { res = await callExternal("social_post_create_v1", args); } catch (e) { if (!REFUSED.includes(e && e.code)) e.unknown = true; await markFailed(rec, e); }
 if (res.status !== "ok" || typeof res.post_id !== "string" || !res.post_id) await markFailed(rec, {code: "remote_response_invalid", detail: "post_id absent de la réponse du service social ; relancer avec le même publication_id est sans risque (clé d'idempotence)"});
 let remote;

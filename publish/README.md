@@ -106,6 +106,14 @@ messages and prompts are French.
   the request and an optional `source_sha256` are still compared:
   `publication_conflict`). A derived id comes from the source fingerprint, so
   its replay needs the source: pass a `publication_id` for a source-free replay.
+- Real shapes observed on a One: Storage and the sidecars return bare objects
+  (`read_file`: `{content, encoding, path, size, success}`); sidecar errors are
+  bare `{error, message}`; Storage errors come in the `isError` envelope. A
+  missing file is `Error executing tool '...': failed to download file: lstat
+  <path>: no such file or directory` (a missing folder lists as `[]`). A tool
+  that is not registered (`tool <name> not registered`) fails before any
+  sending: `failed` with the code `tool_unavailable`. `ssh_remove_v1` on an
+  absent file answers `{status: "ok", removed: false}`, recorded as removed.
 - `isError: true` always wins in a tool result, even next to a
   `structuredContent` or a text saying ok. The code is read from the content;
   without any code the outcome is `outcome_unknown`.

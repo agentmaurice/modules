@@ -49,10 +49,11 @@ async function rawTool(name, args) {
   if (name === "read_file") {
     if (opts.read_error && args.path.includes(opts.read_error_path || "")) throw new Error(opts.read_error);
     const e = store[args.path];
-    if (!e) throw new Error("failed to download file: object not found");
-    if (args.encoding === "base64") return {content: e.b64 !== undefined ? e.b64 : b64(e.text)};
+    if (!e) return {content: [{type: "text", text: "Error executing tool 'abc_storage__mcp_storage_server--read_file': failed to download file: lstat " + args.path + ": no such file or directory"}], isError: true};
+    // real success shape of Storage: a bare object
+    if (args.encoding === "base64") { const c = e.b64 !== undefined ? e.b64 : b64(e.text); return {content: c, encoding: "base64", path: args.path, size: c.length, success: true}; }
     if (e.text === undefined) throw new Error("binary file");
-    return {content: e.text};
+    return {content: e.text, path: args.path, size: e.text.length, success: true};
   }
   if (name === "write_file") {
     if (opts.dest_fail_from && args.path.startsWith("/publish/dest/")) { destWrites += 1; if (destWrites >= opts.dest_fail_from) return {error: {code: "disk_full"}}; }
@@ -71,8 +72,10 @@ async function rawTool(name, args) {
     const prefix = args.path.replace(/\/$/, "") + "/";
     return Object.keys(store).filter((p) => p.startsWith(prefix)).map((p) => ({path: p}));
   }
+  if (opts.unregistered === name) throw new Error("Tool error: tool " + name + " not found: tool " + name + " not registered");
   if (name === "ssh_upload_v1") {
     snapshot(name);
+    if (opts.upload_returned_error) return {error: opts.upload_returned_error, message: "refused"};
     if (opts.tamper) tamper();
     if (opts.hijack_dest) for (const p of Object.keys(store)) if (p.startsWith("/publish/dest/")) store[p] = {text: JSON.stringify({...JSON.parse(store[p].text), owner: opts.hijack_owner || "page-2", state: opts.hijack_state || "pending_owner", attempt: 1})};
     if (opts.vanish_dest) for (const p of Object.keys(store)) if (p.startsWith("/publish/dest/")) delete store[p];
@@ -88,6 +91,7 @@ async function rawTool(name, args) {
   }
   if (name === "social_post_create_v1") {
     snapshot(name);
+    if (opts.social_returned_error) return {error: opts.social_returned_error, message: "refused"};
     if (opts.social_throw) throw new Error(opts.social_throw);
     if (opts.social_error) throw new Error(JSON.stringify({error: opts.social_error, message: "slow down", retry_after_s: 60}));
     if (opts.no_post_id) return {status: "ok"};
@@ -1004,6 +1008,43 @@ class Review11Test(unittest.TestCase):
         again = run_node('publish-email', 'publish', EMAIL, fs)
         self.assertTrue(again['error'].startswith('publication_outcome_unknown'), again)
         self.assertEqual(external(again), [])
+
+
+class Review12Test(unittest.TestCase):
+    def test_the_real_storage_absence_message(self):
+        # a missing source is source_not_found, a missing journal is publication_not_found, through the real isError envelope
+        out = web(fs={})
+        self.assertTrue(out['error'].startswith('source_not_found'), out)
+        self.assertTrue(run_node('publish-read', 'read', {'publication_id': 'x'}, {})['error'].startswith('publication_not_found'))
+        exact = {'content': [{'type': 'text', 'text': "Error executing tool '9a1_storage__mcp_storage_server--read_file': failed to download file: lstat /publish/log/x.json: no such file or directory"}], 'isError': True}
+        out = run_node('publish-read', 'read', {'publication_id': 'x'}, {}, ret_error={'tool': 'read_file', 'mode': 'raw', 'raw': exact})
+        self.assertTrue(out['error'].startswith('publication_not_found'), out)
+        for text in ("Error executing tool 'a': failed to download file: permission denied", "Error executing tool 'a': Storage credential not found"):
+            bad = {'content': [{'type': 'text', 'text': text}], 'isError': True}
+            out = run_node('publish-read', 'read', {'publication_id': 'x'}, {}, ret_error={'tool': 'read_file', 'mode': 'raw', 'raw': bad})
+            self.assertTrue(out['error'].startswith('storage_unavailable'), (text, out))
+        # list_files on an absent path returns an empty list, without error
+        self.assertEqual(ok(self, run_node('publish-list', 'list', {}, {}))['total'], 0)
+
+    def test_an_unregistered_tool_is_a_failure_before_any_sending(self):
+        for runner, pid, tool in ((web, 'page-1', 'ssh_upload_v1'), (email, 'mail-1', 'google_mail_send'), (social, 'post-a', 'social_post_create_v1')):
+            out = runner(unregistered=tool)
+            rec = record(out, pid)
+            self.assertEqual((rec['status'], rec['error']['code']), ('failed', 'tool_unavailable'), pid)
+            self.assertTrue(out['error'].startswith('publication_failed'), out)
+
+    def test_real_sidecar_shapes_bare_results_and_bare_errors(self):
+        out = web(upload_returned_error='file_exists')
+        self.assertEqual((record(out, 'page-1')['status'], record(out, 'page-1')['error']['code']), ('failed', 'file_exists'))
+        out = social(social_returned_error='validation_failed')
+        self.assertEqual((record(out, 'post-a')['status'], record(out, 'post-a')['error']['code']), ('failed', 'validation_failed'))
+        out = web(upload_returned_error='disk_exploded')
+        self.assertEqual(record(out, 'page-1')['status'], 'outcome_unknown')
+        # bare success of Storage and of the sidecars is handled by every other test; the removal of an absent remote file
+        done = web()
+        rm = run_node('publish-remove', 'remove', {'publication_id': 'page-1', **CONFIRMED}, done['fs'], removed=False)
+        self.assertEqual(ok(self, rm)['status'], 'removed')
+        self.assertEqual(record(rm, 'page-1')['history'][-1]['note'], 'le fichier était déjà absent')
 
 
 class QueryTest(unittest.TestCase):
