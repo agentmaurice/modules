@@ -149,11 +149,28 @@ function structuredError(r, textual, depth) {
   if (textual && Array.isArray(r.content)) for (const part of r.content) if (isObject(part) && typeof part.text === "string") { const m = structuredError(part.text, true, depth + 1); if (m) return m; }
   return null;
 }
+// A successful MCP result usually arrives as an envelope: {structuredContent} (which wins) or {content: [{type: "text", text: "<JSON>"}]}.
+// For read_file, whose content is a file, only the clear envelope is opened (text parts, or structuredContent).
+function mcpUnwrap(r, isRead) {
+  if (!isObject(r)) return r;
+  if (isObject(r.structuredContent)) return r.structuredContent;
+  if (Array.isArray(r.content) && r.content.length && isObject(r.content[0]) && r.content[0].type === "text" && typeof r.content[0].text === "string") {
+    const t = r.content[0].text;
+    let parsed;
+    try { parsed = JSON.parse(t); } catch (e) { parsed = undefined; }
+    if (isRead) return isObject(parsed) && typeof parsed.content === "string" && Object.keys(parsed).every((k) => ["content", "encoding", "path", "size"].includes(k)) ? parsed : {content: t};
+    if (isObject(parsed) || Array.isArray(parsed)) return parsed;
+  }
+  return r;
+}
 async function storageCall(name, args) {
   let r;
   try { r = await callTool(name, args); } catch (e) { storageError(String(e && e.message), args.path); }
   const message = structuredError(r, name !== "read_file");
   if (message !== null) storageError(message, args.path);
+  r = mcpUnwrap(r, name === "read_file");
+  const inner = structuredError(r, name !== "read_file");
+  if (inner !== null) storageError(inner, args.path);
   return unwrap(r);
 }
 async function readText(path, extra) {
@@ -286,6 +303,11 @@ async function writeDest(channel, key, owner, contentSha, state) {
   const back = await readDestOrNull(channel, key);
   if (!back || back.owner !== owner || back.state !== state || back.updated_at !== value.updated_at) fail("journal_unverified", "index de destination non confirmé");
 }
+async function restoreDest(channel, key, prior) {
+  await writeJson(destPath(channel, key), prior, true);
+  const back = await readDestOrNull(channel, key);
+  if (!back || back.owner !== prior.owner || back.state !== prior.state || back.updated_at !== prior.updated_at) fail("journal_unverified", "index de destination non restauré");
+}
 // The journal is written at "requested" BEFORE the external call. An existing publication is never published twice.
 // A publication that is published, removed, requested or of unknown outcome is never sent again by itself:
 //  - published: the same request answers already_published; removed is terminal (already_removed, a new publication needs a new id);
@@ -387,6 +409,7 @@ async function callExternal(name, args) {
     if (r.isError === true) throw externalError(name, texts.join(" ") || "isError", false);
     for (const t of texts) { let parsed = null; try { parsed = JSON.parse(t); } catch (e) { parsed = null; } if (isObject(parsed) && (parsed.error || parsed.error_code)) throw externalError(name, t, false); }
   }
+  r = mcpUnwrap(r, false);
   r = unwrap(r);
   if (isObject(r) && (r.isError === true || (typeof r.error === "string" && r.error) || (typeof r.error_code === "string" && r.error_code))) throw externalError(name, JSON.stringify({error: r.error || r.error_code, message: r.message}), false);
   if (!isObject(r)) throw externalError(name, "réponse inattendue", true);
@@ -546,14 +569,21 @@ const destKey = await destinationKey(target + "\n" + remotePath);
 // The destination is reserved for this publication BEFORE the upload (and read back): from now on the previous owner cannot remove it,
 // whatever the outcome of the upload.
 // The index is read first: only "not found" lets it be created; any other Storage error stops everything (no write, no upload).
-try { await readDestOrNull("web", destKey); } catch (e) {
+let prior = null;
+try { prior = await readDestOrNull("web", destKey); } catch (e) {
   rec.status = "failed"; rec.error = {code: "storage_unavailable", message: clip(String(e && e.message), 200)}; rec.history.push({at: nowIso(), action: "failed", note: "storage_unavailable"});
   try { await commit(rec); } catch (c) { /* the original error is the one to report */ }
   throw e;
 }
 try { await writeDest("web", destKey, rec.publication_id, src.sha256, "pending_owner"); } catch (e) { await markFailed(rec, {code: "destination_index_failed", detail: "réservation de la destination non confirmée : aucun appel externe (" + clip(String(e && e.message), 100) + ")"}); }
 let res;
-try { res = await callExternal("ssh_upload_v1", {target, path: remotePath, file: {content_base64: src.b64}, overwrite}); } catch (e) { await markFailed(rec, e); }
+try { res = await callExternal("ssh_upload_v1", {target, path: remotePath, file: {content_base64: src.b64}, overwrite}); } catch (e) {
+  // A definitive refusal wrote nothing: the reservation is cancelled and the previous owner gets the destination back (read back).
+  if (prior && !(e && e.unknown) && ["file_exists", "publish_not_enabled", "invalid_arguments", "file_too_large", "atomic_replace_unavailable"].includes(e && e.code)) {
+    try { await restoreDest("web", destKey, prior); } catch (r) { e.detail = clip((e.detail || "") + " ; restauration de l'index non confirmée : " + clip(String(r && r.message), 80), 300); }
+  }
+  await markFailed(rec, e);
+}
 if (res.status !== "ok" || typeof res.sha256 !== "string" || res.sha256.toLowerCase() !== src.sha256 || (res.bytes !== undefined && res.bytes !== src.bytes)) {
   await markFailed(rec, {code: "remote_integrity_failed", detail: "le serveur n'a pas confirmé l'empreinte ou la taille envoyées"});
 }

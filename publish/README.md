@@ -74,6 +74,13 @@ messages and prompts are French.
   as the next publication tries to write, even if that attempt ends `failed` or
   `outcome_unknown`; its removal then answers `destination_superseded`. If the
   reservation cannot be confirmed, nothing is uploaded.
+- A definitive refusal of the upload, which wrote nothing (`file_exists`,
+  `publish_not_enabled`, `invalid_arguments`, `file_too_large`,
+  `atomic_replace_unavailable`), cancels the reservation: the index goes back
+  to the previous owner and is read back. An `outcome_unknown` keeps it.
+- A successful MCP result is opened before use: `structuredContent` first, else
+  the JSON in the first text part of `content` (all tools, and `write_file` /
+  `list_files`; for `read_file` only a clear envelope, never a file content).
 - E-mail: only a code known to happen before the sending (`not_connected`,
   `authorization_required`, `identity_unproven`) or a 4xx answer gives
   `failed`. A 5xx, any other error code or any answer without proof of

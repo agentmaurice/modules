@@ -41,7 +41,7 @@ const atCall = [];
 let logWrites = 0, destWrites = 0;
 function snapshot(name) { const logs = {}; const dests = {}; for (const p of Object.keys(store)) if (p.startsWith("/publish/dest/")) dests[p] = JSON.parse(store[p].text); for (const p of Object.keys(store)) if (p.startsWith("/publish/log/")) logs[p] = JSON.parse(store[p].text); atCall.push({name, logs, dests}); }
 function tamper() { for (const p of Object.keys(store)) if (p.startsWith("/publish/log/")) { const r = JSON.parse(store[p].text); r.revision += 5; store[p] = {text: JSON.stringify(r)}; } }
-async function callTool(name, args) {
+async function rawTool(name, args) {
   const shown = JSON.parse(JSON.stringify(args, (k, v) => (k === "content_base64" ? "[b64:" + sha(Buffer.from(v, "base64")).slice(0, 8) + "]" : v)));
   calls.push({name, args: shown, raw: args});
   const re = opts.ret_error;
@@ -106,6 +106,12 @@ async function callTool(name, args) {
     return {status_code: 200, body: {id: opts.mail_id_len ? "m".repeat(opts.mail_id_len) : "msg-1", threadId: "thr-1"}, assistant_summary: "sent"};
   }
   throw new Error("unexpected tool " + name);
+}
+async function callTool(name, args) {
+  const r = await rawTool(name, args);
+  if (!opts.envelope || (r && (r.isError || r.error))) return r;
+  if (opts.envelope === "structured") return {content: [{type: "text", text: "ignored"}], structuredContent: Array.isArray(r) ? {entries: r} : (name === "read_file" ? r : r)};
+  return {content: [{type: "text", text: JSON.stringify(r)}]};
 }
 globalThis.__pubNow = opts.now || "2026-11-07T10:00:00Z";
 const source = code.replace("import { callTool } from './tools/nats_bridge.ts';", "").split("{{ json . }}").join(opts.raw_ctx !== undefined ? opts.raw_ctx : JSON.stringify(ctx));
@@ -761,7 +767,7 @@ class Review4Test(unittest.TestCase):
     def test_the_destination_is_reserved_before_the_upload_and_a_failed_replacement_still_supersedes(self):
         fs = dict(FILES)
         fs['/docs/other.html'] = {'text': '<h1>New</h1>'}
-        for opts in ({}, {'upload_error': 'publish_not_enabled'}, {'upload_throw': 'connection reset'}):
+        for opts in ({}, {'upload_error': 'internal_error'}, {'upload_throw': 'connection reset'}):
             a = run_node('publish-web', 'publish', WEB, dict(fs))
             b = run_node('publish-web', 'publish', {**WEB, 'publication_id': 'page-2', 'source_path': '/docs/other.html', 'overwrite': 'oui'}, a['fs'], **opts)
             dests = list(b['atCall'][0]['dests'].values())
@@ -818,6 +824,45 @@ class Review5Test(unittest.TestCase):
             self.assertEqual(external(out), [], mode)
             self.assertEqual([k for k in out['fs'] if k.startswith('/publish/dest/')], [], mode)
             self.assertTrue(any(c['name'] == 'write_file' for c in out['calls']) is True)
+
+
+class Review6Test(unittest.TestCase):
+    def test_successful_mcp_envelopes_are_opened_on_the_three_channels(self):
+        for env in ('text', 'structured'):
+            for runner, pid, channel in ((web, 'page-1', 'web'), (email, 'mail-1', 'email'), (social, 'post-a', 'social')):
+                out = runner(envelope=env)
+                res = ok(self, out)
+                self.assertEqual((res['status'], res['channel']), ('published', channel), (env, channel))
+                rec = record(out, pid)
+                self.assertEqual(rec['status'], 'published')
+                if channel == 'web':
+                    self.assertEqual(rec['remote']['sha256'], HTML_SHA)
+                if channel == 'email':
+                    self.assertEqual(rec['remote']['message_id'], 'msg-1')
+                if channel == 'social':
+                    self.assertEqual(rec['remote']['post_id'], 'post-1')
+        done = web(envelope='text')
+        rm = run_node('publish-remove', 'remove', {'publication_id': 'page-1', **CONFIRMED}, done['fs'], envelope='text')
+        self.assertEqual(ok(self, rm)['status'], 'removed')
+        listed = run_node('publish-list', 'list', {}, done['fs'], envelope='text')
+        self.assertEqual(ok(self, listed)['total'], 1)
+        listed = run_node('publish-list', 'list', {}, done['fs'], envelope='structured')
+        self.assertEqual(ok(self, listed)['total'], 1)
+
+    def test_a_definitive_refusal_gives_the_destination_back_to_the_previous_owner(self):
+        fs = dict(FILES)
+        fs['/docs/other.html'] = {'text': '<h1>New</h1>'}
+        a = run_node('publish-web', 'publish', WEB, fs)
+        for code in ('file_exists', 'publish_not_enabled', 'invalid_arguments', 'file_too_large', 'atomic_replace_unavailable'):
+            b = run_node('publish-web', 'publish', {**WEB, 'publication_id': 'page-2', 'source_path': '/docs/other.html'}, a['fs'], upload_error=code)
+            self.assertIn(code, b['error'])
+            dests = [json.loads(v['text']) for k, v in b['fs'].items() if k.startswith('/publish/dest/')]
+            self.assertEqual([(d['owner'], d['state']) for d in dests], [('page-1', 'owner')], code)
+            rm = run_node('publish-remove', 'remove', {'publication_id': 'page-1', **CONFIRMED}, b['fs'])
+            self.assertEqual(ok(self, rm)['status'], 'removed', code)
+        # an unknown outcome keeps the reservation
+        c = run_node('publish-web', 'publish', {**WEB, 'publication_id': 'page-2', 'source_path': '/docs/other.html'}, a['fs'], upload_throw='connection reset')
+        self.assertTrue(run_node('publish-remove', 'remove', {'publication_id': 'page-1', **CONFIRMED}, c['fs'])['error'].startswith('destination_superseded'))
 
 
 class QueryTest(unittest.TestCase):
