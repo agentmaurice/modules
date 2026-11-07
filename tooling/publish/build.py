@@ -451,6 +451,9 @@ async function callExternal(name, args) {
   }
   r = mcpUnwrap(r, false);
   r = unwrap(r);
+  // The same detection on the final, unwrapped result, whatever path led to it (structuredContent, JSON text, data).
+  const final = structuredError(r, true);
+  if (final !== null) throw externalError(name, JSON.stringify({error: final.code, message: final.message}), false);
   if (isObject(r) && (r.isError === true || (typeof r.error === "string" && r.error) || (typeof r.error_code === "string" && r.error_code))) throw externalError(name, JSON.stringify({error: r.error || r.error_code, message: r.message}), false);
   if (!isObject(r)) throw externalError(name, "réponse inattendue", true);
   return r;

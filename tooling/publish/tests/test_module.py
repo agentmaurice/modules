@@ -111,6 +111,7 @@ async function rawTool(name, args) {
 }
 async function callTool(name, args) {
   const r = await rawTool(name, args);
+  if (opts.structured_error && ["ssh_upload_v1", "google_mail_send", "social_post_create_v1", "social_post_get_v1"].includes(name)) return {content: [{type: "text", text: "ok"}], structuredContent: {...r, error: {code: "remote_boom"}}};
   if (opts.ok_with_error && ["ssh_upload_v1", "ssh_remove_v1", "social_post_create_v1", "social_post_get_v1", "social_post_delete_v1"].includes(name) && r && typeof r === "object") return {...r, error: {code: "remote_boom"}};
   if (opts.iserror_env && ["ssh_upload_v1", "google_mail_send", "social_post_create_v1"].includes(name)) {
     const code = {ssh_upload_v1: "file_exists", google_mail_send: "not_connected", social_post_create_v1: "rate_limited"}[name];
@@ -950,6 +951,19 @@ class Review9Test(unittest.TestCase):
             rm = run_node('publish-remove', 'remove', {'publication_id': pid, **CONFIRMED}, d['fs'], ok_with_error=True)
             self.assertTrue(rm['error'].startswith('removal_failed'), rm)
             self.assertEqual(record(rm, pid)['status'], 'published')
+
+
+class Review10Test(unittest.TestCase):
+    def test_an_error_inside_structured_content_wins(self):
+        for runner, pid, status in ((web, 'page-1', 'failed'), (email, 'mail-1', 'outcome_unknown'), (social, 'post-a', 'failed')):
+            out = runner(structured_error=True)
+            self.assertIn('error', out, pid)
+            self.assertEqual(record(out, pid)['status'], status, pid)
+            self.assertNotEqual(record(out, pid)['status'], 'published', pid)
+        done = social()
+        st = run_node('publish-status', 'status', {'publication_id': 'post-a'}, done['fs'], structured_error=True)
+        self.assertTrue(st['error'].startswith('remote_boom'), st)
+        self.assertEqual((writes(st), record(st, 'post-a')), ([], record(done, 'post-a')))
 
 
 class QueryTest(unittest.TestCase):
