@@ -50,6 +50,18 @@ messages and prompts are French.
   without a 2xx `status_code` and a Gmail message `id` in `body` (the body
   may be JSON text). V0 does not lift the doubt itself (no `ssh_list_v1` or
   `social_post_get_v1` check).
+- `overwrite`, `resend_after_unknown` and `attempt` are resume options, not part
+  of the request: they do not enter the fingerprint that derives the id nor the
+  same-request check (`overwrite` is recorded in `options`). After a failed
+  integrity check, replay the same request with `overwrite: oui`.
+- Order of a replay, on the three channels: format checks, then the answer
+  `already_published` / `already_removed`, and only then the checks that depend
+  on the date (a scheduled post whose date has passed is still answered
+  `already_published`).
+- The journal write at `requested` is read back before any external call
+  (`journal_unverified`, no call otherwise). A Storage result carrying `error`
+  (string or object), `isError`, `status: "error"` or a JSON text with an
+  error is an error.
 - The `publication_id` is the caller's or derived. It is the
   `idempotency_key` of a social post. The same id with another request is
   refused (`publication_conflict`).

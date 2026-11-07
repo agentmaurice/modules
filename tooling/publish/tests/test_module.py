@@ -44,7 +44,7 @@ async function callTool(name, args) {
   const shown = JSON.parse(JSON.stringify(args, (k, v) => (k === "content_base64" ? "[b64:" + sha(Buffer.from(v, "base64")).slice(0, 8) + "]" : v)));
   calls.push({name, args: shown, raw: args});
   const re = opts.ret_error;
-  if (re && re.tool === name && (!re.prefix || String(args.path).startsWith(re.prefix))) return re.mode === "error" ? {error: re.msg} : {isError: true, content: [{type: "text", text: re.msg}]};
+  if (re && re.tool === name && (!re.prefix || String(args.path).startsWith(re.prefix))) return re.mode === "error" ? {error: re.msg} : re.mode === "object" ? {error: {code: "disk_full"}} : re.mode === "status" ? {status: "error", message: re.msg} : re.mode === "json" ? {content: [{type: "text", text: JSON.stringify({error: {code: "disk_full"}})}]} : re.mode === "string" ? JSON.stringify({error: "disk_full"}) : {isError: true, content: [{type: "text", text: re.msg}]};
   if (name === "read_file") {
     if (opts.read_error && args.path.includes(opts.read_error_path || "")) throw new Error(opts.read_error);
     const e = store[args.path];
@@ -54,6 +54,7 @@ async function callTool(name, args) {
     return {content: e.text};
   }
   if (name === "write_file") {
+    if (opts.drop_writes && args.path.startsWith("/publish/")) return {ok: true};
     if (opts.write_error && args.path.startsWith("/publish/")) throw new Error(opts.write_error);
     if (args.overwrite === false && store[args.path]) throw new Error("file exists: " + args.path);
     store[args.path] = {text: args.content};
@@ -279,7 +280,7 @@ class WebTest(unittest.TestCase):
         rec = record(out, 'page-1')
         self.assertEqual((rec['schema'], rec['status'], rec['revision']), ('publish.record/v1', 'published', 2))
         self.assertEqual(rec['source'], {'kind': 'storage', 'path': '/docs/page.html', 'sha256': HTML_SHA, 'bytes': len(HTML)})
-        self.assertEqual(rec['target'], {'ssh_target': 'site-main', 'path': 'news/page.html', 'overwrite': False})
+        self.assertEqual((rec['target'], rec['options']), ({'ssh_target': 'site-main', 'path': 'news/page.html'}, {'overwrite': False}))
         self.assertEqual([h['action'] for h in rec['history']], ['requested', 'published'])
 
     def test_a_derived_id_and_a_published_publication_is_not_published_twice(self):
@@ -628,6 +629,61 @@ class ReviewTest(unittest.TestCase):
         again = ok(self, run_node('publish-web', 'publish', WEB, rm['fs']))
         self.assertEqual((again['already_removed'], again['status']), (True, 'removed'))
         self.assertEqual(ok(self, run_node('publish-web', 'publish', {**WEB, 'publication_id': None, 'attempt': 2}, rm['fs']))['publication_id'][-3:], '-a2')
+
+
+class Review2Test(unittest.TestCase):
+    CASES = (('publish-web', WEB, 'ssh_upload_v1'), ('publish-email', EMAIL, 'google_mail_send'), ('publish-social', SOCIAL, 'social_post_create_v1'))
+
+    def test_a_structured_storage_error_on_the_first_journal_write_stops_before_any_external_call(self):
+        for mode in ('object', 'status', 'json', 'string', 'error', 'isError'):
+            for wf, ctx, tool in self.CASES:
+                out = run_node(wf, 'publish', ctx, dict(FILES), ret_error={'tool': 'write_file', 'prefix': '/publish/', 'mode': mode, 'msg': 'disk full'})
+                self.assertTrue(out['error'].startswith('storage_unavailable'), (wf, mode, out))
+                self.assertEqual(external(out), [], (wf, mode))
+                self.assertNotIn('/publish/log/' + ctx['publication_id'] + '.json', out['fs'])
+
+    def test_a_write_that_is_not_really_stored_stops_before_any_external_call(self):
+        for wf, ctx, tool in self.CASES:
+            out = run_node(wf, 'publish', ctx, dict(FILES), drop_writes=True)
+            self.assertTrue(out['error'].startswith('journal_unverified'), (wf, out))
+            self.assertEqual(external(out), [], wf)
+
+    def test_a_read_file_whose_content_mentions_error_is_not_an_error(self):
+        fs = {**FILES, '/docs/e.md': {'text': '{"error": "just text"}'}}
+        out = social(fs=fs, ctx={'content': None, 'source_path': '/docs/e.md'})
+        self.assertEqual(ok(self, out)['status'], 'published')
+
+    def test_a_published_scheduled_post_replays_after_its_date_on_every_channel(self):
+        sched = {**SOCIAL, 'mode': 'schedule', 'schedule_at': '2026-11-07T11:00:00Z'}
+        first = run_node('publish-social', 'publish', sched, dict(FILES))
+        self.assertEqual(ok(self, first)['status'], 'published')
+        late = run_node('publish-social', 'publish', sched, first['fs'], now='2026-11-08T10:00:00Z')
+        self.assertIs(ok(self, late)['already_published'], True)
+        self.assertEqual((external(late), writes(late)), ([], []))
+        # a new schedule in the past is still refused, and writes nothing
+        fresh = run_node('publish-social', 'publish', {**sched, 'publication_id': 'post-b'}, dict(FILES), now='2026-11-08T10:00:00Z')
+        self.assertTrue(fresh['error'].startswith('schedule_at_invalid'), fresh)
+        self.assertEqual((external(fresh), writes(fresh)), ([], []))
+        # same order on web and e-mail: a published publication answers before anything else can refuse it
+        for wf, ctx, runner in (('publish-web', WEB, web), ('publish-email', EMAIL, email)):
+            done = runner()
+            again = run_node(wf, 'publish', ctx, done['fs'], now='2030-01-01T00:00:00Z')
+            self.assertIs(ok(self, again)['already_published'], True, wf)
+            self.assertEqual((external(again), writes(again)), ([], []), wf)
+
+    def test_overwrite_resume_after_an_integrity_failure(self):
+        bad = web(bad_sha=True)
+        self.assertEqual(record(bad, 'page-1')['status'], 'failed')
+        resumed = run_node('publish-web', 'publish', {**WEB, 'overwrite': 'oui'}, bad['fs'])
+        res = ok(self, resumed)
+        self.assertEqual((res['status'], res['attempts'], res['publication_id']), ('published', 2, 'page-1'))
+        self.assertIs(external(resumed)[0]['raw']['overwrite'], True)
+        self.assertEqual(record(resumed, 'page-1')['options'], {'overwrite': True})
+        # derived id: overwrite, resend and attempt do not change it
+        a = web(ctx={'publication_id': None}, bad_sha=True)
+        pid = [k for k in a['fs'] if k.startswith('/publish/log/')][0].split('/')[-1][:-5]
+        b = run_node('publish-web', 'publish', {**WEB, 'publication_id': None, 'overwrite': 'oui'}, a['fs'])
+        self.assertEqual(ok(self, b)['publication_id'], pid)
 
 
 class QueryTest(unittest.TestCase):

@@ -121,13 +121,35 @@ function storageError(message, path) {
   if (isMissing(message)) fail("storage_not_found", path);
   fail("storage_unavailable", clip(redact(message), 200));
 }
+// An error is any result carrying `error` (string or {code, message} object), `isError`, status "error", or a JSON text
+// (the result itself, or the text parts of an MCP content array) that carries one. The JSON text rule does not apply to
+// read_file: its content is the file, which may legitimately contain an "error" key.
+function errorMessageOf(v) {
+  if (typeof v === "string") return v;
+  if (isObject(v)) return [v.code, v.message].filter((x) => typeof x === "string").join(" ") || JSON.stringify(v).slice(0, 200);
+  return "erreur";
+}
+function structuredError(r, textual) {
+  if (typeof r === "string") {
+    if (!textual || !/^\s*\{/.test(r)) return null;
+    try { return structuredError(JSON.parse(r), false); } catch (e) { return null; }
+  }
+  if (!isObject(r)) return null;
+  if (r.isError === true) {
+    if (typeof r.message === "string") return r.message;
+    if (Array.isArray(r.content) && isObject(r.content[0]) && typeof r.content[0].text === "string") return r.content[0].text;
+    return typeof r.error === "string" || isObject(r.error) ? errorMessageOf(r.error) : "isError";
+  }
+  if ((typeof r.error === "string" && r.error) || (isObject(r.error) && Object.keys(r.error).length)) return errorMessageOf(r.error) + (typeof r.message === "string" ? " " + r.message : "");
+  if (r.status === "error") return errorMessageOf(r.message || r.error || "status error");
+  if (textual && Array.isArray(r.content)) for (const part of r.content) if (isObject(part) && typeof part.text === "string") { const m = structuredError(part.text, true); if (m) return m; }
+  return null;
+}
 async function storageCall(name, args) {
   let r;
   try { r = await callTool(name, args); } catch (e) { storageError(String(e && e.message), args.path); }
-  if (isObject(r) && (r.isError === true || (typeof r.error === "string" && r.error))) {
-    const message = typeof r.error === "string" ? r.error + " " + (typeof r.message === "string" ? r.message : "") : (typeof r.message === "string" ? r.message : (Array.isArray(r.content) && isObject(r.content[0]) && typeof r.content[0].text === "string" ? r.content[0].text : JSON.stringify(r)));
-    storageError(message, args.path);
-  }
+  const message = structuredError(r, name !== "read_file");
+  if (message !== null) storageError(message, args.path);
   return unwrap(r);
 }
 async function readText(path, extra) {
@@ -243,7 +265,14 @@ function attemptOf(v, given) {
   if (n > 1 && given) fail("attempt_invalid", "attempt ne s'applique qu'à un publication_id dérivé");
   return n;
 }
-async function begin(channel, given, request, opts) {
+// The journal must really be at "requested" (written, then read back) before any external call.
+async function verifyRequested(rec) {
+  let fresh;
+  try { fresh = await readJson(recordPath(rec.publication_id)); } catch (e) { fail("journal_unverified", rec.publication_id + " : " + clip(String(e && e.message), 120)); }
+  if (!isObject(fresh) || fresh.status !== "requested" || fresh.revision !== rec.revision || fresh.request_sha256 !== rec.request_sha256 || fresh.attempts !== rec.attempts) fail("journal_unverified", rec.publication_id + " : le journal relu ne correspond pas à ce qui vient d'être écrit ; aucun appel externe");
+}
+// `precheck` runs only for a request that will really be sent: after the already_published / already_removed answers.
+async function begin(channel, given, request, opts, precheck) {
   const resend = !!(opts && opts.resend);
   const attempt = attemptOf(opts && opts.attempt, given);
   const sha = await fingerprint({channel, source: request.source, target: request.target});
@@ -255,22 +284,27 @@ async function begin(channel, given, request, opts) {
     if (existing.status === "published") return {rec: existing, done: {...summarize(existing), already_published: true}};
     if (existing.status === "removed") return {rec: existing, done: {...summarize(existing), already_removed: true}};
     if ((existing.status === "requested" || existing.status === "outcome_unknown") && !resend) fail("publication_outcome_unknown", id + " : la diffusion est en cours ou son issue est inconnue (statut " + existing.status + ") ; vérifiez la destination, puis utilisez un nouveau publication_id ou resend_after_unknown = oui");
+    if (precheck) precheck();
     const forced = existing.status !== "failed";
     existing.status = "requested";
     existing.attempts += 1;
     existing.error = null;
     existing.remote = null;
     existing.history.push({at, action: forced ? "resend_after_unknown" : "requested", note: "tentative " + existing.attempts + (forced ? " ; renvoi demandé malgré une issue inconnue" : "")});
+    existing.options = request.options || {};
     await commit(existing);
+    await verifyRequested(existing);
     return {rec: existing, done: null};
   }
-  const rec = {schema: "publish.record/v1", publication_id: id, channel, status: "requested", revision: 1, request_sha256: sha, created_at: at, updated_at: at, attempts: 1, source: request.source, target: request.target, remote: null, error: null, history: [{at, action: "requested", note: "demande enregistrée avant l'appel externe"}]};
+  if (precheck) precheck();
+  const rec = {schema: "publish.record/v1", publication_id: id, channel, status: "requested", revision: 1, options: request.options || {}, request_sha256: sha, created_at: at, updated_at: at, attempts: 1, source: request.source, target: request.target, remote: null, error: null, history: [{at, action: "requested", note: "demande enregistrée avant l'appel externe"}]};
   try { await writeJson(recordPath(id), rec, false); } catch (e) {
     const m = String(e && e.message);
     if (/already exists|file exists/i.test(m)) fail("concurrent_update", "le journal " + id + " vient d'être créé par un autre acteur");
     throw e;
   }
   remember(rec);
+  await verifyRequested(rec);
   return {rec, done: null};
 }
 async function markFailed(rec, e) {
@@ -454,7 +488,7 @@ const remotePath = remotePathOf(input.remote_path);
 const overwrite = confirmed(input.overwrite);
 const path = storagePathOf(input.source_path, "source_path");
 const src = await readSource(path, input.source_sha256);
-const begun = await begin("web", given, {source: {kind: "storage", path, sha256: src.sha256, bytes: src.bytes}, target: {ssh_target: target, path: remotePath, overwrite}}, {resend: confirmed(input.resend_after_unknown), attempt: input.attempt});
+const begun = await begin("web", given, {source: {kind: "storage", path, sha256: src.sha256, bytes: src.bytes}, target: {ssh_target: target, path: remotePath}, options: {overwrite}}, {resend: confirmed(input.resend_after_unknown), attempt: input.attempt});
 if (begun.done) return begun.done;
 const rec = begun.rec;
 let res;
@@ -515,7 +549,6 @@ let scheduleAt = null;
 if (mode === "schedule") {
   scheduleAt = input.schedule_at;
   if (typeof scheduleAt !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/.test(scheduleAt) || Number.isNaN(Date.parse(scheduleAt))) fail("schedule_at_invalid", "date RFC 3339 attendue");
-  if (Date.parse(scheduleAt) <= clock().getTime()) fail("schedule_at_invalid", "la date doit être dans le futur");
 } else if (input.schedule_at !== undefined && input.schedule_at !== null && input.schedule_at !== "") fail("schedule_at_invalid", "schedule_at n'est admis qu'avec mode = schedule");
 const hasContent = input.content !== undefined && input.content !== null && input.content !== "";
 const hasPath = input.source_path !== undefined && input.source_path !== null && input.source_path !== "";
@@ -544,7 +577,7 @@ if (input.media_paths !== undefined && input.media_paths !== null && input.media
     mediaRefs.push({path, sha256: m.sha256, bytes: m.bytes});
   }
 }
-const begun = await begin("social", given, {source, target: {channels, mode, schedule_at: scheduleAt, media: mediaRefs}}, {resend: confirmed(input.resend_after_unknown), attempt: input.attempt});
+const begun = await begin("social", given, {source, target: {channels, mode, schedule_at: scheduleAt, media: mediaRefs}}, {resend: confirmed(input.resend_after_unknown), attempt: input.attempt}, () => { if (scheduleAt && Date.parse(scheduleAt) <= clock().getTime()) fail("schedule_at_invalid", "la date doit être dans le futur"); });
 if (begun.done) return begun.done;
 const rec = begun.rec;
 const args = {channels, content, mode, idempotency_key: rec.publication_id};
