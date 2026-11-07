@@ -15,11 +15,11 @@
           "type": "callout",
           "title": "Relecture humaine",
           "tone": "info",
-          "value": "Chargez un document par son identifiant, relisez les rendus, puis approuvez et émettez avec une confirmation manuelle. Un document émis est verrouillé et son numéro n'est jamais réutilisé."
+          "value": "Ouvrez le formulaire « Relire un document » et saisissez l'identifiant (doc_id) du document : il est chargé ici. Relisez les rendus, puis approuvez et émettez avec une confirmation manuelle. Un document émis est verrouillé et son numéro n'est jamais réutilisé."
         },
         {
           "type": "button",
-          "label": "Charger le document",
+          "label": "Actualiser le document",
           "on_click": "load"
         },
         {

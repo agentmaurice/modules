@@ -27,9 +27,12 @@ messages) is French; `fr` is the only locale in V0.
 | `document-studio-review-read` | full record of a document and previews of its latest render, for the MiniApp |
 | `document-studio-template-read` | lists the templates, or the manifest and data schemas of one template |
 
-The `document-studio-review` MiniApp loads a document by its identifier, shows
-status, revision, number, pages and the table of renders (revision, mode,
-hash, path), and triggers a new render. Approval and issue go through the
+The `document-studio-review` MiniApp has no input component of its own (the
+MiniApp vocabulary has none): the document identifier (`doc_id`) is typed in
+the form "Relire un document" of `document-studio-review-read`, which loads
+the document. The MiniApp then shows status, revision, number, pages and the
+table of renders (revision, mode, hash, path), refreshes it, and triggers a
+new render. Approval and issue go through the
 Workflow forms, with the manual confirmation.
 
 ## Lifecycle
@@ -78,6 +81,16 @@ never formatted amounts nor totals. At render time the Workflow produces the
 strings the template expects (`1 250,00 €`) and the HT, per-rate VAT and TTC
 totals.
 
+Quote numbers are validated: quantity strictly positive, at most 3 decimals and
+at most 1,000,000; unit price excl. VAT zero or positive with at most 2
+decimals; VAT rate among 0, 2.1, 5.5, 10 and 20 (`data_invalid` otherwise). The
+quantity is displayed with its real decimals and the line total is
+quantity x price rounded to the cent.
+
+Every stored file (PDF and previews) is read back after the write: its SHA-256
+and size must match what the renderer announced, else `render_integrity_failed`
+and the record is not updated.
+
 ## Runtime notes
 
 - The render tool is called by its bare name `artifact_render_v1`: a registry
@@ -104,3 +117,4 @@ renderer, on synthetic data. They do not prove the behavior on a One.
 - No sending (mail, SFTP), no DOCX, one locale (`fr`).
 - `document-studio-export` reads the PDF in base64 through `read_file`; if the runtime does not allow it, the export fails on the hash (`export_integrity_failed`).
 - No Viewer `document` card for a preview in the chat yet.
+- Concurrent updates: Storage has no conditional write. Before each record write, `render`, `finalize`, `publish` and `cancel` read the record again and abandon with `concurrent_update` if its revision or status changed (for example a cancel during a render). Files already rendered stay orphaned in `r<revision>/`. The window is small but not null until Storage offers conditional writes.

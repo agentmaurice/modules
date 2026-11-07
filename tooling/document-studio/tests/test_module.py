@@ -42,13 +42,19 @@ const b64 = (s) => Buffer.from(s).toString("base64");
 const buffers = {};
 let races = opts.race || 0, hijacks = opts.hijack || 0;
 function pdf(label) { const bytes = Buffer.from("%PDF-1.7 fake " + label); return {bytes, sha: sha(bytes)}; }
+const RECORD = /\/record\.json$/;
+function cancelStored() {
+  for (const path of Object.keys(store)) if (RECORD.test(path)) { const r = JSON.parse(store[path].text); r.status = "cancelled"; r.revision += 1; store[path] = {text: JSON.stringify(r)}; }
+}
+let firstRead = true;
 async function callTool(name, args) {
   calls.push({name, args: JSON.parse(JSON.stringify(args, (k, v) => (k === "files" ? "[files]" : v)))});
   if (name === "artifact_render_v1") {
     if (opts.render_error) throw new Error(opts.render_error);
+    if (opts.concurrent === "render") cancelStored();
     calls[calls.length - 1].full = args;
     const f = pdf(args.mode + ":" + args.context.doc.number), p = pdf("png:" + args.mode);
-    const file = {filename: "document.pdf", mime_type: "application/pdf", bytes: f.bytes.length, sha256: f.sha};
+    const file = {filename: "document.pdf", mime_type: "application/pdf", bytes: f.bytes.length + (opts.bad_bytes ? 1 : 0), sha256: opts.bad_sha ? "0000" : f.sha};
     const prev = {page: 1, filename: "page-1.png", mime_type: "image/png", bytes: p.bytes.length, sha256: p.sha};
     if (opts.render_mode === "ref") { buffers["buf-doc-" + calls.length] = f.bytes.toString("base64"); file.ref = "buf-doc-" + calls.length; buffers["buf-png-" + calls.length] = p.bytes.toString("base64"); prev.ref = "buf-png-" + calls.length; }
     else { file.content_base64 = f.bytes.toString("base64"); prev.content_base64 = p.bytes.toString("base64"); }
@@ -59,6 +65,7 @@ async function callTool(name, args) {
     if (!e) throw new Error("not found: " + args.path);
     if (args.encoding === "base64") return {content: e.b64 !== undefined ? e.b64 : b64(e.text)};
     if (e.text === undefined) throw new Error("binary file");
+    if (opts.concurrent === "first_read" && RECORD.test(args.path) && firstRead) { firstRead = false; const copy = e.text; cancelStored(); return {content: copy}; }
     return {content: e.text};
   }
   if (name === "write_file") {
@@ -269,7 +276,62 @@ class TemplatesTest(unittest.TestCase):
         self.assertEqual(call['context']['company']['phone'], '')
 
 
+class MiniAppTest(unittest.TestCase):
+    def test_the_document_id_is_typed_in_a_workflow_form_and_buttons_target_events(self):
+        # The MiniApp vocabulary has no input component: fields come from the form of the targeted Workflow.
+        app = load(MODULE / 'agents/main/miniapps/document-studio-review.json')
+        workflows = {p.stem: load(p) for p in WORKFLOWS.glob('*.json')}
+        events = {e['event_id']: e for e in app['events']}
+        for event in events.values():
+            if event['trigger'] == 'form.submit':
+                forms = workflows[event['workflow']['workflow_id']].get('forms', [])
+                self.assertTrue(forms and any(f['name'] == 'doc_id' for f in forms[0]['fields']), event['event_id'])
+        self.assertEqual(events['review']['workflow']['workflow_id'], 'document-studio-review-read')
+        self.assertEqual(events['review']['workflow']['input'], {'doc_id': '{{ state.doc_id }}'})
+        self.assertEqual(events['load']['workflow']['workflow_id'], 'document-studio-review-read')
+        buttons = []
+
+        def walk(node):
+            if isinstance(node, dict):
+                if node.get('type') == 'button':
+                    buttons.append(node['on_click'])
+                for v in node.values():
+                    walk(v)
+            elif isinstance(node, list):
+                for v in node:
+                    walk(v)
+        walk(app['ui'])
+        self.assertTrue(buttons)
+        for target in buttons:
+            self.assertIn(target, events)
+
+
 class DraftTest(unittest.TestCase):
+    def test_quote_numbers_are_checked_and_the_displayed_quantity_matches_the_total(self):
+        def line(**over):
+            return {**QUOTE_DRAFT, 'lines': [{**QUOTE_DRAFT['lines'][0], **over}]}
+        for label, draft, needle in (
+                ('tiny quantity', line(quantity=0.0004), 'quantity : 3 décimales'),
+                ('4 decimals', line(quantity=1.2345), 'quantity : 3 décimales'),
+                ('huge quantity', line(quantity=1000001), 'quantity'),
+                ('price 3 decimals', line(unit_price_ht=10.005), 'unit_price_ht : 2 décimales'),
+                ('negative price', line(unit_price_ht=-1), 'unit_price_ht'),
+                ('odd vat', line(vat_rate=7), 'vat_rate : taux autorisés'),
+                ('vat 19.6', line(vat_rate=19.6), 'vat_rate : taux autorisés')):
+            out = run_node('document-studio-draft', 'create', {'prep': {'template_key': 'quote', 'locale': 'fr'}, 'draft': draft, 'doc_id': 'devis-test'}, {})
+            self.assertTrue(out['error'].startswith('data_invalid'), (label, out))
+            self.assertIn(needle, out['error'], label)
+            self.assertEqual(out['calls'], [], label)
+        for rate in (0, 2.1, 5.5, 10, 20):
+            ok(self, run_node('document-studio-draft', 'create', {'prep': {'template_key': 'quote', 'locale': 'fr'}, 'draft': line(vat_rate=rate), 'doc_id': 'devis-test'}, {}))
+        summary = ok(self, run_node('document-studio-draft', 'create', {'prep': {'template_key': 'quote', 'locale': 'fr'}, 'draft': line(quantity=0.001, unit_price_ht=1500, unit='jour'), 'doc_id': 'devis-test'}, {}))
+        row = summary['computed']['lines'][0]
+        self.assertEqual((row['quantity'], row['total_ht']), ('0,001 jour', '1,50 €'))
+        summary = ok(self, run_node('document-studio-draft', 'create', {'prep': {'template_key': 'quote', 'locale': 'fr'}, 'draft': line(quantity=2.125, unit_price_ht=0.33, unit='h'), 'doc_id': 'devis-test'}, {}))
+        row = summary['computed']['lines'][0]
+        self.assertEqual((row['quantity'], row['total_ht']), ('2,125 h', '0,70 €'))  # 2.125 x 0.33 = 0.70125
+
+
     def test_quote_totals_are_computed_from_the_lines_and_never_from_the_model(self):
         draft = {**QUOTE_DRAFT, 'totals': {'total_ht': '1,00 €', 'total_ttc': '1,00 €'}, 'amount': 5}
         summary, _ = create_quote(self, seeded(), draft=draft)
@@ -392,6 +454,38 @@ class LifecycleTest(unittest.TestCase):
         record = json.loads(out['fs']['/document-studio/docs/devis-test/record.json']['text'])
         pdf = out['fs'][record['issued']['file']['path']]['b64']
         self.assertEqual(record['issued']['file']['sha256'], hashlib.sha256(base64.b64decode(pdf)).hexdigest())
+
+    def test_a_wrong_fingerprint_or_size_is_detected_in_every_storage_mode(self):
+        for mode in ('inline', 'ref'):
+            for label, opts in (('sha', {'bad_sha': True}), ('size', {'bad_bytes': True})):
+                _, fs = create_quote(self, seeded())
+                before = fs['/document-studio/docs/devis-test/record.json']['text']
+                out = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs, render_mode='ref' if mode == 'ref' else 'inline', **opts)
+                self.assertTrue(out['error'].startswith('render_integrity_failed'), (mode, label, out))
+                self.assertEqual(out['fs']['/document-studio/docs/devis-test/record.json']['text'], before, 'the record must not be updated')
+        _, fs = create_quote(self, seeded())
+        fs = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs)['fs']
+        fs = run_node('document-studio-finalize', 'finalize', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs)['fs']
+        issued = run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs, render_mode='ref', bad_sha=True)
+        self.assertTrue(issued['error'].startswith('render_integrity_failed'), issued)
+        record = json.loads(issued['fs']['/document-studio/docs/devis-test/record.json']['text'])
+        self.assertEqual(record['status'], 'approved')
+
+    def test_a_concurrent_cancel_is_never_overwritten(self):
+        _, fs = create_quote(self, seeded())
+        out = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs, concurrent='render')
+        self.assertTrue(out['error'].startswith('concurrent_update'), out)
+        self.assertEqual(json.loads(out['fs']['/document-studio/docs/devis-test/record.json']['text'])['status'], 'cancelled')
+        _, fs = create_quote(self, seeded())
+        fs = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs)['fs']
+        for name, node_id, extra in (('document-studio-finalize', 'finalize', {}), ('document-studio-cancel', 'cancel', {'reason': 'x'})):
+            out = run_node(name, node_id, {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui', **extra}, fs, concurrent='first_read')
+            self.assertTrue(out['error'].startswith('concurrent_update'), (name, out))
+            self.assertEqual(json.loads(out['fs']['/document-studio/docs/devis-test/record.json']['text'])['status'], 'cancelled')
+        fs = run_node('document-studio-finalize', 'finalize', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs)['fs']
+        out = run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs, concurrent='render')
+        self.assertTrue(out['error'].startswith('concurrent_update'), out)
+        self.assertEqual(json.loads(out['fs']['/document-studio/docs/devis-test/record.json']['text'])['status'], 'cancelled')
 
     def test_issued_and_cancelled_documents_are_locked(self):
         _, out = self.run_lifecycle()

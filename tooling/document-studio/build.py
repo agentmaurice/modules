@@ -42,10 +42,10 @@ QUOTE_DRAFT_SCHEMA = {
                 'type': 'object', 'required': ['description', 'quantity', 'unit_price_ht', 'vat_rate'],
                 'properties': {
                     'description': {'type': 'string', 'minLength': 1},
-                    'quantity': {'type': 'number', 'exclusiveMinimum': 0, 'maximum': 1000000},
+                    'quantity': {'type': 'number', 'exclusiveMinimum': 0, 'maximum': 1000000, 'description': 'At most 3 decimals'},
                     'unit': {'type': 'string'},
-                    'unit_price_ht': {'type': 'number', 'minimum': 0, 'maximum': 1000000000},
-                    'vat_rate': {'type': 'number', 'minimum': 0, 'maximum': 100}}}},
+                    'unit_price_ht': {'type': 'number', 'minimum': 0, 'maximum': 1000000000, 'description': 'At most 2 decimals'},
+                    'vat_rate': {'type': 'number', 'minimum': 0, 'maximum': 100, 'description': 'One of 0, 2.1, 5.5, 10, 20'}}}},
         'valid_until': {'type': 'string', 'format': 'date'},
         'terms': {'type': 'array', 'items': {'type': 'string'}},
         'payment_terms': {'type': 'string'}},
@@ -189,6 +189,20 @@ function fmtMoney(cents) {
   return (cents < 0 ? "-" : "") + grouped + "," + String(abs % 100).padStart(2, "0") + " €";
 }
 function fmtNumber(n) { return String(n).replace(".", ","); }
+const VAT_RATES = [0, 2.1, 5.5, 10, 20];
+function decimalsAtMost(n, places) { const scaled = n * Math.pow(10, places); return Math.abs(scaled - Math.round(scaled)) < 1e-6; }
+function checkQuoteNumbers(d) {
+  const errors = [];
+  d.lines.forEach((l, i) => {
+    const at = "lines[" + i + "]";
+    if (!(l.quantity > 0) || l.quantity > 1000000) errors.push(at + ".quantity : doit être strictement positif et ne pas dépasser 1000000");
+    else if (!decimalsAtMost(l.quantity, 3)) errors.push(at + ".quantity : 3 décimales au plus");
+    if (!(l.unit_price_ht >= 0)) errors.push(at + ".unit_price_ht : positif ou nul");
+    else if (!decimalsAtMost(l.unit_price_ht, 2)) errors.push(at + ".unit_price_ht : 2 décimales au plus");
+    if (!VAT_RATES.includes(l.vat_rate)) errors.push(at + ".vat_rate : taux autorisés 0, 2.1, 5.5, 10 ou 20");
+  });
+  if (errors.length) fail("data_invalid", "données du gabarit quote : " + errors.slice(0, 8).join(" ; "));
+}
 function fmtRate(r) { return fmtNumber(r) + " %"; }
 
 // Amounts and totals are computed here, in integer cents, from the lines. They are never taken from the model.
@@ -198,11 +212,11 @@ function quoteData(d) {
   const groups = new Map();
   for (const l of d.lines) {
     const unitCents = Math.round(l.unit_price_ht * 100);
-    const totalCents = Math.round(l.quantity * unitCents);
+    const totalCents = Math.round(Math.round(l.quantity * 1000) * unitCents / 1000);
     const rateHundredths = Math.round(l.vat_rate * 100);
     ht += totalCents;
     groups.set(rateHundredths, (groups.get(rateHundredths) || 0) + totalCents);
-    lines.push({description: l.description, quantity: fmtNumber(Number(l.quantity.toFixed(3))) + (l.unit ? " " + l.unit : ""), unit_price_ht: fmtMoney(unitCents), vat_rate: fmtRate(rateHundredths / 100), total_ht: fmtMoney(totalCents)});
+    lines.push({description: l.description, quantity: fmtNumber(l.quantity) + (l.unit ? " " + l.unit : ""), unit_price_ht: fmtMoney(unitCents), vat_rate: fmtRate(rateHundredths / 100), total_ht: fmtMoney(totalCents)});
   }
   let vatTotal = 0;
   const vat = Array.from(groups.entries()).sort((a, b) => a[0] - b[0]).map(([rate, base]) => {
@@ -222,6 +236,7 @@ function normalizeData(key, data, id) {
   if (key === "quote" && (d.reference === undefined || d.reference === null || d.reference === "")) d = {...d, reference: id.toUpperCase()};
   const tpl = TEMPLATES[key];
   validateSchema(tpl.draft_schema, d, "données du gabarit " + key);
+  if (key === "quote") checkQuoteNumbers(d);
   validateSchema(tpl.input_schema, templateData(key, d), "gabarit " + key);
   return d;
 }
@@ -258,12 +273,22 @@ async function listPaths(path) {
   return entries.map((e) => (typeof e === "string" ? e : (isObject(e) && typeof e.path === "string" ? e.path : ""))).filter(Boolean);
 }
 function recordPath(id) { return ROOT + "/docs/" + id + "/record.json"; }
+function remember(rec) { Object.defineProperty(rec, "_loaded", {value: {revision: rec.revision, status: rec.status}, enumerable: false, writable: true, configurable: true}); return rec; }
 async function loadRecord(id) {
   let rec;
   try { rec = await readJson(recordPath(id)); } catch (e) { fail("document_not_found", id); }
-  return checkRecord(rec, id);
+  return remember(checkRecord(rec, id));
 }
-async function saveRecord(rec) { await writeJson(recordPath(rec.doc_id), rec, true); }
+// Storage has no conditional write: the record is read again just before the write, and the write is abandoned when
+// another actor changed it (revision or status). The window is small, not null.
+async function saveRecord(rec) {
+  let fresh;
+  try { fresh = await readJson(recordPath(rec.doc_id)); } catch (e) { fail("concurrent_update", "le dossier a disparu ou est illisible : " + rec.doc_id); }
+  const was = rec._loaded;
+  if (!isObject(fresh) || !was || fresh.revision !== was.revision || fresh.status !== was.status || fresh.status === "cancelled" && was.status !== "cancelled") fail("concurrent_update", "le dossier " + rec.doc_id + " a changé pendant l'opération ; rien n'a été écrit");
+  await writeJson(recordPath(rec.doc_id), rec, true);
+  remember(rec);
+}
 async function loadProfile() {
   let stored = null;
   try { stored = await readJson(ROOT + "/profile.json"); } catch (e) { stored = null; }
@@ -380,7 +405,14 @@ async function storeFile(path, f) {
     args.encoding = "base64";
   } else fail("render_output_missing", path);
   await callTool("write_file", args);
-  return {path, sha256: sha, bytes: typeof f.bytes === "number" ? f.bytes : null, mime: typeof f.mime_type === "string" ? f.mime_type : "application/octet-stream"};
+  // Read the stored file back whatever the mode: its fingerprint and size must match what the renderer announced.
+  let stored;
+  try { stored = b64ToBytes((await readText(path, {encoding: "base64"})).replace(/\s+/g, "")); } catch (e) { fail("render_integrity_failed", path + " : relecture impossible"); }
+  const actual = await sha256Hex(stored);
+  if (sha && sha !== actual) fail("render_integrity_failed", path + " : empreinte différente de celle annoncée");
+  if (typeof f.bytes === "number" && f.bytes !== stored.length) fail("render_integrity_failed", path + " : taille différente de celle annoncée");
+  sha = actual;
+  return {path, sha256: sha, bytes: stored.length, mime: typeof f.mime_type === "string" ? f.mime_type : "application/octet-stream"};
 }
 async function storePreviews(dir, res) {
   const previews = [];
@@ -810,9 +842,9 @@ def miniapp():
         'description': 'Relire un document, relancer un rendu, l\'approuver puis l\'émettre.',
         'ui': {'renderer': 'component', 'component': 'document-studio-review', 'configuration': {'layout': [
             {'type': 'callout', 'title': 'Relecture humaine', 'tone': 'info',
-             'value': 'Chargez un document par son identifiant, relisez les rendus, puis approuvez et émettez avec une confirmation manuelle. '
+             'value': 'Ouvrez le formulaire « Relire un document » et saisissez l\'identifiant (doc_id) du document : il est chargé ici. Relisez les rendus, puis approuvez et émettez avec une confirmation manuelle. '
                       'Un document émis est verrouillé et son numéro n\'est jamais réutilisé.'},
-            {'type': 'button', 'label': 'Charger le document', 'on_click': 'load'},
+            {'type': 'button', 'label': 'Actualiser le document', 'on_click': 'load'},
             {'type': 'section', 'title': 'Document', 'children': [
                 {'type': 'kpi_grid', 'items': [
                     {'label': 'Statut', 'value': {'state': 'review.status'}},
