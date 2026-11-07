@@ -61,6 +61,7 @@ async function callTool(name, args) {
     return {status: "ok", mode: args.mode, output: "pdf", file, pages: 1, previews: [prev], provenance: {engine: "mock"}};
   }
   if (name === "read_file") {
+    if (opts.read_error && args.path.includes(opts.read_error_path || "") && args.encoding === undefined) throw new Error(opts.read_error);
     const e = store[args.path];
     if (!e) throw new Error("not found: " + args.path);
     if (args.encoding === "base64") return {content: e.b64 !== undefined ? e.b64 : b64(e.text)};
@@ -408,6 +409,36 @@ class DraftTest(unittest.TestCase):
         forced = ok(self, run_node('document-studio-plan', 'prepare', {'brief': 'x', 'template_key': 'meeting-minutes'}))
         self.assertEqual(forced['template_key'], 'meeting-minutes')
 
+    def test_plan_refuses_malformed_model_answers(self):
+        prep = ok(self, run_node('document-studio-plan', 'prepare', {'brief': 'Un devis'}))
+        good = {'template_key': 'quote', 'title': 'T', 'missing': [], 'questions': []}
+        for label, bad in (('missing string', {**good, 'missing': 'client, prix'}), ('questions string', {**good, 'questions': 'Quel client ?'}),
+                           ('missing mixed', {**good, 'missing': ['a', 3]}), ('title number', {**good, 'title': 5}),
+                           ('template_key number', {**good, 'template_key': 7})):
+            out = run_node('document-studio-plan', 'normalize', {'prep': prep, 'plan_draft': {'text': json.dumps(bad)}})
+            self.assertTrue(out['error'].startswith('llm_output_invalid'), (label, out))
+        ok(self, run_node('document-studio-plan', 'normalize', {'prep': prep, 'plan_draft': good}))
+
+    def test_null_handling_in_drafts(self):
+        minutes = json.loads(json.dumps(MINUTES_DRAFT))
+        minutes['meeting']['time'] = None
+        minutes['meeting']['place'] = None
+        summary = ok(self, run_node('document-studio-draft', 'create', {'prep': {'template_key': 'meeting-minutes', 'locale': 'fr'}, 'draft': minutes, 'doc_id': 'cr-test'}, {}))
+        self.assertNotIn('time', summary['data']['meeting'])
+        for label, mutate in (('required null', lambda d: d['meeting'].__setitem__('title', None)),
+                              ('null item', lambda d: d['agenda'].append(None)),
+                              ('wrong item type', lambda d: d['agenda'].append(3)),
+                              ('wrong optional type', lambda d: d['meeting'].__setitem__('time', 12)),
+                              ('bad date', lambda d: d['meeting'].__setitem__('date', '2026-13-01')),
+                              ('empty title', lambda d: d['meeting'].__setitem__('title', ''))):
+            bad = json.loads(json.dumps(MINUTES_DRAFT))
+            mutate(bad)
+            out = run_node('document-studio-draft', 'create', {'prep': {'template_key': 'meeting-minutes', 'locale': 'fr'}, 'draft': bad, 'doc_id': 'cr-test'}, {})
+            self.assertTrue(out['error'].startswith('data_invalid'), (label, out))
+        quote = json.loads(json.dumps(QUOTE_DRAFT))
+        quote['customer']['contact'] = None
+        ok(self, run_node('document-studio-draft', 'create', {'prep': {'template_key': 'quote', 'locale': 'fr'}, 'draft': quote, 'doc_id': 'devis-test'}, {}))
+
     def test_template_read(self):
         listing = ok(self, run_node('document-studio-template-read', 'read', {}))
         self.assertEqual({t['template_key'] for t in listing['templates']}, {'quote', 'meeting-minutes'})
@@ -494,6 +525,23 @@ class LifecycleTest(unittest.TestCase):
         fs2 = run_node('document-studio-finalize', 'finalize', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, first['fs'])['fs']
         issued = ok(self, run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs2))
         self.assertRegex(issued['issued']['file']['path'], r'/issued/DEV-\d{4}-0001-[0-9a-f]{12}\.pdf$')
+
+    def test_read_errors_are_never_swallowed(self):
+        _, fs = create_quote(self, seeded())
+        _, fs = create_quote(self, fs, doc_id='devis-deux')
+        for node, wf, ctx in (('list', 'document-studio-list', {}), ('read', 'document-studio-review-read', {'doc_id': 'devis-test'}),
+                              ('render', 'document-studio-render', {'doc_id': 'devis-test'})):
+            out = run_node(wf, node, ctx, fs, read_error='503 unavailable', read_error_path='devis-deux' if node == 'list' else 'devis-test')
+            self.assertTrue(out['error'].startswith('storage_unavailable: 503'), (wf, out))
+        vanished = ok(self, run_node('document-studio-list', 'list', {}, fs, read_error='file not found', read_error_path='devis-deux'))
+        self.assertEqual([i['doc_id'] for i in vanished['items']], ['devis-test'])
+        broken = dict(fs)
+        broken['/document-studio/docs/devis-deux/record.json'] = text_file('{not json')
+        for wf, node, ctx in (('document-studio-list', 'list', {}), ('document-studio-review-read', 'read', {'doc_id': 'devis-deux'}), ('document-studio-render', 'render', {'doc_id': 'devis-deux'})):
+            out = run_node(wf, node, ctx, broken)
+            self.assertTrue(out['error'].startswith('record_corrupt: devis-deux') or 'devis-deux' in out['error'] and out['error'].startswith('record_corrupt'), (wf, out))
+        self.assertTrue(run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, seeded(False) | {k: v for k, v in fs.items() if 'devis-test' in k}, read_error='permission denied', read_error_path='profile.json')['error'].startswith('storage_unavailable'))
+        self.assertTrue(run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, {k: v for k, v in fs.items() if 'devis-test' in k} | {'/document-studio/profile.json': text_file('{oops')})['error'].startswith('profile_corrupt'))
 
     def test_a_storage_outage_is_not_an_empty_list(self):
         _, fs = create_quote(self, seeded())

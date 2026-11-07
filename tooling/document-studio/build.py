@@ -149,14 +149,20 @@ function checkSchema(schema, value, path, root, errors) {
     if (!node) fail("schema_ref_unknown", schema.$ref);
     return checkSchema(node, value, path, root, errors);
   }
-  const t = schema.type;
-  if (t) {
-    const ok = t === "string" ? typeof value === "string" : t === "number" ? (typeof value === "number" && Number.isFinite(value)) : t === "integer" ? Number.isInteger(value) : t === "boolean" ? typeof value === "boolean" : t === "array" ? Array.isArray(value) : t === "object" ? isObject(value) : true;
-    if (!ok) { errors.push(path + " : type " + t + " attendu"); return; }
+  if (value === null) {
+    if (schema.nullable === true || (Array.isArray(schema.type) && schema.type.includes("null")) || schema.type === "null") return;
+    errors.push(path + " : null non autorisé");
+    return;
+  }
+  const types = Array.isArray(schema.type) ? schema.type : (schema.type ? [schema.type] : []);
+  if (types.length) {
+    const ok = types.some((t) => t === "null" ? false : t === "string" ? typeof value === "string" : t === "number" ? (typeof value === "number" && Number.isFinite(value)) : t === "integer" ? Number.isInteger(value) : t === "boolean" ? typeof value === "boolean" : t === "array" ? Array.isArray(value) : t === "object" ? isObject(value) : true);
+    if (!ok) { errors.push(path + " : type " + types.join("|") + " attendu"); return; }
   }
   if (schema.enum && !schema.enum.includes(value)) errors.push(path + " : valeur hors liste");
   if (typeof value === "string") {
     if (schema.minLength !== undefined && value.length < schema.minLength) errors.push(path + " : vide ou trop court");
+    if (schema.maxLength !== undefined && value.length > schema.maxLength) errors.push(path + " : trop long");
     if (schema.pattern && !new RegExp(schema.pattern).test(value)) errors.push(path + " : format invalide");
     if (schema.format === "date" && !validDate(value)) errors.push(path + " : date AAAA-MM-JJ invalide");
   }
@@ -173,9 +179,28 @@ function checkSchema(schema, value, path, root, errors) {
   if (isObject(value)) {
     for (const key of schema.required || []) if (value[key] === undefined || value[key] === null) errors.push(path + "." + key + " : requis");
     const props = schema.properties || {};
-    for (const key of Object.keys(props)) if (value[key] !== undefined && value[key] !== null) checkSchema(props[key], value[key], path + "." + key, root, errors);
+    for (const key of Object.keys(props)) if (value[key] !== undefined) checkSchema(props[key], value[key], path + "." + key, root, errors);
     if (schema.additionalProperties === false) for (const key of Object.keys(value)) if (!(key in props)) errors.push(path + "." + key + " : champ inconnu");
   }
+}
+function resolveRef(schema, root) {
+  let node = schema;
+  while (node && node.$ref) { let n = root; for (const part of node.$ref.slice(2).split("/")) n = n ? n[part] : undefined; node = n; }
+  return node || {};
+}
+function isNullable(schema, root) { const n = resolveRef(schema, root); return n.nullable === true || n.type === "null" || (Array.isArray(n.type) && n.type.includes("null")); }
+// An optional property set to null is removed before validation (simplest for a model); a required one stays and fails.
+function stripNulls(schema, value, root) {
+  const node = resolveRef(schema, root);
+  if (Array.isArray(value)) return node.items ? value.map((v) => stripNulls(node.items, v, root)) : value;
+  if (!isObject(value)) return value;
+  const props = node.properties || {};
+  const out = {};
+  for (const [key, v] of Object.entries(value)) {
+    if (v === null && !(node.required || []).includes(key) && !(props[key] && isNullable(props[key], root))) continue;
+    out[key] = props[key] ? stripNulls(props[key], v, root) : v;
+  }
+  return out;
 }
 function validateSchema(schema, value, label) {
   const errors = [];
@@ -242,7 +267,7 @@ function templateData(key, data) { return key === "quote" ? quoteData(data) : da
 // Draft data: reference default, validation against the draft schema, then against the template input schema.
 function normalizeData(key, data, id) {
   if (!isObject(data)) fail("data_invalid", "les données doivent être un objet");
-  let d = data;
+  let d = stripNulls(TEMPLATES[key].draft_schema, data, TEMPLATES[key].draft_schema);
   if (key === "quote" && (d.reference === undefined || d.reference === null || d.reference === "")) d = {...d, reference: id.toUpperCase()};
   const tpl = TEMPLATES[key];
   validateSchema(tpl.draft_schema, d, "données du gabarit " + key);
@@ -266,13 +291,22 @@ function unwrap(r) {
   if (isObject(r) && isObject(r.data) && r.content === undefined && r.file === undefined && r.status === undefined) return r.data;
   return r;
 }
+function isMissing(message) { return /not found|does not exist|no such/i.test(message); }
 async function readText(path, extra) {
-  const r = unwrap(await callTool("read_file", {path, ...(extra || {})}));
+  let r;
+  try { r = unwrap(await callTool("read_file", {path, ...(extra || {})})); } catch (e) {
+    const message = String(e && e.message);
+    if (isMissing(message)) fail("storage_not_found", path);
+    fail("storage_unavailable", message.slice(0, 200));
+  }
   if (typeof r === "string") return r;
   if (isObject(r) && typeof r.content === "string") return r.content;
   fail("storage_read_failed", path);
 }
-async function readJson(path) { return JSON.parse(await readText(path)); }
+async function readJson(path) {
+  const raw = await readText(path);
+  try { return JSON.parse(raw); } catch (e) { fail("json_corrupt", path); }
+}
 async function writeJson(path, value, overwrite) {
   await callTool("write_file", {path, content: JSON.stringify(value, null, 2) + "\n", overwrite});
 }
@@ -280,7 +314,7 @@ async function listPaths(path) {
   let r;
   try { r = unwrap(await callTool("list_files", {path})); } catch (e) {
     const message = String(e && e.message);
-    if (/not found|does not exist|no such/i.test(message)) return [];
+    if (isMissing(message)) return [];
     fail("storage_unavailable", message.slice(0, 200));
   }
   const entries = Array.isArray(r) ? r : (isObject(r) ? (r.files || r.entries || []) : []);
@@ -290,14 +324,24 @@ function recordPath(id) { return ROOT + "/docs/" + id + "/record.json"; }
 function remember(rec) { Object.defineProperty(rec, "_loaded", {value: {revision: rec.revision, status: rec.status}, enumerable: false, writable: true, configurable: true}); return rec; }
 async function loadRecord(id) {
   let rec;
-  try { rec = await readJson(recordPath(id)); } catch (e) { fail("document_not_found", id); }
+  try { rec = await readJson(recordPath(id)); } catch (e) {
+    const m = String(e && e.message);
+    if (m.startsWith("storage_not_found")) fail("document_not_found", id);
+    if (m.startsWith("json_corrupt")) fail("record_corrupt", id);
+    throw e;
+  }
   return remember(checkRecord(rec, id));
 }
 // Storage has no conditional write: the record is read again just before the write, and the write is abandoned when
 // another actor changed it (revision or status). The window is small, not null.
 async function saveRecord(rec) {
   let fresh;
-  try { fresh = await readJson(recordPath(rec.doc_id)); } catch (e) { fail("concurrent_update", "le dossier a disparu ou est illisible : " + rec.doc_id); }
+  try { fresh = await readJson(recordPath(rec.doc_id)); } catch (e) {
+    const m = String(e && e.message);
+    if (m.startsWith("storage_not_found")) fail("concurrent_update", "le dossier a disparu : " + rec.doc_id);
+    if (m.startsWith("json_corrupt")) fail("record_corrupt", rec.doc_id);
+    throw e;
+  }
   const was = rec._loaded;
   if (!isObject(fresh) || !was || fresh.revision !== was.revision || fresh.status !== was.status || fresh.status === "cancelled" && was.status !== "cancelled") fail("concurrent_update", "le dossier " + rec.doc_id + " a changé pendant l'opération ; rien n'a été écrit");
   await writeJson(recordPath(rec.doc_id), rec, true);
@@ -305,7 +349,12 @@ async function saveRecord(rec) {
 }
 async function loadProfile() {
   let stored = null;
-  try { stored = await readJson(ROOT + "/profile.json"); } catch (e) { stored = null; }
+  try { stored = await readJson(ROOT + "/profile.json"); } catch (e) {
+    const m = String(e && e.message);
+    if (m.startsWith("json_corrupt")) fail("profile_corrupt", "profile.json illisible");
+    if (!m.startsWith("storage_not_found")) throw e;
+    stored = null;
+  }
   if (!isObject(stored)) fail("profile_missing", "enregistrez la charte par document-studio-profile-save");
   return projectProfile(normalizeProfile(stored));
 }
@@ -456,7 +505,7 @@ async function reserveNumber(rec) {
     const path = dir + "/" + seq + ".json";
     try { await writeJson(path, {doc_id: rec.doc_id, at: nowIso()}, false); } catch (e) { last = String(e && e.message); continue; }
     let token = null;
-    try { token = await readJson(path); } catch (e) { last = String(e && e.message); continue; }
+    try { token = await readJson(path); } catch (e) { last = String(e && e.message); if (last.startsWith("storage_unavailable")) throw e; continue; }
     if (isObject(token) && token.doc_id === rec.doc_id) return TEMPLATES[rec.template_key].prefix + "-" + year + "-" + seq;
     last = "numéro " + seq + " pris par un autre document";
   }
@@ -558,11 +607,17 @@ const input = {{ json . }};
 const prep = input.prep;
 const out = parseJsonValue(input.plan_draft);
 if (!isObject(out)) fail("llm_output_invalid", "objet attendu");
+if (out.template_key !== undefined && out.template_key !== null && typeof out.template_key !== "string") fail("llm_output_invalid", "template_key doit être une chaîne");
 const key = prep.template_key || out.template_key;
 if (typeof key !== "string" || !TEMPLATES[key]) fail("template_unknown", String(key));
-const list = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" && x.trim()).map((x) => x.trim().slice(0, 300)).slice(0, 20) : []);
+const list = (v, name) => {
+  if (v === undefined || v === null) return [];
+  if (!Array.isArray(v) || !v.every((x) => typeof x === "string")) fail("llm_output_invalid", name + " doit être un tableau de chaînes");
+  return v.filter((x) => x.trim()).map((x) => x.trim().slice(0, 300)).slice(0, 20);
+};
+if (out.title !== undefined && out.title !== null && typeof out.title !== "string") fail("llm_output_invalid", "title doit être une chaîne");
 const title = typeof out.title === "string" && out.title.trim() ? out.title.trim().slice(0, 120) : TEMPLATES[key].title;
-return {template_key: key, title, locale: prep.locale, missing: list(out.missing), questions: list(out.questions)};
+return {template_key: key, title, locale: prep.locale, missing: list(out.missing, "missing"), questions: list(out.questions, "questions")};
 '''
 
 DRAFT_PREPARE = r'''
@@ -718,7 +773,7 @@ if (ids.length > 200) fail("too_many_documents", "plus de 200 documents : filtre
 const items = [];
 for (const id of ids.sort()) {
   let rec;
-  try { rec = await loadRecord(id); } catch (e) { continue; }
+  try { rec = await loadRecord(id); } catch (e) { if (String(e && e.message).startsWith("document_not_found")) continue; throw e; }
   if (input.status && rec.status !== input.status) continue;
   if (input.template_key && rec.template_key !== input.template_key) continue;
   const s = summarize(rec);
