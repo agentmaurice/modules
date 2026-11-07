@@ -113,13 +113,42 @@ function unwrap(r) {
   if (isObject(r) && isObject(r.data) && r.content === undefined && r.file === undefined && r.status === undefined) return r.data;
   return r;
 }
-function isMissing(message) { return /not found|does not exist|no such/i.test(message); }
+// Absence is recognised on a structured signal only, never on free text: a code in the list, an explicit HTTP 404, or the exact
+// message of the storage tools for an absent file ("failed to download file: ... status 404 / object not found", read from
+// the chatserver storage MCP). Anything else, "Storage credential not found" included, is storage_unavailable.
+const MISSING_CODES = ["not_found", "file_not_found", "enoent", "no_such_file"];
+const MISSING_MESSAGE = /^failed to (?:download file|list files): [^\n]*(?:status 404|object not found)[^\n]*$/;
+function isMissing(info) {
+  if (!info) return false;
+  if (typeof info.code === "string" && MISSING_CODES.includes(info.code.toLowerCase())) return true;
+  if (info.status === 404) return true;
+  return MISSING_MESSAGE.test(String(info.message));
+}
+// {message, code, status} from a thrown error or a returned error: the code may sit in the error object, in the result,
+// in the thrown error, or in a JSON message.
+function errorInfo(message, ...sources) {
+  const info = {message: String(message), code: null, status: null};
+  let parsed = null;
+  if (/^\s*\{/.test(info.message)) { try { parsed = JSON.parse(info.message); } catch (e) { parsed = null; } }
+  for (const src of [...sources, parsed]) {
+    if (!isObject(src)) continue;
+    const inner = isObject(src.error) ? src.error : null;
+    for (const o of [inner, src]) {
+      if (!o) continue;
+      if (info.code === null && typeof o.code === "string") info.code = o.code;
+      if (info.code === null && typeof o.error_code === "string") info.code = o.error_code;
+      if (info.status === null) for (const k of ["status_code", "statusCode", "http_status"]) if (Number.isInteger(o[k])) info.status = o[k];
+    }
+    if (info.code === null && typeof src.error === "string" && /^[a-z0-9_]+$/i.test(src.error)) info.code = src.error;
+  }
+  return info;
+}
 // The one rule for every Storage tool: an exception, or a returned {isError: true} / {error: ...}, is an error.
 // Only "not found" is told apart (storage_not_found, an empty result for the callers that accept it); anything else
 // is storage_unavailable. Never an empty or a successful answer.
-function storageError(message, path) {
-  if (isMissing(message)) fail("storage_not_found", path);
-  fail("storage_unavailable", clip(redact(message), 200));
+function storageError(info, path) {
+  if (isMissing(info)) fail("storage_not_found", path);
+  fail("storage_unavailable", clip(redact(info.message), 200));
 }
 // An error is any result carrying `error` (string or {code, message} object), `isError`, status "error", or a JSON text
 // (the result itself, or the text parts of an MCP content array) that carries one. The JSON text rule does not apply to
@@ -138,12 +167,12 @@ function structuredError(r, textual, depth) {
   }
   if (!isObject(r)) return null;
   if (r.isError === true) {
-    if (typeof r.message === "string") return r.message;
-    if (Array.isArray(r.content) && isObject(r.content[0]) && typeof r.content[0].text === "string") return r.content[0].text;
-    return typeof r.error === "string" || isObject(r.error) ? errorMessageOf(r.error) : "isError";
+    if (typeof r.message === "string") return errorInfo(r.message, r);
+    if (Array.isArray(r.content) && isObject(r.content[0]) && typeof r.content[0].text === "string") return errorInfo(r.content[0].text, r);
+    return errorInfo(typeof r.error === "string" || isObject(r.error) ? errorMessageOf(r.error) : "isError", r);
   }
-  if ((typeof r.error === "string" && r.error) || (isObject(r.error) && Object.keys(r.error).length)) return errorMessageOf(r.error) + (typeof r.message === "string" ? " " + r.message : "");
-  if (r.status === "error") return errorMessageOf(r.message || r.error || "status error");
+  if ((typeof r.error === "string" && r.error) || (isObject(r.error) && Object.keys(r.error).length)) return errorInfo(errorMessageOf(r.error) + (typeof r.message === "string" ? " " + r.message : ""), r);
+  if (r.status === "error") return errorInfo(errorMessageOf(r.message || r.error || "status error"), r);
   // Common envelopes, at a bounded depth: data, result, and the JSON text parts of an MCP content array.
   for (const key of ["data", "result"]) { const m = structuredError(r[key], textual, depth + 1); if (m) return m; }
   if (textual && Array.isArray(r.content)) for (const part of r.content) if (isObject(part) && typeof part.text === "string") { const m = structuredError(part.text, true, depth + 1); if (m) return m; }
@@ -165,7 +194,7 @@ function mcpUnwrap(r, isRead) {
 }
 async function storageCall(name, args) {
   let r;
-  try { r = await callTool(name, args); } catch (e) { storageError(String(e && e.message), args.path); }
+  try { r = await callTool(name, args); } catch (e) { storageError(errorInfo(String(e && e.message), e), args.path); }
   const message = structuredError(r, name !== "read_file");
   if (message !== null) storageError(message, args.path);
   r = mcpUnwrap(r, name === "read_file");

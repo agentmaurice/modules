@@ -49,7 +49,7 @@ async function rawTool(name, args) {
   if (name === "read_file") {
     if (opts.read_error && args.path.includes(opts.read_error_path || "")) throw new Error(opts.read_error);
     const e = store[args.path];
-    if (!e) throw new Error("not found: " + args.path);
+    if (!e) throw new Error("failed to download file: object not found");
     if (args.encoding === "base64") return {content: e.b64 !== undefined ? e.b64 : b64(e.text)};
     if (e.text === undefined) throw new Error("binary file");
     return {content: e.text};
@@ -628,9 +628,9 @@ class ReviewTest(unittest.TestCase):
             out = run_node('publish-list', 'list', {}, {}, ret_error={'tool': 'list_files', 'mode': mode, 'msg': 'backend down'})
             self.assertTrue(out['error'].startswith('storage_unavailable'), out)
         # only a returned "not found" counts as absent
-        out = run_node('publish-list', 'list', {}, {}, ret_error={'tool': 'list_files', 'mode': 'error', 'msg': 'not found: /publish/log'})
+        out = run_node('publish-list', 'list', {}, {}, ret_error={'tool': 'list_files', 'mode': 'error', 'msg': 'failed to list files: object not found'})
         self.assertEqual(ok(self, out)['total'], 0)
-        out = run_node('publish-web', 'publish', WEB, dict(FILES), ret_error={'tool': 'read_file', 'prefix': '/docs/', 'mode': 'isError', 'msg': 'not found: x'})
+        out = run_node('publish-web', 'publish', WEB, dict(FILES), ret_error={'tool': 'read_file', 'prefix': '/docs/', 'mode': 'isError', 'msg': 'failed to download file: status 404'})
         self.assertTrue(out['error'].startswith('source_not_found'), out)
         # a write answer carrying an error after the external call: the journal write fails, remote ids reported
         out = run_node('publish-web', 'publish', WEB, dict(FILES), ret_error={'tool': 'write_file', 'prefix': '/publish/log/page-1.json', 'mode': 'error', 'msg': 'disk full'})
@@ -863,6 +863,29 @@ class Review6Test(unittest.TestCase):
         # an unknown outcome keeps the reservation
         c = run_node('publish-web', 'publish', {**WEB, 'publication_id': 'page-2', 'source_path': '/docs/other.html'}, a['fs'], upload_throw='connection reset')
         self.assertTrue(run_node('publish-remove', 'remove', {'publication_id': 'page-1', **CONFIRMED}, c['fs'])['error'].startswith('destination_superseded'))
+
+
+class Review7Test(unittest.TestCase):
+    def test_absence_rests_on_a_structured_signal_not_on_free_text(self):
+        credential = {'error': {'code': 'backend_unavailable', 'message': 'Storage credential not found'}}
+        for tool, wf, node_id, ctx in (('list_files', 'publish-list', 'list', {}), ('read_file', 'publish-read', 'read', {'publication_id': 'x'})):
+            out = run_node(wf, node_id, ctx, {}, ret_error={'tool': tool, 'mode': 'raw', 'raw': credential})
+            self.assertTrue(out['error'].startswith('storage_unavailable'), (tool, out))
+            out = run_node(wf, node_id, ctx, {}, ret_error={'tool': tool, 'mode': 'error', 'msg': 'Storage credential not found'})
+            self.assertTrue(out['error'].startswith('storage_unavailable'), (tool, out))
+        # a thrown error too
+        out = run_node('publish-list', 'list', {}, {}, list_error='Storage credential not found')
+        self.assertTrue(out['error'].startswith('storage_unavailable'), out)
+        # absence: a code, an explicit 404, or the exact message of the storage tools
+        for raw in ({'error': {'code': 'not_found'}}, {'error': {'code': 'ENOENT', 'message': 'x'}}, {'error': 'file_not_found'}, {'error': {'message': 'gone'}, 'status_code': 404},
+                    {'error': 'failed to list files: object not found'}):
+            out = run_node('publish-list', 'list', {}, {}, ret_error={'tool': 'list_files', 'mode': 'raw', 'raw': raw})
+            self.assertEqual(ok(self, out)['total'], 0, raw)
+        out = run_node('publish-read', 'read', {'publication_id': 'x'}, {})
+        self.assertTrue(out['error'].startswith('publication_not_found'), out)
+        for raw in ({'error': 'something not found somewhere'}, {'error': 'no such backend'}):
+            out = run_node('publish-list', 'list', {}, {}, ret_error={'tool': 'list_files', 'mode': 'raw', 'raw': raw})
+            self.assertTrue(out['error'].startswith('storage_unavailable'), (raw, out))
 
 
 class QueryTest(unittest.TestCase):

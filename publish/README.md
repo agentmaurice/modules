@@ -85,6 +85,11 @@ messages and prompts are French.
   `authorization_required`, `identity_unproven`) or a 4xx answer gives
   `failed`. A 5xx, any other error code or any answer without proof of
   non-sending gives `outcome_unknown`.
+- Absence is recognised on a structured signal only: a code (`not_found`,
+  `file_not_found`, `ENOENT`, `no_such_file`), an explicit HTTP 404, or the
+  exact message of the storage tools (`failed to download file: ... status 404`
+  or `object not found`). Free text such as "Storage credential not found" is
+  `storage_unavailable`.
 - Storage errors are found in the usual envelopes (`data`, `result`, JSON
   text in `content[0].text`) up to a depth of 3.
 - A remote identifier (post, group, channel, message, thread) is never
