@@ -195,12 +195,22 @@ function checkQuoteNumbers(d) {
   const errors = [];
   d.lines.forEach((l, i) => {
     const at = "lines[" + i + "]";
-    if (!(l.quantity > 0) || l.quantity > 1000000) errors.push(at + ".quantity : doit être strictement positif et ne pas dépasser 1000000");
-    else if (!decimalsAtMost(l.quantity, 3)) errors.push(at + ".quantity : 3 décimales au plus");
-    if (!(l.unit_price_ht >= 0)) errors.push(at + ".unit_price_ht : positif ou nul");
-    else if (!decimalsAtMost(l.unit_price_ht, 2)) errors.push(at + ".unit_price_ht : 2 décimales au plus");
+    const q1000 = Math.round(l.quantity * 1000);
+    const p100 = Math.round(l.unit_price_ht * 100);
+    if (Math.abs(l.quantity * 1000 - q1000) >= 1e-6) errors.push(at + ".quantity : 3 décimales au plus");
+    else if (q1000 < 1 || q1000 > 1e9) errors.push(at + ".quantity : entre 0,001 et 1000000");
+    if (Math.abs(l.unit_price_ht * 100 - p100) >= 1e-6) errors.push(at + ".unit_price_ht : 2 décimales au plus");
+    else if (p100 < 0 || p100 > 1e11) errors.push(at + ".unit_price_ht : entre 0 et 1000000000");
     if (!VAT_RATES.includes(l.vat_rate)) errors.push(at + ".vat_rate : taux autorisés 0, 2.1, 5.5, 10 ou 20");
   });
+  if (!errors.length) {
+    let ht = 0;
+    for (const l of d.lines) {
+      const total = Math.round(Math.round(l.quantity * 1000) * Math.round(l.unit_price_ht * 100) / 1000);
+      ht += total;
+      if (!Number.isSafeInteger(total) || !Number.isSafeInteger(ht * 2)) { errors.push("totaux : montant trop grand"); break; }
+    }
+  }
   if (errors.length) fail("data_invalid", "données du gabarit quote : " + errors.slice(0, 8).join(" ; "));
 }
 function fmtRate(r) { return fmtNumber(r) + " %"; }
@@ -268,7 +278,11 @@ async function writeJson(path, value, overwrite) {
 }
 async function listPaths(path) {
   let r;
-  try { r = unwrap(await callTool("list_files", {path})); } catch (e) { return []; }
+  try { r = unwrap(await callTool("list_files", {path})); } catch (e) {
+    const message = String(e && e.message);
+    if (/not found|does not exist|no such/i.test(message)) return [];
+    fail("storage_unavailable", message.slice(0, 200));
+  }
   const entries = Array.isArray(r) ? r : (isObject(r) ? (r.files || r.entries || []) : []);
   return entries.map((e) => (typeof e === "string" ? e : (isObject(e) && typeof e.path === "string" ? e.path : ""))).filter(Boolean);
 }
@@ -374,6 +388,8 @@ function projectProfile(body) {
 '''
 
 RENDER = r'''
+// A folder per attempt: a render that loses a race never overwrites the file of another attempt.
+function attemptTag(f) { const sha = typeof f.sha256 === "string" ? f.sha256.toLowerCase().replace(/[^0-9a-f]/g, "").slice(0, 12) : ""; return sha || shortSuffix(); }
 function safeName(name, fallback) {
   const base = typeof name === "string" ? name.split("/").pop() : "";
   return /^[A-Za-z0-9._-]{1,100}$/.test(base) && !base.startsWith(".") ? base : fallback;
@@ -594,7 +610,7 @@ data = normalizeData(rec.template_key, data, id);
 const profile = await loadProfile();
 const revision = rec.revision + 1;
 const res = await renderDocument(rec, data, profile, "preview", null, "draft", revision);
-const dir = ROOT + "/docs/" + id + "/r" + revision;
+const dir = ROOT + "/docs/" + id + "/r" + revision + "-" + attemptTag(res.file);
 const file = await storeFile(dir + "/" + safeName(res.file.filename, "document.pdf"), res.file);
 const previews = await storePreviews(dir, res);
 const at = nowIso();
@@ -640,8 +656,8 @@ const data = normalizeData(rec.template_key, rec.data, id);
 const revision = rec.revision + 1;
 const res = await renderDocument(rec, data, profile, "final", rec.number, "issued", revision);
 const dir = ROOT + "/docs/" + id;
-const file = await storeFile(dir + "/issued/" + rec.number + ".pdf", res.file);
-const previews = await storePreviews(dir + "/r" + revision, res);
+const file = await storeFile(dir + "/issued/" + rec.number + "-" + attemptTag(res.file) + ".pdf", res.file);
+const previews = await storePreviews(dir + "/r" + revision + "-" + attemptTag(res.file), res);
 const at = nowIso();
 rec.status = "issued";
 rec.revision = revision;

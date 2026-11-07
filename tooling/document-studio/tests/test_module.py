@@ -53,7 +53,7 @@ async function callTool(name, args) {
     if (opts.render_error) throw new Error(opts.render_error);
     if (opts.concurrent === "render") cancelStored();
     calls[calls.length - 1].full = args;
-    const f = pdf(args.mode + ":" + args.context.doc.number), p = pdf("png:" + args.mode);
+    const f = pdf(args.mode + ":" + args.context.doc.number + (opts.nonce || "")), p = pdf("png:" + args.mode);
     const file = {filename: "document.pdf", mime_type: "application/pdf", bytes: f.bytes.length + (opts.bad_bytes ? 1 : 0), sha256: opts.bad_sha ? "0000" : f.sha};
     const prev = {page: 1, filename: "page-1.png", mime_type: "image/png", bytes: p.bytes.length, sha256: p.sha};
     if (opts.render_mode === "ref") { buffers["buf-doc-" + calls.length] = f.bytes.toString("base64"); file.ref = "buf-doc-" + calls.length; buffers["buf-png-" + calls.length] = p.bytes.toString("base64"); prev.ref = "buf-png-" + calls.length; }
@@ -80,6 +80,7 @@ async function callTool(name, args) {
     return {ok: true};
   }
   if (name === "list_files") {
+    if (opts.list_error) throw new Error(opts.list_error);
     const prefix = args.path.replace(/\/$/, "") + "/";
     const paths = Object.keys(store).filter((p) => p.startsWith(prefix));
     if (opts.list_mode === "dirs") return Array.from(new Set(paths.map((p) => prefix + p.slice(prefix.length).split("/")[0]))).map((p) => ({path: p}));
@@ -322,6 +323,12 @@ class DraftTest(unittest.TestCase):
             self.assertTrue(out['error'].startswith('data_invalid'), (label, out))
             self.assertIn(needle, out['error'], label)
             self.assertEqual(out['calls'], [], label)
+        for label, over, needle in (('1e-10', {'quantity': 0.0000000001}, 'quantity'), ('big quantity', {'quantity': 1e7}, 'quantity'), ('big price', {'unit_price_ht': 2e9}, 'unit_price_ht')):
+            out = run_node('document-studio-draft', 'create', {'prep': {'template_key': 'quote', 'locale': 'fr'}, 'draft': line(**over), 'doc_id': 'devis-test'}, {})
+            self.assertTrue(out['error'].startswith('data_invalid') and needle in out['error'], (label, out))
+        huge = {**QUOTE_DRAFT, 'lines': [{**QUOTE_DRAFT['lines'][0], 'quantity': 1000000, 'unit_price_ht': 1000000000}] * 40}
+        out = run_node('document-studio-draft', 'create', {'prep': {'template_key': 'quote', 'locale': 'fr'}, 'draft': huge, 'doc_id': 'devis-test'}, {})
+        self.assertIn('error', out)
         for rate in (0, 2.1, 5.5, 10, 20):
             ok(self, run_node('document-studio-draft', 'create', {'prep': {'template_key': 'quote', 'locale': 'fr'}, 'draft': line(vat_rate=rate), 'doc_id': 'devis-test'}, {}))
         summary = ok(self, run_node('document-studio-draft', 'create', {'prep': {'template_key': 'quote', 'locale': 'fr'}, 'draft': line(quantity=0.001, unit_price_ht=1500, unit='jour'), 'doc_id': 'devis-test'}, {}))
@@ -419,8 +426,9 @@ class LifecycleTest(unittest.TestCase):
         _, fs = create_quote(self, seeded())
         rendered, fs = self.render(fs, **opts)
         self.assertEqual((rendered['status'], rendered['revision'], rendered['renders']), ('draft', 2, 1))
-        self.assertEqual(rendered['last_render']['path'], '/document-studio/docs/devis-test/r2/document.pdf')
-        self.assertIn('/document-studio/docs/devis-test/r2/page-1.png', fs)
+        sha12 = rendered['last_render']['sha256'][:12]
+        self.assertEqual(rendered['last_render']['path'], f'/document-studio/docs/devis-test/r2-{sha12}/document.pdf')
+        self.assertIn(f'/document-studio/docs/devis-test/r2-{sha12}/page-1.png', fs)
         approved = run_node('document-studio-finalize', 'finalize', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs)
         self.assertEqual(ok(self, approved)['status'], 'approved')
         published = run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': True}, approved['fs'], **opts)
@@ -432,7 +440,8 @@ class LifecycleTest(unittest.TestCase):
         self.assertEqual((result['status'], result['number']), ('issued', number))
         fs = out['fs']
         record = json.loads(fs['/document-studio/docs/devis-test/record.json']['text'])
-        pdf = fs[f'/document-studio/docs/devis-test/issued/{number}.pdf']['b64']
+        pdf = fs[record['issued']['file']['path']]['b64']
+        self.assertRegex(record['issued']['file']['path'], rf'/issued/{number}-[0-9a-f]{{12}}\.pdf$')
         self.assertEqual(record['issued']['file']['sha256'], hashlib.sha256(base64.b64decode(pdf)).hexdigest())
         self.assertEqual(record['issued']['number'], number)
         self.assertEqual([r['mode'] for r in record['renders']], ['preview', 'final'])
@@ -470,6 +479,37 @@ class LifecycleTest(unittest.TestCase):
         self.assertTrue(issued['error'].startswith('render_integrity_failed'), issued)
         record = json.loads(issued['fs']['/document-studio/docs/devis-test/record.json']['text'])
         self.assertEqual(record['status'], 'approved')
+
+    def test_each_attempt_writes_its_own_files(self):
+        _, fs = create_quote(self, seeded())
+        first = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs, nonce='a')
+        second = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs, nonce='b')
+        a, b = ok(self, first)['last_render'], ok(self, second)['last_render']
+        self.assertNotEqual(a['path'], b['path'])
+        merged = {**first['fs'], **second['fs']}
+        for item in (a, b):
+            self.assertEqual(hashlib.sha256(base64.b64decode(merged[item['path']]['b64'])).hexdigest(), item['sha256'])
+            self.assertIn(item['sha256'][:12], item['path'])
+        # issued file: one name per number and per attempt
+        fs2 = run_node('document-studio-finalize', 'finalize', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, first['fs'])['fs']
+        issued = ok(self, run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs2))
+        self.assertRegex(issued['issued']['file']['path'], r'/issued/DEV-\d{4}-0001-[0-9a-f]{12}\.pdf$')
+
+    def test_a_storage_outage_is_not_an_empty_list(self):
+        _, fs = create_quote(self, seeded())
+        out = run_node('document-studio-list', 'list', {}, fs, list_error='503 service unavailable ' + 'x' * 500)
+        self.assertTrue(out['error'].startswith('storage_unavailable: 503'), out)
+        self.assertLess(len(out['error']), 260)
+        self.assertEqual(ok(self, run_node('document-studio-list', 'list', {}, {}, list_error='directory not found'))['count'], 0)
+        fs = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs)['fs']
+        fs = run_node('document-studio-finalize', 'finalize', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs)['fs']
+        fs['/document-studio/numbers/quote/%d/0007.json' % YEAR] = text_file(json.dumps({'doc_id': 'autre'}))
+        down = run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs, list_error='permission denied')
+        self.assertTrue(down['error'].startswith('storage_unavailable: permission denied'), down)
+        self.assertFalse([c for c in down['calls'] if c['name'] == 'write_file'])
+        self.assertEqual(json.loads(down['fs']['/document-studio/docs/devis-test/record.json']['text'])['number'], None)
+        up = ok(self, run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs))
+        self.assertEqual(up['number'], f'DEV-{YEAR}-0008')
 
     def test_a_concurrent_cancel_is_never_overwritten(self):
         _, fs = create_quote(self, seeded())
@@ -619,7 +659,8 @@ class LifecycleTest(unittest.TestCase):
         self.assertIn('error', run_node('document-studio-list', 'list', {'status': 'wip'}, fs))
         review = ok(self, run_node('document-studio-review-read', 'read', {'doc_id': 'devis-test'}, fs))
         self.assertEqual((review['status'], review['revision'], review['pages'], review['number']), ('draft', 2, 1, ''))
-        self.assertEqual(review['previews'], [{'page': 1, 'path': '/document-studio/docs/devis-test/r2/page-1.png', 'sha256': review['previews'][0]['sha256']}])
+        self.assertRegex(review['previews'][0]['path'], r'^/document-studio/docs/devis-test/r2-[0-9a-f]{12}/page-1\.png$')
+        self.assertEqual(len(review['previews']), 1)
         self.assertEqual(review['renders'][0]['mode'], 'preview')
 
 

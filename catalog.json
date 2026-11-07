@@ -647,7 +647,7 @@
       "subpath": "document-studio",
       "manifest": "document-studio/module.yaml",
       "manifest_sha256": "89c05d34793969a8fccb1b767f9b6aa87bda29d6fb9edaf4f80e1f827e2a0299",
-      "tree_sha256": "d1ee675a936ceb2ecd14baad58812be0bd7f151f630751202357b74e90d17aea",
+      "tree_sha256": "913c4cc7a05f37283492df1e50ccb8958ff5e834c105edfa985a408494876f6f",
       "description": {
         "en": "Document studio: draft business documents from a brief, render them to PDF from templates and the company profile, review, approve and issue them with a number, and keep every revision in Storage.",
         "fr": "Studio de documents : rédiger des documents professionnels depuis un brief, les rendre en PDF avec des gabarits et la fiche entreprise, les relire, les approuver et les émettre avec un numéro, en gardant chaque révision dans Storage."

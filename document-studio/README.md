@@ -48,8 +48,8 @@ The Module never approves on a person's behalf.
 
 - `/document-studio/profile.json`: the brand, with the `{schema_version: 1, company, brand}` shape of the template contract. A fictitious example is in `examples/profile.example.json`.
 - `/document-studio/docs/<doc_id>/record.json`: the record (`document-studio.record/v1`): status, number, revision (+1 at every write), data, history, renders (path, SHA-256, previews, provenance), issue.
-- `/document-studio/docs/<doc_id>/r<revision>/`: PDF and previews of one render.
-- `/document-studio/docs/<doc_id>/issued/<number>.pdf`: the issued PDF.
+- `/document-studio/docs/<doc_id>/r<revision>-<sha12>/`: PDF and previews of one render attempt (12 first characters of the PDF SHA-256, so a losing attempt never overwrites another attempt's file).
+- `/document-studio/docs/<doc_id>/issued/<number>-<sha12>.pdf`: the issued PDF.
 - `/document-studio/numbers/<template>/<year>/<4-digit seq>.json`: number token.
 
 `doc_id`: `^[a-z0-9][a-z0-9-]{0,47}$`, chosen by the caller or derived from the
@@ -117,4 +117,5 @@ renderer, on synthetic data. They do not prove the behavior on a One.
 - No sending (mail, SFTP), no DOCX, one locale (`fr`).
 - `document-studio-export` reads the PDF in base64 through `read_file`; if the runtime does not allow it, the export fails on the hash (`export_integrity_failed`).
 - No Viewer `document` card for a preview in the chat yet.
-- Concurrent updates: Storage has no conditional write. Before each record write, `render`, `finalize`, `publish` and `cancel` read the record again and abandon with `concurrent_update` if its revision or status changed (for example a cancel during a render). Files already rendered stay orphaned in `r<revision>/`. The window is small but not null until Storage offers conditional writes.
+- Concurrent updates: Storage has no conditional write. Before each record write, `render`, `finalize`, `publish` and `cancel` read the record again and abandon with `concurrent_update` if its revision or status changed (for example a cancel during a render). Files already rendered stay orphaned in `r<revision>-<sha12>/`. The window is small but not null until Storage offers conditional writes.
+- A failing `list_files` (outage, permission) fails with `storage_unavailable`; only a missing folder counts as empty. Number reservation therefore never restarts at 0001 after a Storage error.
