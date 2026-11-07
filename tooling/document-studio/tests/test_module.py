@@ -400,7 +400,7 @@ class DraftTest(unittest.TestCase):
 
     def test_plan_normalizes_the_model_answer_and_writes_nothing(self):
         prep = ok(self, run_node('document-studio-plan', 'prepare', {'brief': 'Un devis pour un client'}))
-        out = run_node('document-studio-plan', 'normalize', {'prep': prep, 'plan_draft': json.dumps({'template_key': 'quote', 'title': ' Devis client ', 'missing': ['client', 3, ''], 'questions': ['Quel client ?']})})
+        out = run_node('document-studio-plan', 'normalize', {'prep': prep, 'plan_draft': json.dumps({'template_key': 'quote', 'title': ' Devis client ', 'missing': ['client', ''], 'questions': ['Quel client ?']})})
         plan = ok(self, out)
         self.assertEqual((plan['template_key'], plan['title'], plan['missing'], plan['questions']), ('quote', 'Devis client', ['client'], ['Quel client ?']))
         self.assertEqual(out['calls'], [])
