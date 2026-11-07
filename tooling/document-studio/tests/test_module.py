@@ -328,7 +328,7 @@ class DraftTest(unittest.TestCase):
             self.assertTrue(out['error'].startswith('data_invalid'), (label, out))
             self.assertIn(needle, out['error'], label)
             self.assertEqual(out['calls'], [], label)
-        for label, over, needle in (('1e-10', {'quantity': 0.0000000001}, 'quantity'), ('big quantity', {'quantity': 1e7}, 'quantity'), ('big price', {'unit_price_ht': 2e9}, 'unit_price_ht')):
+        for label, over, needle in (('1e-10', {'quantity': 0.0000000001}, 'quantity'), ('big quantity', {'quantity': 1e7}, 'quantity'), ('tolerance quantity', {'quantity': 1.0000000005}, 'quantity'), ('tolerance price', {'unit_price_ht': 10.0000001}, 'unit_price_ht'), ('big price', {'unit_price_ht': 2e9}, 'unit_price_ht')):
             out = run_node('document-studio-draft', 'create', {'prep': {'template_key': 'quote', 'locale': 'fr'}, 'draft': line(**over), 'doc_id': 'devis-test'}, {})
             self.assertTrue(out['error'].startswith('data_invalid') and needle in out['error'], (label, out))
         huge = {**QUOTE_DRAFT, 'lines': [{**QUOTE_DRAFT['lines'][0], 'quantity': 1000000, 'unit_price_ht': 1000000000}] * 40}

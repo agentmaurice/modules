@@ -218,16 +218,17 @@ function fmtMoney(cents) {
 }
 function fmtNumber(n) { return String(n).replace(".", ","); }
 const VAT_RATES = [0, 2.1, 5.5, 10, 20];
-function decimalsAtMost(n, places) { const scaled = n * Math.pow(10, places); return Math.abs(scaled - Math.round(scaled)) < 1e-6; }
+// Exact check on the shortest decimal writing of the number (the JSON literal): no tolerance, no exponent.
+function decimalsAtMost(n, places) { return typeof n === "number" && Number.isFinite(n) && new RegExp("^-?\\d+(\\.\\d{1," + places + "})?$").test(String(n)); }
 function checkQuoteNumbers(d) {
   const errors = [];
   d.lines.forEach((l, i) => {
     const at = "lines[" + i + "]";
     const q1000 = Math.round(l.quantity * 1000);
     const p100 = Math.round(l.unit_price_ht * 100);
-    if (Math.abs(l.quantity * 1000 - q1000) >= 1e-6) errors.push(at + ".quantity : 3 décimales au plus");
+    if (!decimalsAtMost(l.quantity, 3)) errors.push(at + ".quantity : 3 décimales au plus");
     else if (q1000 < 1 || q1000 > 1e9) errors.push(at + ".quantity : entre 0,001 et 1000000");
-    if (Math.abs(l.unit_price_ht * 100 - p100) >= 1e-6) errors.push(at + ".unit_price_ht : 2 décimales au plus");
+    if (!decimalsAtMost(l.unit_price_ht, 2)) errors.push(at + ".unit_price_ht : 2 décimales au plus");
     else if (p100 < 0 || p100 > 1e11) errors.push(at + ".unit_price_ht : entre 0 et 1000000000");
     if (!VAT_RATES.includes(l.vat_rate)) errors.push(at + ".vat_rate : taux autorisés 0, 2.1, 5.5, 10 ou 20");
   });
