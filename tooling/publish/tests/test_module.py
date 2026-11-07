@@ -43,6 +43,8 @@ function tamper() { for (const p of Object.keys(store)) if (p.startsWith("/publi
 async function callTool(name, args) {
   const shown = JSON.parse(JSON.stringify(args, (k, v) => (k === "content_base64" ? "[b64:" + sha(Buffer.from(v, "base64")).slice(0, 8) + "]" : v)));
   calls.push({name, args: shown, raw: args});
+  const re = opts.ret_error;
+  if (re && re.tool === name && (!re.prefix || String(args.path).startsWith(re.prefix))) return re.mode === "error" ? {error: re.msg} : {isError: true, content: [{type: "text", text: re.msg}]};
   if (name === "read_file") {
     if (opts.read_error && args.path.includes(opts.read_error_path || "")) throw new Error(opts.read_error);
     const e = store[args.path];
@@ -65,6 +67,7 @@ async function callTool(name, args) {
   if (name === "ssh_upload_v1") {
     snapshot(name);
     if (opts.tamper) tamper();
+    if (opts.upload_throw) throw new Error(opts.upload_throw);
     if (opts.upload_error) throw new Error(JSON.stringify({error: opts.upload_error, message: "refused"}));
     const bytes = Buffer.from(args.file.content_base64, "base64");
     return {status: "ok", target: args.target, path: args.path, bytes: bytes.length, sha256: opts.bad_sha ? "00" : sha(bytes)};
@@ -76,6 +79,7 @@ async function callTool(name, args) {
   }
   if (name === "social_post_create_v1") {
     snapshot(name);
+    if (opts.social_throw) throw new Error(opts.social_throw);
     if (opts.social_error) throw new Error(JSON.stringify({error: opts.social_error, message: "slow down", retry_after_s: 60}));
     if (opts.no_post_id) return {status: "ok"};
     return {status: "ok", post_id: "post-1", state: args.mode === "now" ? "published" : args.mode === "schedule" ? "scheduled" : "draft", group: "g-1", channels: args.channels.map((id) => ({id, state: "draft"}))};
@@ -85,6 +89,11 @@ async function callTool(name, args) {
   if (name === "google_mail_send") {
     snapshot(name);
     if (opts.mail_error) throw new Error(JSON.stringify({error_code: opts.mail_error, connector_key: "google-mail"}));
+    if (opts.mail_throw) throw new Error(opts.mail_throw);
+    if (opts.mail_empty) return {};
+    if (opts.mail_no_id) return {status_code: 200, body: {}};
+    if (opts.mail_body_string) return {status_code: 200, body: JSON.stringify({id: "msg-s", threadId: "t"})};
+    if (opts.mail_returned_error) return {error_code: "authorization_required", authorization_id: "a1"};
     if (opts.mail_status) return {status_code: opts.mail_status, body: {}};
     return {status_code: 200, body: {id: "msg-1", threadId: "thr-1"}, assistant_summary: "sent"};
   }
@@ -190,7 +199,7 @@ class ResourcesTest(unittest.TestCase):
                     continue
                 source = action['code']
                 self.assertNotIn('{{', source.replace('{{ json . }}', ''), f'{name}/{action["id"]}')
-                used = set(re.findall(r'call(?:Tool|External)\("([^"]+)"', source))
+                used = set(re.findall(r'(?:callTool|callExternal|storageCall)\("([^"]+)"', source))
                 declared = set(action.get('context', {}).get('allowed_tools', []))
                 self.assertEqual(used, declared, f'{name}/{action["id"]}')
                 self.assertNotIn('--', ''.join(used), 'tools are called by their bare name')
@@ -488,7 +497,21 @@ class RemoveStatusTest(unittest.TestCase):
         self.assertEqual(external(out)[0]['raw'], {'post_id': 'post-1'})
         self.assertEqual(record(out, pid)['status'], 'removed')
         again = run_node('publish-social', 'publish', SOCIAL, out['fs'])
-        self.assertEqual(ok(self, again)['attempts'], 2)
+        res = ok(self, again)
+        self.assertEqual((res['already_removed'], res['status'], res['attempts']), (True, 'removed', 1))
+        self.assertEqual((external(again), writes(again)), ([], []))
+        # a new publication needs a new id: explicit attempt on a derived id
+        derived = {**SOCIAL, 'publication_id': None}
+        a = social(ctx={'publication_id': None})
+        pid1 = ok(self, a)['publication_id']
+        rm = self.remove(a['fs'], pid1)
+        same = ok(self, run_node('publish-social', 'publish', derived, rm['fs']))
+        self.assertEqual((same['publication_id'], same['already_removed']), (pid1, True))
+        second = run_node('publish-social', 'publish', {**derived, 'attempt': 2}, rm['fs'])
+        res2 = ok(self, second)
+        self.assertEqual((res2['publication_id'], res2['status'], res2['already_removed']), (pid1 + '-a2', 'published', False))
+        self.assertTrue(run_node('publish-social', 'publish', {**SOCIAL, 'attempt': 2}, {})['error'].startswith('attempt_invalid'))
+        self.assertTrue(run_node('publish-social', 'publish', {**derived, 'attempt': 100}, {})['error'].startswith('attempt_invalid'))
 
     def test_an_email_is_not_removable(self):
         fs, pid = self.published('email')
@@ -539,6 +562,72 @@ class RemoveStatusTest(unittest.TestCase):
             out = run_node('publish-status', 'status', {'publication_id': pid}, fs)
             self.assertIs(ok(self, out)['remote_checked'], False)
             self.assertEqual((external(out), writes(out)), ([], []))
+
+
+class ReviewTest(unittest.TestCase):
+    def test_email_is_published_only_on_proof(self):
+        for opts, status, code in (({'mail_empty': True}, 'outcome_unknown', 'outcome_unknown'), ({'mail_no_id': True}, 'outcome_unknown', 'outcome_unknown'),
+                                   ({'mail_status': 500}, 'failed', 'email_rejected'), ({'mail_returned_error': True}, 'failed', 'authorization_required'),
+                                   ({'mail_error': 'identity_unproven'}, 'failed', 'identity_unproven')):
+            out = email(**opts)
+            self.assertIn('error', out, opts)
+            rec = record(out, 'mail-1')
+            self.assertEqual((rec['status'], rec['error']['code']), (status, code), opts)
+        done = email(mail_body_string=True)
+        self.assertEqual(record(done, 'mail-1')['remote']['message_id'], 'msg-s')
+
+    def test_an_error_raised_during_the_call_is_an_unknown_outcome(self):
+        for runner, opts, pid in ((email, {'mail_throw': 'deadline exceeded'}, 'mail-1'), (web, {'upload_throw': 'connection reset'}, 'page-1'),
+                                  (social, {'social_throw': 'timeout'}, 'post-a')):
+            out = runner(**opts)
+            self.assertTrue(out['error'].startswith('publication_outcome_unknown'), out)
+            self.assertEqual(record(out, pid)['status'], 'outcome_unknown')
+            retry_ctx = {'mail-1': EMAIL, 'page-1': WEB, 'post-a': SOCIAL}[pid]
+            wf = {'mail-1': 'publish-email', 'page-1': 'publish-web', 'post-a': 'publish-social'}[pid]
+            again = run_node(wf, 'publish', retry_ctx, out['fs'])
+            self.assertTrue(again['error'].startswith('publication_outcome_unknown'), again)
+            self.assertEqual(external(again), [])
+            forced = run_node(wf, 'publish', {**retry_ctx, 'resend_after_unknown': 'oui'}, out['fs'])
+            res = ok(self, forced)
+            self.assertEqual((res['status'], res['attempts']), ('published', 2))
+            self.assertIn('resend_after_unknown', [h['action'] for h in record(forced, pid)['history']])
+            # the explicit resend still needs the manual confirmation
+            no = run_node(wf, 'publish', {**retry_ctx, 'resend_after_unknown': 'oui', 'confirmation_manuelle': 'non'}, out['fs'])
+            self.assertTrue(no['error'].startswith('manual_confirmation_required'))
+
+    def test_a_tool_error_with_a_code_stays_a_definitive_failure_and_failed_retries(self):
+        out = web(upload_error='publish_not_enabled')
+        self.assertEqual(record(out, 'page-1')['status'], 'failed')
+        self.assertEqual(ok(self, run_node('publish-web', 'publish', WEB, out['fs']))['attempts'], 2)
+
+    def test_storage_errors_returned_instead_of_raised_are_errors(self):
+        for tool, prefix, runner, ctx in (('write_file', '/publish/', 'publish-web', WEB), ('read_file', '/docs/', 'publish-web', WEB)):
+            for mode in ('isError', 'error'):
+                out = run_node(runner, 'publish', ctx, dict(FILES), ret_error={'tool': tool, 'prefix': prefix, 'mode': mode, 'msg': 'backend down'})
+                self.assertTrue(out['error'].startswith('storage_unavailable'), (tool, mode, out))
+                self.assertEqual(external(out), [], tool)
+        # the journal read: a returned error is not "no record"
+        for mode in ('isError', 'error'):
+            out = run_node('publish-web', 'publish', WEB, dict(FILES), ret_error={'tool': 'read_file', 'prefix': '/publish/', 'mode': mode, 'msg': 'backend down'})
+            self.assertTrue(out['error'].startswith('storage_unavailable'), out)
+            self.assertEqual((external(out), writes(out)), ([], []))
+            out = run_node('publish-list', 'list', {}, {}, ret_error={'tool': 'list_files', 'mode': mode, 'msg': 'backend down'})
+            self.assertTrue(out['error'].startswith('storage_unavailable'), out)
+        # only a returned "not found" counts as absent
+        out = run_node('publish-list', 'list', {}, {}, ret_error={'tool': 'list_files', 'mode': 'error', 'msg': 'not found: /publish/log'})
+        self.assertEqual(ok(self, out)['total'], 0)
+        out = run_node('publish-web', 'publish', WEB, dict(FILES), ret_error={'tool': 'read_file', 'prefix': '/docs/', 'mode': 'isError', 'msg': 'not found: x'})
+        self.assertTrue(out['error'].startswith('source_not_found'), out)
+        # a write answer carrying an error after the external call: the journal write fails, remote ids reported
+        out = run_node('publish-web', 'publish', WEB, dict(FILES), ret_error={'tool': 'write_file', 'prefix': '/publish/log/page-1.json', 'mode': 'error', 'msg': 'disk full'})
+        self.assertTrue(out['error'].startswith('storage_unavailable'), out)
+
+    def test_removed_is_terminal_and_failed_is_the_only_state_that_retries(self):
+        a = web()
+        rm = run_node('publish-remove', 'remove', {'publication_id': 'page-1', **CONFIRMED}, a['fs'])
+        again = ok(self, run_node('publish-web', 'publish', WEB, rm['fs']))
+        self.assertEqual((again['already_removed'], again['status']), (True, 'removed'))
+        self.assertEqual(ok(self, run_node('publish-web', 'publish', {**WEB, 'publication_id': None, 'attempt': 2}, rm['fs']))['publication_id'][-3:], '-a2')
 
 
 class QueryTest(unittest.TestCase):

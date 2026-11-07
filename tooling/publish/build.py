@@ -30,7 +30,7 @@ CORE = r'''
 const ROOT = "/publish";
 const LOG = ROOT + "/log";
 const ID_RE = /^[a-z0-9][a-z0-9-]{0,47}$/;
-const STATUSES = ["requested", "published", "failed", "removed"];
+const STATUSES = ["requested", "published", "failed", "removed", "outcome_unknown"];
 const CHANNELS = ["web", "email", "social"];
 const MAX_SOURCE_BYTES = 10485760;
 const BODY_EXT = /\.(md|markdown|txt)$/i;
@@ -45,6 +45,7 @@ function requireConfirmation(input) { if (!confirmed(input.confirmation_manuelle
 function clock() { return typeof globalThis.__pubNow === "string" ? new Date(globalThis.__pubNow) : new Date(); }
 function nowIso() { return clock().toISOString(); }
 function own(o, k) { return Object.prototype.hasOwnProperty.call(o, k); }
+function redact(s) { return String(s).replace(/[A-Za-z0-9+\/=]{120,}/g, "[…]"); }
 function clip(s, n) { s = String(s); return s.length > n ? s.slice(0, n) : s; }
 // External data (model answer, caller input, tool answers) never carries these keys, at any depth.
 function rejectUnsafeKeys(v, label) {
@@ -113,13 +114,24 @@ function unwrap(r) {
   return r;
 }
 function isMissing(message) { return /not found|does not exist|no such/i.test(message); }
-async function readText(path, extra) {
+// The one rule for every Storage tool: an exception, or a returned {isError: true} / {error: ...}, is an error.
+// Only "not found" is told apart (storage_not_found, an empty result for the callers that accept it); anything else
+// is storage_unavailable. Never an empty or a successful answer.
+function storageError(message, path) {
+  if (isMissing(message)) fail("storage_not_found", path);
+  fail("storage_unavailable", clip(redact(message), 200));
+}
+async function storageCall(name, args) {
   let r;
-  try { r = unwrap(await callTool("read_file", {path, ...(extra || {})})); } catch (e) {
-    const message = String(e && e.message);
-    if (isMissing(message)) fail("storage_not_found", path);
-    fail("storage_unavailable", message.slice(0, 200));
+  try { r = await callTool(name, args); } catch (e) { storageError(String(e && e.message), args.path); }
+  if (isObject(r) && (r.isError === true || (typeof r.error === "string" && r.error))) {
+    const message = typeof r.error === "string" ? r.error + " " + (typeof r.message === "string" ? r.message : "") : (typeof r.message === "string" ? r.message : (Array.isArray(r.content) && isObject(r.content[0]) && typeof r.content[0].text === "string" ? r.content[0].text : JSON.stringify(r)));
+    storageError(message, args.path);
   }
+  return unwrap(r);
+}
+async function readText(path, extra) {
+  const r = await storageCall("read_file", {path, ...(extra || {})});
   if (typeof r === "string") return r;
   if (isObject(r) && typeof r.content === "string") return r.content;
   fail("storage_read_failed", path);
@@ -156,10 +168,9 @@ function sourceText(src, pattern, name) {
 IO_LIST = r'''
 async function listPaths(path) {
   let r;
-  try { r = unwrap(await callTool("list_files", {path})); } catch (e) {
-    const message = String(e && e.message);
-    if (isMissing(message)) return [];
-    fail("storage_unavailable", message.slice(0, 200));
+  try { r = await storageCall("list_files", {path}); } catch (e) {
+    if (String(e && e.message).startsWith("storage_not_found")) return [];
+    throw e;
   }
   const entries = Array.isArray(r) ? r : (isObject(r) ? (r.files || r.entries || []) : []);
   return entries.map((e) => (typeof e === "string" ? e : (isObject(e) && typeof e.path === "string" ? e.path : ""))).filter(Boolean);
@@ -174,7 +185,7 @@ function checkRecord(rec, id) {
   return rec;
 }
 function summarize(rec) {
-  return {publication_id: rec.publication_id, channel: rec.channel, status: rec.status, revision: rec.revision, attempts: rec.attempts, source: rec.source, target: rec.target, remote: rec.remote, error: rec.error, updated_at: rec.updated_at};
+  return {publication_id: rec.publication_id, channel: rec.channel, status: rec.status, revision: rec.revision, attempts: rec.attempts, source: rec.source, target: rec.target, remote: rec.remote, error: rec.error, updated_at: rec.updated_at, already_published: false, already_removed: false};
 }
 // Only a missing record gives null: any other Storage error stops the operation (storage_unavailable).
 async function loadRecordOrNull(id) {
@@ -196,7 +207,11 @@ async function loadRecord(id) {
 
 LOG_WRITE = r'''
 async function writeJson(path, value, overwrite) {
-  await callTool("write_file", {path, content: JSON.stringify(value, null, 2) + "\n", overwrite});
+  try { await storageCall("write_file", {path, content: JSON.stringify(value, null, 2) + "\n", overwrite}); } catch (e) {
+    // A write that cannot find its folder is not "empty": it is unavailable.
+    if (String(e && e.message).startsWith("storage_not_found")) fail("storage_unavailable", path);
+    throw e;
+  }
 }
 // Storage has no conditional write: the record is read again just before the write, and the write is abandoned when
 // another actor changed it (revision or status). The window is small, not null.
@@ -212,45 +227,63 @@ async function commit(rec) {
   if (!isObject(fresh) || !was || fresh.revision !== was.revision || fresh.status !== was.status) fail("concurrent_update", "le journal " + rec.publication_id + " a changé pendant l'opération ; rien n'a été écrit");
   rec.revision = was.revision + 1;
   rec.updated_at = nowIso();
-  try { await writeJson(recordPath(rec.publication_id), rec, true); } catch (e) { fail("storage_unavailable", clip(String(e && e.message), 200)); }
+  await writeJson(recordPath(rec.publication_id), rec, true);
   remember(rec);
 }
 // The journal is written at "requested" BEFORE the external call. An existing publication is never published twice.
-async function begin(channel, given, request) {
+// A publication that is published, removed, requested or of unknown outcome is never sent again by itself:
+//  - published: the same request answers already_published; removed is terminal (already_removed, a new publication needs a new id);
+//  - requested and outcome_unknown: refused, unless the caller passes resend_after_unknown = oui (noted in the history);
+//  - failed: the only state that allows a new attempt on the same id.
+// For a derived id, `attempt` (2 to 99, caller supplied) adds an explicit suffix: that is how to publish the same request again.
+function attemptOf(v, given) {
+  if (v === undefined || v === null || v === "") return 1;
+  const n = typeof v === "string" && /^\d{1,2}$/.test(v) ? Number(v) : v;
+  if (!Number.isInteger(n) || n < 1 || n > 99) fail("attempt_invalid", "entier de 1 à 99 attendu");
+  if (n > 1 && given) fail("attempt_invalid", "attempt ne s'applique qu'à un publication_id dérivé");
+  return n;
+}
+async function begin(channel, given, request, opts) {
+  const resend = !!(opts && opts.resend);
+  const attempt = attemptOf(opts && opts.attempt, given);
   const sha = await fingerprint({channel, source: request.source, target: request.target});
-  const id = given || channel + "-" + sha.slice(0, 12);
+  const id = given || channel + "-" + sha.slice(0, 12) + (attempt > 1 ? "-a" + attempt : "");
   const existing = await loadRecordOrNull(id);
   const at = nowIso();
   if (existing) {
     if (existing.channel !== channel || existing.request_sha256 !== sha) fail("publication_conflict", id + " existe avec une autre demande : changez publication_id");
-    if (existing.status === "published") return {rec: existing, already: true};
-    if (existing.status === "requested" && channel === "email") fail("publication_outcome_unknown", id + " : un envoi d'e-mail est en cours ou son issue est inconnue ; vérifiez la boîte d'envoi avant de relancer sous un autre publication_id");
+    if (existing.status === "published") return {rec: existing, done: {...summarize(existing), already_published: true}};
+    if (existing.status === "removed") return {rec: existing, done: {...summarize(existing), already_removed: true}};
+    if ((existing.status === "requested" || existing.status === "outcome_unknown") && !resend) fail("publication_outcome_unknown", id + " : la diffusion est en cours ou son issue est inconnue (statut " + existing.status + ") ; vérifiez la destination, puis utilisez un nouveau publication_id ou resend_after_unknown = oui");
+    const forced = existing.status !== "failed";
     existing.status = "requested";
     existing.attempts += 1;
     existing.error = null;
     existing.remote = null;
-    existing.history.push({at, action: "requested", note: "tentative " + existing.attempts});
+    existing.history.push({at, action: forced ? "resend_after_unknown" : "requested", note: "tentative " + existing.attempts + (forced ? " ; renvoi demandé malgré une issue inconnue" : "")});
     await commit(existing);
-    return {rec: existing, already: false};
+    return {rec: existing, done: null};
   }
   const rec = {schema: "publish.record/v1", publication_id: id, channel, status: "requested", revision: 1, request_sha256: sha, created_at: at, updated_at: at, attempts: 1, source: request.source, target: request.target, remote: null, error: null, history: [{at, action: "requested", note: "demande enregistrée avant l'appel externe"}]};
   try { await writeJson(recordPath(id), rec, false); } catch (e) {
     const m = String(e && e.message);
-    if (/exist/i.test(m)) fail("concurrent_update", "le journal " + id + " vient d'être créé par un autre acteur");
-    fail("storage_unavailable", clip(m, 200));
+    if (/already exists|file exists/i.test(m)) fail("concurrent_update", "le journal " + id + " vient d'être créé par un autre acteur");
+    throw e;
   }
   remember(rec);
-  return {rec, already: false};
+  return {rec, done: null};
 }
 async function markFailed(rec, e) {
-  const code = e && typeof e.code === "string" ? e.code : "external_error";
+  // An error raised during the call (timeout, cut) does not prove that nothing was sent: outcome_unknown, never failed.
+  const unknown = !!(e && e.unknown);
+  const code = unknown ? "outcome_unknown" : (e && typeof e.code === "string" ? e.code : "external_error");
   const detail = e && typeof e.detail === "string" ? e.detail : clip(String(e && e.message), 300);
-  rec.status = "failed";
+  rec.status = unknown ? "outcome_unknown" : "failed";
   rec.error = {code, message: detail};
-  rec.history.push({at: nowIso(), action: "failed", note: code});
+  rec.history.push({at: nowIso(), action: unknown ? "outcome_unknown" : "failed", note: code});
   let logError = "";
   try { await commit(rec); } catch (c) { logError = clip(String(c && c.message), 120); }
-  fail("publication_failed", rec.publication_id + " : " + code + (detail ? " (" + detail + ")" : "") + (logError ? " ; journal non mis à jour : " + logError : ""));
+  fail(unknown ? "publication_outcome_unknown" : "publication_failed", rec.publication_id + " : " + code + (detail ? " (" + detail + ")" : "") + (unknown ? " ; ne pas relancer sans vérifier la destination" : "") + (logError ? " ; journal non mis à jour : " + logError : ""));
 }
 async function finishPublished(rec, remote, note) {
   rec.status = "published";
@@ -265,22 +298,23 @@ async function finishPublished(rec, remote, note) {
 '''
 
 EXTERNAL = r'''
-function redact(s) { return String(s).replace(/[A-Za-z0-9+\/=]{120,}/g, "[…]"); }
-function externalError(name, message) {
+// thrown = the error was raised during the call. Without a stable code from the tool, the outcome is unknown.
+function externalError(name, message, thrown) {
   const m = /"error(?:_code)?"\s*:\s*"([a-z0-9_]+)"/.exec(message);
   const code = m ? m[1] : "external_error";
   const err = new Error(code + ": " + name);
   err.code = code;
+  err.unknown = !!thrown && !m;
   err.detail = clip(redact(message), 300);
   return err;
 }
 // Tools are called by their bare name. A tool error (thrown or returned) becomes an error with a stable code.
 async function callExternal(name, args) {
   let r;
-  try { r = await callTool(name, args); } catch (e) { throw externalError(name, String(e && e.message)); }
+  try { r = await callTool(name, args); } catch (e) { throw externalError(name, String(e && e.message), true); }
   r = unwrap(r);
-  if (isObject(r) && (r.isError === true || (typeof r.error === "string" && r.error))) throw externalError(name, JSON.stringify({error: r.error, message: r.message}));
-  if (!isObject(r)) throw externalError(name, "réponse inattendue");
+  if (isObject(r) && (r.isError === true || (typeof r.error === "string" && r.error) || (typeof r.error_code === "string" && r.error_code))) throw externalError(name, JSON.stringify({error: r.error || r.error_code, message: r.message}), false);
+  if (!isObject(r)) throw externalError(name, "réponse inattendue", true);
   return r;
 }
 function str(v, max) { return typeof v === "string" ? clip(v, max) : null; }
@@ -311,7 +345,7 @@ def lib(*, read=False, lst=False, write=False, external=False):
 def node(action_id, source, output_key):
     data = {'id': action_id, 'type': 'code_execution'}
     # callExternal(name, ...) wraps callTool with a literal name: both count as a declared tool.
-    tools = sorted(set(re.findall(r'call(?:Tool|External)\("([^"]+)"', source)))
+    tools = sorted(set(re.findall(r'(?:callTool|callExternal|storageCall)\("([^"]+)"', source)))
     if tools:
         data['context'] = {'allowed_tools': tools}
     data.update({'code': source, 'output_key': output_key})
@@ -328,9 +362,11 @@ def schema(required, **props):
 
 PUB_ID = text('Publication identifier: lowercase letters, digits and hyphens. Derived from the request when absent; also the idempotency key of a social post', pattern='^[a-z0-9][a-z0-9-]{0,47}$')
 CONFIRM = {'type': ['boolean', 'string'], 'description': 'Manual confirmation: oui (or true) to proceed'}
+RESEND = {'type': ['boolean', 'string'], 'description': 'oui to send again a publication whose outcome is unknown (requested or outcome_unknown); noted in the history'}
+ATTEMPT = {'type': ['integer', 'string'], 'description': 'Attempt number (2 to 99) appended to a derived publication_id, to publish the same request again after a removal'}
 STRING_LIST = lambda description: {'type': ['array', 'string'], 'items': {'type': 'string'}, 'description': description}
 SUMMARY_OUT = {'publication_id': '{{ result.publication_id }}', 'channel': '{{ result.channel }}', 'status': '{{ result.status }}',
-               'already_published': '{{ result.already_published }}', 'attempts': '{{ result.attempts }}',
+               'already_published': '{{ result.already_published }}', 'already_removed': '{{ result.already_removed }}', 'attempts': '{{ result.attempts }}',
                'source': '{{ result.source }}', 'target': '{{ result.target }}', 'remote': '{{ result.remote }}'}
 CONFIRM_FIELD = {'name': 'confirmation_manuelle', 'title': 'Confirmation manuelle', 'type': 'select', 'required': True,
                  'options': [{'value': 'non', 'label': 'Non'}, {'value': 'oui', 'label': 'Oui'}], 'default': 'non'}
@@ -418,8 +454,8 @@ const remotePath = remotePathOf(input.remote_path);
 const overwrite = confirmed(input.overwrite);
 const path = storagePathOf(input.source_path, "source_path");
 const src = await readSource(path, input.source_sha256);
-const begun = await begin("web", given, {source: {kind: "storage", path, sha256: src.sha256, bytes: src.bytes}, target: {ssh_target: target, path: remotePath, overwrite}});
-if (begun.already) return {...summarize(begun.rec), already_published: true};
+const begun = await begin("web", given, {source: {kind: "storage", path, sha256: src.sha256, bytes: src.bytes}, target: {ssh_target: target, path: remotePath, overwrite}}, {resend: confirmed(input.resend_after_unknown), attempt: input.attempt});
+if (begun.done) return begun.done;
 const rec = begun.rec;
 let res;
 try { res = await callExternal("ssh_upload_v1", {target, path: remotePath, file: {content_base64: src.b64}, overwrite}); } catch (e) { await markFailed(rec, e); }
@@ -452,14 +488,19 @@ if (hasPath) {
   source = {kind: "text", sha256: await sha256Hex(data), bytes: data.length};
 }
 if (!body.trim() || body.length > 20000) fail("body_invalid", "1 à 20000 caractères");
-const begun = await begin("email", given, {source, target: {tool: "google_mail_send", to, subject}});
-if (begun.already) return {...summarize(begun.rec), already_published: true};
+const begun = await begin("email", given, {source, target: {tool: "google_mail_send", to, subject}}, {resend: confirmed(input.resend_after_unknown), attempt: input.attempt});
+if (begun.done) return begun.done;
 const rec = begun.rec;
 let res;
 try { res = await callExternal("google_mail_send", {to: to.join(", "), subject, body}); } catch (e) { await markFailed(rec, e); }
-if (typeof res.status_code === "number" && (res.status_code < 200 || res.status_code >= 300)) await markFailed(rec, {code: "email_rejected", detail: "statut " + res.status_code});
-const answer = isObject(res.body) ? res.body : res;
-return finishPublished(rec, {message_id: str(answer.id, 200), thread_id: str(answer.threadId, 200), sent_at: nowIso()}, "e-mail transmis au connecteur de messagerie");
+// Published only on proof: a 2xx status and the Gmail message id. The body may arrive as JSON text.
+let answer = res.body;
+if (typeof answer === "string") { try { answer = JSON.parse(answer); } catch (e) { answer = null; } }
+if (isObject(answer)) rejectUnsafeKeys(answer, "réponse du connecteur");
+if (isObject(answer) && typeof answer.error_code === "string" && answer.error_code) await markFailed(rec, {code: clip(answer.error_code, 60).replace(/[^a-z0-9_]/g, "_"), detail: "erreur du connecteur"});
+if (Number.isInteger(res.status_code) && (res.status_code < 200 || res.status_code >= 300)) await markFailed(rec, {code: "email_rejected", detail: "statut " + res.status_code});
+if (!Number.isInteger(res.status_code) || !isObject(answer) || typeof answer.id !== "string" || !answer.id) await markFailed(rec, {unknown: true, detail: "réponse du connecteur sans statut 2xx ou sans identifiant de message : l'envoi n'est ni prouvé ni exclu"});
+return finishPublished(rec, {message_id: clip(answer.id, 200), thread_id: str(answer.threadId, 200), sent_at: nowIso()}, "e-mail transmis au connecteur de messagerie");
 '''
 
 SOCIAL_CODE = r'''
@@ -503,8 +544,8 @@ if (input.media_paths !== undefined && input.media_paths !== null && input.media
     mediaRefs.push({path, sha256: m.sha256, bytes: m.bytes});
   }
 }
-const begun = await begin("social", given, {source, target: {channels, mode, schedule_at: scheduleAt, media: mediaRefs}});
-if (begun.already) return {...summarize(begun.rec), already_published: true};
+const begun = await begin("social", given, {source, target: {channels, mode, schedule_at: scheduleAt, media: mediaRefs}}, {resend: confirmed(input.resend_after_unknown), attempt: input.attempt});
+if (begun.done) return begun.done;
 const rec = begun.rec;
 const args = {channels, content, mode, idempotency_key: rec.publication_id};
 if (scheduleAt) args.schedule_at = scheduleAt;
@@ -616,7 +657,7 @@ def build():
                     source_path=text('Absolute Storage path of the file'), source_sha256=text('Expected SHA-256 of the file (optional)'),
                     target=text('Name of the published ssh target'), remote_path=text('Path relative to the publication root of the target'),
                     overwrite={'type': ['boolean', 'string'], 'description': 'Allow replacing an existing remote file (default no)'},
-                    confirmation_manuelle=CONFIRM),
+                    confirmation_manuelle=CONFIRM, resend_after_unknown=RESEND, attempt=ATTEMPT),
              [node('publish', code(lib(write=True, external=True), WEB_CODE), 'result')],
              SUMMARY_OUT,
              forms=[form('publish', 'Publier sur le web', [
@@ -630,7 +671,7 @@ def build():
              schema(['to', 'subject', 'confirmation_manuelle'], publication_id=PUB_ID, to=STRING_LIST('Recipient addresses (1 to 10), as a list or comma separated'),
                     subject=text('Subject, one line'), body=text('Message body, plain text'),
                     source_path=text('Storage path of a .md or .txt file used as the body, instead of body'),
-                    source_sha256=text('Expected SHA-256 of the file (optional)'), confirmation_manuelle=CONFIRM),
+                    source_sha256=text('Expected SHA-256 of the file (optional)'), confirmation_manuelle=CONFIRM, resend_after_unknown=RESEND, attempt=ATTEMPT),
              [node('publish', code(lib(write=True, external=True), EMAIL_CODE), 'result')],
              SUMMARY_OUT,
              forms=[form('send', 'Envoyer par e-mail', [
@@ -645,7 +686,7 @@ def build():
                     content=text('Post text (5000 characters at most)'), source_path=text('Storage path of a .md or .txt file used as the text, instead of content'),
                     source_sha256=text('Expected SHA-256 of the file (optional)'), media_paths=STRING_LIST('Storage paths of up to 4 images (png, jpg, gif, webp)'),
                     mode=text('draft (default), schedule or now', enum=['draft', 'schedule', 'now']),
-                    schedule_at=text('RFC 3339 date in the future, required with mode schedule'), confirmation_manuelle=CONFIRM),
+                    schedule_at=text('RFC 3339 date in the future, required with mode schedule'), confirmation_manuelle=CONFIRM, resend_after_unknown=RESEND, attempt=ATTEMPT),
              [node('publish', code(lib(write=True, external=True), SOCIAL_CODE), 'result')],
              SUMMARY_OUT,
              forms=[form('post', 'Publier un post', [
@@ -672,7 +713,7 @@ def build():
 
     workflow('publish-list', 'List publications',
              'Lists the publication journals: identifier, channel, status, target label and last update.',
-             schema([], status=text('Filter on a status', enum=['requested', 'published', 'failed', 'removed']),
+             schema([], status=text('Filter on a status', enum=['requested', 'published', 'failed', 'removed', 'outcome_unknown']),
                     channel=text('Filter on a channel', enum=['web', 'email', 'social'])),
              [node('list', code(lib(lst=True, read=True), LIST_CODE), 'result')],
              {'count': '{{ result.count }}', 'total': '{{ result.total }}', 'truncated': '{{ result.truncated }}', 'items': '{{ result.items }}'})

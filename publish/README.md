@@ -32,15 +32,30 @@ messages and prompts are French.
   created at `requested` before the external call, then moves to `published`
   or `failed` with the remote identifiers. A removal records its intent first
   (the status stays `published`), then moves to `removed`.
-- A `published` publication is never published again: the same request
-  answers `already_published` without any external call. The
-  `publication_id` is the caller's or derived (`<channel>-<12 hex>` from the
-  request fingerprint). It is the `idempotency_key` of a social post. The same
-  id with another request is refused (`publication_conflict`).
-- A `failed` or `removed` publication can be requested again (attempt +1). A
-  `requested` web or social publication too (the tools are idempotent, with
-  `overwrite` for a file). A `requested` e-mail is never retried
-  (`publication_outcome_unknown`): check the sent box first.
+- State machine of a `publication_id` (`requested`, `published`, `failed`,
+  `outcome_unknown`, `removed`):
+  - `published`: the same request answers `already_published`, no external call.
+  - `removed` is terminal: the same request answers `already_removed`. To
+    publish again, use a new `publication_id`, or, for a derived id, pass
+    `attempt` (2 to 99): the id becomes `<channel>-<12 hex>-a<attempt>`.
+  - `failed` is the only state that allows a new attempt on the same id (the
+    tool answered with an error code).
+  - `requested` and `outcome_unknown` are never retried by themselves
+    (`publication_outcome_unknown`). Check the destination, then use a new id
+    or pass `resend_after_unknown: oui` (with the manual confirmation; noted in
+    the history as `resend_after_unknown`).
+- An error raised during the external call without a stable tool error code
+  (timeout, cut connection) does not prove that nothing was sent: the journal
+  moves to `outcome_unknown`, never `failed`. Same for an e-mail answer
+  without a 2xx `status_code` and a Gmail message `id` in `body` (the body
+  may be JSON text). V0 does not lift the doubt itself (no `ssh_list_v1` or
+  `social_post_get_v1` check).
+- The `publication_id` is the caller's or derived. It is the
+  `idempotency_key` of a social post. The same id with another request is
+  refused (`publication_conflict`).
+- Every Storage tool result is checked by one helper: an exception or a
+  returned `{isError: true}` / `{error: ...}` is an error. Only "not found"
+  reads as absent; anything else is `storage_unavailable`.
 
 ## Workflows
 
@@ -63,7 +78,7 @@ history, rereads the remote state, and removal goes through the form of
 ## Storage
 
 - `/publish/log/<publication_id>.json`: `publish.record/v1` with `channel`,
-  `status` (`requested`, `published`, `failed`, `removed`), `revision` (+1 at
+  `status` (`requested`, `published`, `failed`, `outcome_unknown`, `removed`), `revision` (+1 at
   every write), `attempts`, `request_sha256`, `source` (kind, path, SHA-256,
   bytes), `target`, `remote` (identifiers returned by the tool), `error` and
   `history`.
