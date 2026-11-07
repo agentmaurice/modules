@@ -211,9 +211,10 @@ function validateSchema(schema, value, label) {
 }
 
 function fmtMoney(cents) {
-  const abs = Math.abs(cents);
-  const grouped = String(Math.floor(abs / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-  return (cents < 0 ? "-" : "") + grouped + "," + String(abs % 100).padStart(2, "0") + " €";
+  const big = BigInt(cents);
+  const abs = big < 0n ? -big : big;
+  const grouped = String(abs / 100n).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return (big < 0n ? "-" : "") + grouped + "," + String(abs % 100n).padStart(2, "0") + " €";
 }
 function fmtNumber(n) { return String(n).replace(".", ","); }
 const VAT_RATES = [0, 2.1, 5.5, 10, 20];
@@ -230,39 +231,42 @@ function checkQuoteNumbers(d) {
     else if (p100 < 0 || p100 > 1e11) errors.push(at + ".unit_price_ht : entre 0 et 1000000000");
     if (!VAT_RATES.includes(l.vat_rate)) errors.push(at + ".vat_rate : taux autorisés 0, 2.1, 5.5, 10 ou 20");
   });
-  if (!errors.length) {
-    let ht = 0;
-    for (const l of d.lines) {
-      const total = Math.round(Math.round(l.quantity * 1000) * Math.round(l.unit_price_ht * 100) / 1000);
-      ht += total;
-      if (!Number.isSafeInteger(total) || !Number.isSafeInteger(ht * 2)) { errors.push("totaux : montant trop grand"); break; }
-    }
-  }
+  if (!errors.length) { try { quoteAmounts(d); } catch (e) { errors.push(String(e.message).replace(/^data_invalid: /, "")); } }
   if (errors.length) fail("data_invalid", "données du gabarit quote : " + errors.slice(0, 8).join(" ; "));
 }
 function fmtRate(r) { return fmtNumber(r) + " %"; }
 
-// Amounts and totals are computed here, in integer cents, from the lines. They are never taken from the model.
-function quoteData(d) {
+// Amounts and totals are computed here, in BigInt cents (no intermediate Number), from the lines. They are never
+// taken from the model. Rounding to the cent is half up. Every amount stays under 1e16 cents (100 trillion euros).
+const MAX_CENTS = 10000000000000000n;
+function quoteAmounts(d) {
   const lines = [];
-  let ht = 0;
+  let ht = 0n;
   const groups = new Map();
   for (const l of d.lines) {
-    const unitCents = Math.round(l.unit_price_ht * 100);
-    const totalCents = Math.round(Math.round(l.quantity * 1000) * unitCents / 1000);
-    const rateHundredths = Math.round(l.vat_rate * 100);
-    ht += totalCents;
-    groups.set(rateHundredths, (groups.get(rateHundredths) || 0) + totalCents);
-    lines.push({description: l.description, quantity: fmtNumber(l.quantity) + (l.unit ? " " + l.unit : ""), unit_price_ht: fmtMoney(unitCents), vat_rate: fmtRate(rateHundredths / 100), total_ht: fmtMoney(totalCents)});
+    const q1000 = BigInt(Math.round(l.quantity * 1000));
+    const unit = BigInt(Math.round(l.unit_price_ht * 100));
+    const total = (q1000 * unit + 500n) / 1000n;
+    const rate = BigInt(Math.round(l.vat_rate * 100));
+    if (total > MAX_CENTS) fail("data_invalid", "totaux : montant de ligne trop grand");
+    ht += total;
+    groups.set(rate, (groups.get(rate) || 0n) + total);
+    lines.push({l, unit, total, rate});
   }
-  let vatTotal = 0;
-  const vat = Array.from(groups.entries()).sort((a, b) => a[0] - b[0]).map(([rate, base]) => {
-    const cents = Math.round(base * rate / 10000);
+  let vatTotal = 0n;
+  const vat = Array.from(groups.entries()).sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)).map(([rate, base]) => {
+    const cents = (base * rate + 5000n) / 10000n;
     vatTotal += cents;
-    return {rate: fmtRate(rate / 100), amount: fmtMoney(cents)};
+    return {rate, cents};
   });
+  if (ht > MAX_CENTS || ht + vatTotal > MAX_CENTS) fail("data_invalid", "totaux : montant du document trop grand");
+  return {lines, ht, vat, ttc: ht + vatTotal};
+}
+function quoteData(d) {
+  const a = quoteAmounts(d);
+  const lines = a.lines.map(({l, unit, total, rate}) => ({description: l.description, quantity: fmtNumber(l.quantity) + (l.unit ? " " + l.unit : ""), unit_price_ht: fmtMoney(unit), vat_rate: fmtRate(Number(rate) / 100), total_ht: fmtMoney(total)}));
   const customer = d.customer;
-  return {reference: d.reference, customer: {name: customer.name, address_lines: customer.address_lines || [], contact: customer.contact || ""}, lines, totals: {total_ht: fmtMoney(ht), vat, total_ttc: fmtMoney(ht + vatTotal)}, valid_until: d.valid_until, terms: d.terms || [], payment_terms: d.payment_terms || ""};
+  return {reference: d.reference, customer: {name: customer.name, address_lines: customer.address_lines || [], contact: customer.contact || ""}, lines, totals: {total_ht: fmtMoney(a.ht), vat: a.vat.map((v) => ({rate: fmtRate(Number(v.rate) / 100), amount: fmtMoney(v.cents)})), total_ttc: fmtMoney(a.ttc)}, valid_until: d.valid_until, terms: d.terms || [], payment_terms: d.payment_terms || ""};
 }
 function templateData(key, data) { return key === "quote" ? quoteData(data) : data; }
 
@@ -480,8 +484,9 @@ async function storeFile(path, f) {
 async function storePreviews(dir, res) {
   const previews = [];
   const seen = new Set();
-  const list = res.previews === undefined || res.previews === null ? [] : res.previews;
-  if (!Array.isArray(list)) fail("render_invalid", "previews doit être un tableau");
+  const list = res.previews;
+  if (!Number.isInteger(res.pages) || res.pages < 1) fail("render_invalid", "pages doit être un entier ≥ 1");
+  if (!Array.isArray(list) || list.length !== res.pages) fail("render_invalid", "le rendu doit fournir exactement " + res.pages + " aperçu(s)");
   // The renderer's file names are never trusted: one fixed name per page.
   for (const p of list) {
     if (!isObject(p) || !Number.isInteger(p.page) || p.page < 1 || (Number.isInteger(res.pages) && p.page > res.pages)) fail("render_invalid", "numéro de page d'aperçu invalide");
@@ -490,6 +495,7 @@ async function storePreviews(dir, res) {
     const stored = await storeFile(dir + "/page-" + p.page + ".png", p);
     previews.push({page: p.page, path: stored.path, sha256: stored.sha256});
   }
+  for (let n = 1; n <= res.pages; n++) if (!seen.has(n)) fail("render_invalid", "aperçu manquant : page " + n);
   return previews;
 }
 '''
@@ -779,7 +785,7 @@ if (input.status !== undefined && input.status !== null && input.status !== "" &
 const paths = await listPaths(ROOT + "/docs");
 const ids = [];
 for (const p of paths) { const m = /document-studio\/docs\/([a-z0-9][a-z0-9-]{0,47})(?:\/|$)/.exec(p); if (m && !ids.includes(m[1])) ids.push(m[1]); }
-if (ids.length > 200) fail("too_many_documents", "plus de 200 documents : filtrez ou archivez");
+if (ids.length > 1000) fail("too_many_documents", "plus de 1000 documents : archivez");
 const items = [];
 for (const id of ids.sort()) {
   let rec;
@@ -789,7 +795,8 @@ for (const id of ids.sort()) {
   const s = summarize(rec);
   items.push({doc_id: s.doc_id, title: s.title, template_key: s.template_key, status: s.status, number: s.number, revision: s.revision, sha256: s.issued ? s.issued.file.sha256 : (s.last_render ? s.last_render.sha256 : null)});
 }
-return {count: items.length, items};
+const total = items.length;
+return {count: Math.min(total, 200), total, truncated: total > 200, items: items.slice(0, 200)};
 '''
 
 REVIEW_CODE = r'''
@@ -897,7 +904,7 @@ def build():
              'Lists the documents of the studio: identifier, title, status, number, revision and last fingerprint.',
              schema([], status=text('Filter on a status', enum=['draft', 'approved', 'issued', 'cancelled']), template_key=TEMPLATE_KEY),
              [node('list', code(lib(io=True), LIST_CODE), 'result', tools=STORAGE_TOOLS)],
-             {'count': '{{ result.count }}', 'items': '{{ result.items }}'})
+             {'count': '{{ result.count }}', 'total': '{{ result.total }}', 'truncated': '{{ result.truncated }}', 'items': '{{ result.items }}'})
 
     workflow('document-studio-review-read', 'Read a document for review',
              'Returns the record of a document with the previews of its last render, for the review MiniApp.',

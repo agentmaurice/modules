@@ -1235,17 +1235,17 @@
         ],
         "sha256": {
           "document-studio/module.yaml": "89c05d34793969a8fccb1b767f9b6aa87bda29d6fb9edaf4f80e1f827e2a0299",
-          "document-studio/agents/main/workflows/document-studio-cancel.json": "3da40289d4bcb11446c258cdab1dd52b7031656ddf441ba570bdeb4c483e6fa8",
-          "document-studio/agents/main/workflows/document-studio-draft.json": "4e4a442689eff904821108cc3e86142e5f6251d2786ef6ee19f90ef4a23b3f42",
-          "document-studio/agents/main/workflows/document-studio-export.json": "a8e26bd161911ef3fae7af1b34b63784f33e73640665052c06f0b41e1e1552b4",
-          "document-studio/agents/main/workflows/document-studio-finalize.json": "a686fd57091ce90d16ad888608ed56e2d8d88a7b71fc6dbdfd524a0ac8fa428d",
-          "document-studio/agents/main/workflows/document-studio-list.json": "cb4bf991d74a5296304b76f5f62634977daac677757e57c0278532ba8854781f",
-          "document-studio/agents/main/workflows/document-studio-plan.json": "3e05e186496ddb8461bd4c8487f34c5adea79ae75600f56f878fd1face7f7e3d",
-          "document-studio/agents/main/workflows/document-studio-profile-save.json": "a8196b9ceaa68b0bebadae5794d36f96bc3f23e0236f07a341a7ef3d34af4702",
-          "document-studio/agents/main/workflows/document-studio-publish.json": "2a8315a2bedcfd5e540dd3d57bf49cffbe78ec48e06070432a57e9d0eb213cdf",
-          "document-studio/agents/main/workflows/document-studio-render.json": "e08f2167a1b562fa7096f2b55d8daff8316a9b8af8bac9807237335711b8b796",
-          "document-studio/agents/main/workflows/document-studio-review-read.json": "cc1a36fd626d7d1c69867d135a49bc103b9676fe59758eef2a6c647431fe13ab",
-          "document-studio/agents/main/workflows/document-studio-template-read.json": "838e3af1a95ddb95828f8b231d8edbd917d82faf9ba9606da446e48cd0ba91ad",
+          "document-studio/agents/main/workflows/document-studio-cancel.json": "002b2204e06b54f1d7e853b6c7a3f666c120e8ccdcbf6064ef43ad1ced054894",
+          "document-studio/agents/main/workflows/document-studio-draft.json": "cf15f484cd72d9b2c0ec000792439f3c367cce545abc6dc4644337b526a57d93",
+          "document-studio/agents/main/workflows/document-studio-export.json": "50b16ba42490ccd70699b1abd6231907d1738ab0a9b22fd0e2274cb105ad83de",
+          "document-studio/agents/main/workflows/document-studio-finalize.json": "0e91dd35cf6b9e6ffe4087c5a59dc056d9ba8a33a3d3b8ea79342786cd6f70dd",
+          "document-studio/agents/main/workflows/document-studio-list.json": "1ed92404db1648ca5f712d0fd4706615adad560eb2e4ff6f3fb67a180d284c46",
+          "document-studio/agents/main/workflows/document-studio-plan.json": "8e3f2a32322069829b02c1a37530e2f508b63b1fdbe080419f489019fc3e6efc",
+          "document-studio/agents/main/workflows/document-studio-profile-save.json": "5b348c3f2488a7cb8a81bf609248d6424bcba9595d4eca3ceb60340846469da3",
+          "document-studio/agents/main/workflows/document-studio-publish.json": "380c699c7c9adc41c8bc43c0e2c7a24eef71d2ef0dfeb8b014a011832ff1d5f4",
+          "document-studio/agents/main/workflows/document-studio-render.json": "bd74b6b48de34c1a96f662de68004e8f46dc65a9b74e72bbc627a5ef626b4533",
+          "document-studio/agents/main/workflows/document-studio-review-read.json": "306506b4231b536f8eb21d643142f11eb2cb696f769a93efaf087b75b79667e3",
+          "document-studio/agents/main/workflows/document-studio-template-read.json": "692146a3afa6be9271484ed27178ff9f2db1f93f21e00bb82c2a6f2ede380b59",
           "document-studio/agents/main/miniapps/document-studio-review.json": "126750a2bcf33970f52a3e946381661136ec5cae9a918546cca289a268c1088c"
         }
       },
@@ -1259,7 +1259,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "a3c1cb17f466af9345a3e0c44a79fd728e891a9dc336a9ac11472fe2a5c27d53"
+              "code_sha256": "578b7f9c3181ad2c75fa311c6755827431c402f4830bd195fe89f05570206ac9"
             }
           ]
         },
@@ -1272,7 +1272,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "864d36d25a4cf8a6208c9852be225099f99d38856c6139f6a112107717abeda6"
+              "code_sha256": "3b50a568c066f7d0f180e769f480bbcb348183f714d542535eeed8c0268e20d0"
             },
             {
               "path": "/actions/1",
@@ -1285,7 +1285,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "e552d00da0c5ef5d36283dbaa0b5da89ab81ff1fe3fc47d4dcea8ff27b520f64"
+              "code_sha256": "1366efe8a81ed47fb139285fcf5642f3bc3f8c4f2c9dc43458e0583a4469cec1"
             }
           ]
         },
@@ -1298,7 +1298,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "a0cde5ef8965e96e5787c6ba31e4ce486f0ff55fafb553f480c561fb1c4649e6"
+              "code_sha256": "f21418026bab52ff8f33f5330022047c1b457afeb3847a8b4afd27938f54af00"
             }
           ]
         },
@@ -1311,7 +1311,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "c501cf226c0cd50690a8ada643919ca74713e3d69410456d9641c2a95863c3f0"
+              "code_sha256": "0f9c525b3b31b927b0f6194bef24b361abcc74eabb3c9f6cbffa8c7b3463ba5e"
             }
           ]
         },
@@ -1324,7 +1324,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "5cf5d77f3837a4e8101584afec2aa44e6af1ff58389c7411de1fc048e0ea54e7"
+              "code_sha256": "09cfd951fc306be67c239f0a3eea2d3e85f3b1810cef60b4350b6c511b336aa8"
             }
           ]
         },
@@ -1337,7 +1337,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "43431e41deb2c7073334b3e2fccd0f185b4e9cca5ad9b957f24b471ffb9b71dd"
+              "code_sha256": "e56c583abbc8f9f439bc53ddfeb0188540b5a517d59f8d4a83f4672ec0c219c9"
             },
             {
               "path": "/actions/1",
@@ -1350,7 +1350,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "828125b4995545752436903354e7f41a07f7cae3d813229de418d7008e969df2"
+              "code_sha256": "ae3a4013718ec8d8b1feff42c5509d39931efadfdc23a2d8202366f9a209d774"
             }
           ]
         },
@@ -1363,7 +1363,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "a7c9fe68a81c321a6aa7ce504df11b957e26e9ca286992e2daa4ee20ebcf8225"
+              "code_sha256": "852b05496ef69adfabaec5f6d2bd3fca9da55d52d626b5f6dc54d7bfed6b355b"
             }
           ]
         },
@@ -1376,7 +1376,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "f18e3062d3c4f99f1fd1c64eefa963e40ab1b0db52e3f336b74a4726149d0906"
+              "code_sha256": "b072520d399c7597e6029062bc9707bd365734bb0582268210a4ee94e03e1dd0"
             }
           ]
         },
@@ -1389,7 +1389,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "8f08caec86a23a7b3952e6ab0830dad5b3e3e43dc4dabc98a8070d8dd26adf8b"
+              "code_sha256": "aa09579b9d75cfed61fb4510f0ad4fead443677b6c43e402b880ab108ceecbd4"
             }
           ]
         },
@@ -1402,7 +1402,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "d7a516e928c96fb3781b3e177881bd1a3af8d1d37312911bfb00ba237a18ce49"
+              "code_sha256": "44c39745c54c7e44a3078371975fde5259fb0d59b2951f31cab51dd76a980de3"
             }
           ]
         },
@@ -1415,7 +1415,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "aa14772d951da895ee1f2b69b23a5a9591eb1427d825aaadd4192ffd275dd672"
+              "code_sha256": "e55e88635cb0ecd91930f649791d134504cb5c6ea829332612d980ad2ca27009"
             }
           ]
         }

@@ -62,7 +62,7 @@ async function callTool(name, args) {
     const previews = [prev];
     if (opts.dup_page) previews.push({...prev});
     if (opts.bad_page) previews.push({...prev, page: opts.bad_page});
-    return {status: "ok", mode: args.mode, output: "pdf", file, pages: 1, previews, provenance: {engine: "mock"}};
+    return {status: "ok", mode: args.mode, output: "pdf", file, pages: opts.pages || 1, previews: opts.no_previews ? undefined : previews, provenance: {engine: "mock"}};
   }
   if (name === "read_file") {
     if (opts.read_error && args.path.includes(opts.read_error_path || "") && args.encoding === undefined) throw new Error(opts.read_error);
@@ -413,6 +413,27 @@ class DraftTest(unittest.TestCase):
         forced = ok(self, run_node('document-studio-plan', 'prepare', {'brief': 'x', 'template_key': 'meeting-minutes'}))
         self.assertEqual(forced['template_key'], 'meeting-minutes')
 
+    def test_amounts_are_exact_beyond_safe_integers(self):
+        from decimal import Decimal, ROUND_HALF_UP
+        def cents(d):
+            return int((d * 100).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+        def fmt(c):
+            return f'{c // 100:,}'.replace(',', ' ') + f',{c % 100:02d} €'
+        cases = [(999999.999, 1000005.01, 20.0), (123456.789, 98765.43, 5.5), (0.001, 0.01, 10.0), (2.125, 0.33, 20.0)]
+        lines = [{'description': 'L', 'quantity': q, 'unit_price_ht': p, 'vat_rate': v} for q, p, v in cases]
+        draft = {**QUOTE_DRAFT, 'lines': lines}
+        computed = ok(self, run_node('document-studio-draft', 'create', {'prep': {'template_key': 'quote', 'locale': 'fr'}, 'draft': draft, 'doc_id': 'devis-test'}, {}))['computed']
+        totals, groups = [], {}
+        for (q, p, v), row in zip(cases, computed['lines']):
+            line = cents(Decimal(repr(q)) * Decimal(repr(p)))
+            self.assertEqual(row['total_ht'], fmt(line))
+            totals.append(line)
+            groups[Decimal(repr(v))] = groups.get(Decimal(repr(v)), 0) + line
+        vat = {rate: cents(Decimal(base) / 100 * rate / 100) for rate, base in groups.items()}
+        self.assertEqual(computed['totals']['total_ht'], fmt(sum(totals)))
+        self.assertEqual(computed['totals']['total_ttc'], fmt(sum(totals) + sum(vat.values())))
+        self.assertEqual([v['amount'] for v in computed['totals']['vat']], [fmt(vat[r]) for r in sorted(vat)])
+
     def test_plan_refuses_malformed_model_answers(self):
         prep = ok(self, run_node('document-studio-plan', 'prepare', {'brief': 'Un devis'}))
         good = {'template_key': 'quote', 'title': 'T', 'missing': [], 'questions': []}
@@ -527,6 +548,16 @@ class LifecycleTest(unittest.TestCase):
         for opts in ({'dup_page': True}, {'bad_page': 5}, {'bad_page': -1}):
             bad = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs, **opts)
             self.assertTrue(bad['error'].startswith('render_invalid'), (opts, bad))
+
+    def test_a_render_must_provide_exactly_its_previews(self):
+        _, fs = create_quote(self, seeded())
+        before = fs['/document-studio/docs/devis-test/record.json']['text']
+        out = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs, no_previews=True)
+        self.assertTrue(out['error'].startswith('render_invalid'), out)
+        self.assertEqual(out['fs']['/document-studio/docs/devis-test/record.json']['text'], before)
+        out = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs, pages=2)
+        self.assertTrue(out['error'].startswith('render_invalid'), out)
+        self.assertEqual(out['fs']['/document-studio/docs/devis-test/record.json']['text'], before)
 
     def test_what_is_approved_is_what_is_issued(self):
         def approved(fs=None):
@@ -753,6 +784,17 @@ class LifecycleTest(unittest.TestCase):
         self.assertIn('brouillon', result['warning'])
         empty = run_node('document-studio-export', 'export', {'doc_id': 'devis-test', 'destination_path': '/envois/x.pdf'}, create_quote(self, seeded())[1])
         self.assertTrue(empty['error'].startswith('no_render'))
+
+    def test_list_filters_before_the_limit(self):
+        fs = seeded()
+        for n in range(205):
+            record = {'schema': 'document-studio.record/v1', 'doc_id': f'doc-{n:03d}', 'template_key': 'quote' if n < 3 else 'meeting-minutes', 'template_version': '1.0.0',
+                      'title': 't', 'locale': 'fr', 'status': 'draft', 'number': None, 'revision': 1, 'data': {}, 'history': [], 'renders': [], 'issued': None}
+            fs[f'/document-studio/docs/doc-{n:03d}/record.json'] = text_file(json.dumps(record))
+        few = ok(self, run_node('document-studio-list', 'list', {'template_key': 'quote'}, fs))
+        self.assertEqual((few['total'], few['count'], few['truncated']), (3, 3, False))
+        many = ok(self, run_node('document-studio-list', 'list', {'template_key': 'meeting-minutes'}, fs))
+        self.assertEqual((many['total'], many['count'], many['truncated'], len(many['items'])), (202, 200, True, 200))
 
     def test_list_and_review_read(self):
         _, fs = create_quote(self, seeded())
