@@ -81,6 +81,14 @@ messages and prompts are French.
 - A successful MCP result is opened before use: `structuredContent` first, else
   the JSON in the first text part of `content` (all tools, and `write_file` /
   `list_files`; for `read_file` only a clear envelope, never a file content).
+- Ownership is confirmed (`owner`) only if the index is still this attempt's
+  `pending_owner`. If another publication reserved or confirmed it meanwhile,
+  nothing is written: the journal is `published` with `superseded_by` and the
+  removal answers `destination_superseded` (an unclear index gives
+  `outcome_unknown`).
+- `isError: true` always wins in a tool result, even next to a
+  `structuredContent` or a text saying ok. The code is read from the content;
+  without any code the outcome is `outcome_unknown`.
 - E-mail: only a code known to happen before the sending (`not_connected`,
   `authorization_required`, `identity_unproven`) or a 4xx answer gives
   `failed`. A 5xx, any other error code or any answer without proof of

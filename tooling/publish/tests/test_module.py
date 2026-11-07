@@ -74,6 +74,8 @@ async function rawTool(name, args) {
   if (name === "ssh_upload_v1") {
     snapshot(name);
     if (opts.tamper) tamper();
+    if (opts.hijack_dest) for (const p of Object.keys(store)) if (p.startsWith("/publish/dest/")) store[p] = {text: JSON.stringify({...JSON.parse(store[p].text), owner: "page-2", state: "pending_owner", attempt: 1})};
+    if (opts.vanish_dest) for (const p of Object.keys(store)) if (p.startsWith("/publish/dest/")) delete store[p];
     if (opts.upload_throw) throw new Error(opts.upload_throw);
     if (opts.upload_error) throw new Error(JSON.stringify({error: opts.upload_error, message: "refused"}));
     const bytes = Buffer.from(args.file.content_base64, "base64");
@@ -109,6 +111,10 @@ async function rawTool(name, args) {
 }
 async function callTool(name, args) {
   const r = await rawTool(name, args);
+  if (opts.iserror_env && ["ssh_upload_v1", "google_mail_send", "social_post_create_v1"].includes(name)) {
+    const code = {ssh_upload_v1: "file_exists", google_mail_send: "not_connected", social_post_create_v1: "rate_limited"}[name];
+    return {isError: true, structuredContent: r, content: [{type: "text", text: opts.iserror_env === "code" ? JSON.stringify({error_code: code}) : "ok"}]};
+  }
   if (!opts.envelope || (r && (r.isError || r.error))) return r;
   if (opts.envelope === "structured") return {content: [{type: "text", text: "ignored"}], structuredContent: Array.isArray(r) ? {entries: r} : (name === "read_file" ? r : r)};
   return {content: [{type: "text", text: JSON.stringify(r)}]};
@@ -886,6 +892,35 @@ class Review7Test(unittest.TestCase):
         for raw in ({'error': 'something not found somewhere'}, {'error': 'no such backend'}):
             out = run_node('publish-list', 'list', {}, {}, ret_error={'tool': 'list_files', 'mode': 'raw', 'raw': raw})
             self.assertTrue(out['error'].startswith('storage_unavailable'), (raw, out))
+
+
+class Review8Test(unittest.TestCase):
+    def test_a_delayed_confirmation_does_not_take_the_destination_back(self):
+        fs = dict(FILES)
+        out = run_node('publish-web', 'publish', WEB, fs, hijack_dest=True)
+        res = ok(self, out)
+        self.assertEqual(res['status'], 'published')
+        rec = record(out, 'page-1')
+        self.assertEqual((rec['superseded_by'], rec['remote']['superseded_by']), ('page-2', 'page-2'))
+        dests = [json.loads(v['text']) for k, v in out['fs'].items() if k.startswith('/publish/dest/')]
+        self.assertEqual([(d['owner'], d['state']) for d in dests], [('page-2', 'pending_owner')])
+        rm = run_node('publish-remove', 'remove', {'publication_id': 'page-1', **CONFIRMED}, out['fs'])
+        self.assertTrue(rm['error'].startswith('destination_superseded'), rm)
+        self.assertEqual(external(rm), [])
+        # an unclear situation (index gone) is an unknown outcome
+        out = run_node('publish-web', 'publish', WEB, dict(FILES), vanish_dest=True)
+        self.assertTrue(out['error'].startswith('publication_outcome_unknown'), out)
+        self.assertEqual(record(out, 'page-1')['status'], 'outcome_unknown')
+
+    def test_is_error_always_wins_on_the_three_channels(self):
+        for runner, pid, code in ((web, 'page-1', 'file_exists'), (email, 'mail-1', 'not_connected'), (social, 'post-a', 'rate_limited')):
+            out = runner(iserror_env='nocode')
+            self.assertIn('error', out, pid)
+            self.assertEqual(record(out, pid)['status'], 'outcome_unknown', pid)
+            out = runner(iserror_env='code')
+            rec = record(out, pid)
+            self.assertEqual(rec['error']['code'], code, pid)
+            self.assertNotEqual(rec['status'], 'published', pid)
 
 
 class QueryTest(unittest.TestCase):

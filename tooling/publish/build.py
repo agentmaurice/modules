@@ -326,8 +326,8 @@ async function readDestOrNull(channel, key) {
   return d;
 }
 // state: pending_owner (reserved before the upload) then owner (confirmed). A reservation already takes the destination away from the previous owner.
-async function writeDest(channel, key, owner, contentSha, state) {
-  const value = {schema: "publish.dest/v1", channel, destination_sha256: key, owner, state, content_sha256: contentSha, updated_at: nowIso()};
+async function writeDest(channel, key, owner, contentSha, state, attempt) {
+  const value = {schema: "publish.dest/v1", channel, destination_sha256: key, owner, state, attempt, content_sha256: contentSha, updated_at: nowIso()};
   await writeJson(destPath(channel, key), value, true);
   const back = await readDestOrNull(channel, key);
   if (!back || back.owner !== owner || back.state !== state || back.updated_at !== value.updated_at) fail("journal_unverified", "index de destination non confirmé");
@@ -420,7 +420,7 @@ async function finishPublished(rec, remote, note) {
 EXTERNAL = r'''
 // thrown = the error was raised during the call. Without a stable code from the tool, the outcome is unknown.
 function externalError(name, message, thrown) {
-  const m = /"error(?:_code)?"\s*:\s*"([a-z0-9_]+)"/.exec(message);
+  const m = /"(?:error|error_code|code)"\s*:\s*"([a-z0-9_]+)"/.exec(message);
   const code = m ? m[1] : "external_error";
   const err = new Error(code + ": " + name);
   err.code = code;
@@ -432,10 +432,15 @@ function externalError(name, message, thrown) {
 async function callExternal(name, args) {
   let r;
   try { r = await callTool(name, args); } catch (e) { throw externalError(name, String(e && e.message), true); }
-  // MCP envelope: {isError, content: [{type: "text", text}]}, the text usually being JSON with the error code.
+  // isError always wins, even with a structuredContent or a text that says ok. The code is read from the content when there is
+  // one; without any code the outcome is unknown (the call may have gone through).
+  if (isObject(r) && r.isError === true) {
+    const parts = (Array.isArray(r.content) ? r.content.filter((c) => isObject(c) && typeof c.text === "string").map((c) => c.text) : []).concat(isObject(r.structuredContent) ? [JSON.stringify(r.structuredContent)] : [], typeof r.message === "string" ? [r.message] : [], isObject(r.error) || typeof r.error === "string" ? [JSON.stringify({error: isObject(r.error) ? r.error.code : r.error})] : []);
+    throw externalError(name, parts.join(" ") || "isError", true);
+  }
+  // MCP envelope: {content: [{type: "text", text}]}, the text usually being JSON.
   if (isObject(r) && Array.isArray(r.content)) {
     const texts = r.content.filter((c) => isObject(c) && typeof c.text === "string").map((c) => c.text);
-    if (r.isError === true) throw externalError(name, texts.join(" ") || "isError", false);
     for (const t of texts) { let parsed = null; try { parsed = JSON.parse(t); } catch (e) { parsed = null; } if (isObject(parsed) && (parsed.error || parsed.error_code)) throw externalError(name, t, false); }
   }
   r = mcpUnwrap(r, false);
@@ -604,7 +609,7 @@ try { prior = await readDestOrNull("web", destKey); } catch (e) {
   try { await commit(rec); } catch (c) { /* the original error is the one to report */ }
   throw e;
 }
-try { await writeDest("web", destKey, rec.publication_id, src.sha256, "pending_owner"); } catch (e) { await markFailed(rec, {code: "destination_index_failed", detail: "réservation de la destination non confirmée : aucun appel externe (" + clip(String(e && e.message), 100) + ")"}); }
+try { await writeDest("web", destKey, rec.publication_id, src.sha256, "pending_owner", rec.attempts); } catch (e) { await markFailed(rec, {code: "destination_index_failed", detail: "réservation de la destination non confirmée : aucun appel externe (" + clip(String(e && e.message), 100) + ")"}); }
 let res;
 try { res = await callExternal("ssh_upload_v1", {target, path: remotePath, file: {content_base64: src.b64}, overwrite}); } catch (e) {
   // A definitive refusal wrote nothing: the reservation is cancelled and the previous owner gets the destination back (read back).
@@ -616,8 +621,16 @@ try { res = await callExternal("ssh_upload_v1", {target, path: remotePath, file:
 if (res.status !== "ok" || typeof res.sha256 !== "string" || res.sha256.toLowerCase() !== src.sha256 || (res.bytes !== undefined && res.bytes !== src.bytes)) {
   await markFailed(rec, {code: "remote_integrity_failed", detail: "le serveur n'a pas confirmé l'empreinte ou la taille envoyées"});
 }
-try { await writeDest("web", destKey, rec.publication_id, src.sha256, "owner"); } catch (e) { await markFailed(rec, {unknown: true, detail: "fichier publié, index de destination non confirmé : " + clip(String(e && e.message), 100)}); }
-return finishPublished(rec, {target, path: str(res.path, 200) || remotePath, bytes: src.bytes, sha256: src.sha256}, "fichier déposé, empreinte relue");
+// Ownership is confirmed only if the reservation is still this attempt's: otherwise nothing is written and the newer owner keeps it.
+let supersededBy = null;
+try {
+  const cur = await readDestOrNull("web", destKey);
+  if (cur && cur.owner === rec.publication_id && cur.state === "pending_owner" && cur.attempt === rec.attempts) await writeDest("web", destKey, rec.publication_id, src.sha256, "owner", rec.attempts);
+  else if (cur && cur.owner !== rec.publication_id) supersededBy = cur.owner;
+  else throw new Error("index de destination inattendu (absent, ou autre tentative du même id)");
+} catch (e) { await markFailed(rec, {unknown: true, detail: "fichier publié, index de destination non confirmé : " + clip(String(e && e.message), 100)}); }
+if (supersededBy) rec.superseded_by = supersededBy;
+return finishPublished(rec, {target, path: str(res.path, 200) || remotePath, bytes: src.bytes, sha256: src.sha256, superseded_by: supersededBy}, supersededBy ? "fichier déposé, mais la destination a été reprise par " + supersededBy : "fichier déposé, empreinte relue");
 '''
 
 EMAIL_CODE = r'''
@@ -733,6 +746,7 @@ else {
   tool = "social_post_delete_v1"; args = {post_id: rec.remote.post_id};
 }
 async function assertOwner() {
+  if (typeof rec.superseded_by === "string" && rec.superseded_by) fail("destination_superseded", id + " a été remplacée par " + rec.superseded_by + " ; rien n'est retiré");
   const dest = await readDestOrNull("web", await destinationKey(args.target + "\n" + args.path));
   if (!dest) fail("destination_index_missing", id + " : aucun propriétaire connu pour cette destination ; rien n'est retiré");
   if (dest.owner !== id || dest.state === "pending_owner") fail("destination_superseded", id + " n'est plus propriétaire de sa destination (propriétaire actuel : " + dest.owner + ") ; rien n'est retiré");
