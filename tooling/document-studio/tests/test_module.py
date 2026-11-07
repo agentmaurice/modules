@@ -93,6 +93,7 @@ async function callTool(name, args) {
   }
   throw new Error("unexpected tool " + name);
 }
+if (opts.now) globalThis.__dsNow = opts.now;
 const source = code.replace("import { callTool } from './tools/nats_bridge.ts';", "").split("{{ json . }}").join(JSON.stringify(ctx));
 const main = new Function("callTool", "return (async () => {" + source + "})();");
 main(callTool).then((result) => console.log(JSON.stringify({result, fs: store, calls})))
@@ -433,6 +434,50 @@ class DraftTest(unittest.TestCase):
         self.assertEqual(computed['totals']['total_ht'], fmt(sum(totals)))
         self.assertEqual(computed['totals']['total_ttc'], fmt(sum(totals) + sum(vat.values())))
         self.assertEqual([v['amount'] for v in computed['totals']['vat']], [fmt(vat[r]) for r in sorted(vat)])
+
+    def test_unsafe_keys_are_refused_everywhere_external_data_enters(self):
+        prep = {'template_key': 'quote', 'locale': 'fr'}
+        bodies = (json.dumps(QUOTE_DRAFT)[:-1] + ', "__proto__": {"customer": {"name": "x"}}}',
+                  json.dumps({**QUOTE_DRAFT, 'customer': {**QUOTE_DRAFT['customer'], 'constructor': {'a': 1}}}),
+                  json.dumps({**QUOTE_DRAFT, 'lines': [{**QUOTE_DRAFT['lines'][0], 'prototype': 1}]}))
+        for raw in bodies:
+            out = run_node('document-studio-draft', 'create', {'prep': prep, 'draft': {'text': raw}, 'doc_id': 'devis-test'}, {})
+            self.assertTrue(out['error'].startswith('data_invalid') and 'interdite' in out['error'], out)
+            self.assertEqual(out['calls'], [])
+        plan = run_node('document-studio-plan', 'normalize', {'prep': {'template_key': 'quote', 'locale': 'fr'}, 'plan_draft': '{"__proto__": {"x": 1}, "title": "t"}'})
+        self.assertTrue(plan['error'].startswith('data_invalid'), plan)
+        self.assertIn('error', run_node('document-studio-draft', 'prepare', {'brief': 'x', 'template_key': 'quote', 'answers': json.loads('{"a": {"__proto__": {"b": 1}}}')}))
+        _, fs = create_quote(self, seeded())
+        # the generated code embeds the input as an object literal: a "__proto__" there would set the prototype
+        literal = run_node('document-studio-render', 'render', {'doc_id': 'devis-test', 'data_patch': json.loads('{"__proto__": {"payment_terms": "x"}}')}, fs)
+        self.assertTrue(literal['error'].startswith('data_invalid'), literal)
+        patched = run_node('document-studio-render', 'render', {'doc_id': 'devis-test', 'data_patch': {'terms': [], 'constructor': 1}}, fs)
+        self.assertTrue(patched['error'].startswith('data_invalid'), patched)
+        profile = json.loads(json.dumps(PROFILE))
+        profile['company']['bank'] = {'constructor': {}}
+        out = run_node('document-studio-profile-save', 'save', {'profile': profile, 'confirmation_manuelle': 'oui'}, {})
+        self.assertTrue(out['error'].startswith('data_invalid'), out)
+        self.assertNotIn('/document-studio/profile.json', out['fs'])
+        self.assertIn('error', run_node('document-studio-template-read', 'read', {'template_key': '__proto__'}))
+        self.assertIn('error', run_node('document-studio-template-read', 'read', {'template_key': 'constructor'}))
+
+    def test_a_number_of_a_previous_year_is_abandoned_not_reused(self):
+        _, fs = create_quote(self, seeded())
+        fs = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs)['fs']
+        fs = run_node('document-studio-finalize', 'finalize', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs)['fs']
+        failed = run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs, render_error='moteur indisponible', now='2025-12-31T23:00:00Z')
+        record = json.loads(failed['fs']['/document-studio/docs/devis-test/record.json']['text'])
+        self.assertEqual(record['number'], 'DEV-2025-0001')
+        resumed = run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, failed['fs'], now='2026-01-02T09:00:00Z')
+        result = ok(self, resumed)
+        self.assertEqual(result['number'], 'DEV-2026-0001')
+        stored = json.loads(resumed['fs']['/document-studio/docs/devis-test/record.json']['text'])
+        abandoned = [h for h in stored['history'] if h['action'] == 'number_abandoned']
+        self.assertEqual([h['note'] for h in abandoned], ['DEV-2025-0001'])
+        self.assertIn('/document-studio/numbers/quote/2025/0001.json', resumed['fs'])
+        self.assertEqual(json.loads(resumed['fs']['/document-studio/numbers/quote/2025/0001.json']['text'])['doc_id'], 'devis-test')
+        same_year = run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, failed['fs'], now='2025-12-31T23:30:00Z')
+        self.assertEqual(ok(self, same_year)['number'], 'DEV-2025-0001')
 
     def test_plan_refuses_malformed_model_answers(self):
         prep = ok(self, run_node('document-studio-plan', 'prepare', {'brief': 'Un devis'}))

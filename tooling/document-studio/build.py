@@ -107,8 +107,23 @@ function fail(code, message) { throw new Error(message ? code + ": " + message :
 function isObject(v) { return v !== null && typeof v === "object" && !Array.isArray(v); }
 function confirmed(v) { return v === true || v === "true" || v === "oui"; }
 function requireConfirmation(input) { if (!confirmed(input.confirmation_manuelle)) fail("manual_confirmation_required", "confirmez explicitement (confirmation_manuelle = oui)"); }
-function today() { return new Date().toISOString().slice(0, 10); }
-function nowIso() { return new Date().toISOString(); }
+// The clock can be injected by the offline test bench (globalThis.__dsNow); in a One it is always the real clock.
+function clock() { return typeof globalThis.__dsNow === "string" ? new Date(globalThis.__dsNow) : new Date(); }
+function today() { return clock().toISOString().slice(0, 10); }
+function nowIso() { return clock().toISOString(); }
+function own(o, k) { return Object.prototype.hasOwnProperty.call(o, k); }
+// External data (model answer, patch, answers, profile) never carries these keys, at any depth.
+function rejectUnsafeKeys(v, label) {
+  if (Array.isArray(v)) { v.forEach((x) => rejectUnsafeKeys(x, label)); return; }
+  if (!isObject(v)) return;
+  // An object literal written as {"__proto__": ...} in generated code sets the prototype instead of a key.
+  const proto = Object.getPrototypeOf(v);
+  if (proto !== Object.prototype && proto !== null) fail("data_invalid", label + " : prototype inattendu");
+  for (const k of Object.keys(v)) {
+    if (k === "__proto__" || k === "constructor" || k === "prototype") fail("data_invalid", label + " : clé interdite " + k);
+    rejectUnsafeKeys(v[k], label);
+  }
+}
 function docIdOf(v) { if (typeof v !== "string" || !ID_RE.test(v)) fail("doc_id_invalid", "attendu : minuscules, chiffres et tirets, 48 caractères au plus"); return v; }
 function slugify(text) {
   const base = String(text || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40).replace(/-+$/g, "");
@@ -135,9 +150,12 @@ async function sha256Hex(bytes) { const d = await crypto.subtle.digest("SHA-256"
 function parseJsonValue(v) {
   // llm_call with llm_response_format "text" yields {text, model, provider}.
   if (v && typeof v === "object" && !Array.isArray(v) && typeof v.text === "string") v = v.text;
-  if (typeof v !== "string") return v;
+  if (typeof v !== "string") { rejectUnsafeKeys(v, "réponse du modèle"); return v; }
   const cleaned = v.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-  try { return JSON.parse(cleaned); } catch (e) { fail("llm_output_invalid", "réponse non JSON"); }
+  let parsed;
+  try { parsed = JSON.parse(cleaned); } catch (e) { fail("llm_output_invalid", "réponse non JSON"); }
+  rejectUnsafeKeys(parsed, "réponse du modèle");
+  return parsed;
 }
 
 // Subset of JSON Schema: $ref (#/$defs), type, enum, required, properties, additionalProperties false,
@@ -182,7 +200,7 @@ function checkSchema(schema, value, path, root, errors) {
     for (const key of schema.required || []) if (value[key] === undefined || value[key] === null) errors.push(path + "." + key + " : requis");
     const props = schema.properties || {};
     for (const key of Object.keys(props)) if (value[key] !== undefined) checkSchema(props[key], value[key], path + "." + key, root, errors);
-    if (schema.additionalProperties === false) for (const key of Object.keys(value)) if (!(key in props)) errors.push(path + "." + key + " : champ inconnu");
+    if (schema.additionalProperties === false) for (const key of Object.keys(value)) if (!own(props, key)) errors.push(path + "." + key + " : champ inconnu");
   }
 }
 function resolveRef(schema, root) {
@@ -197,10 +215,11 @@ function stripNulls(schema, value, root) {
   if (Array.isArray(value)) return node.items ? value.map((v) => stripNulls(node.items, v, root)) : value;
   if (!isObject(value)) return value;
   const props = node.properties || {};
-  const out = {};
+  const out = Object.create(null);
   for (const [key, v] of Object.entries(value)) {
-    if (v === null && !(node.required || []).includes(key) && !(props[key] && isNullable(props[key], root))) continue;
-    out[key] = props[key] ? stripNulls(props[key], v, root) : v;
+    const sub = own(props, key) ? props[key] : null;
+    if (v === null && !(node.required || []).includes(key) && !(sub && isNullable(sub, root))) continue;
+    Object.defineProperty(out, key, {value: sub ? stripNulls(sub, v, root) : v, enumerable: true, writable: true, configurable: true});
   }
   return out;
 }
@@ -274,6 +293,7 @@ function templateData(key, data) { return key === "quote" ? quoteData(data) : da
 // Draft data: reference default, validation against the draft schema, then against the template input schema.
 function normalizeData(key, data, id) {
   if (!isObject(data)) fail("data_invalid", "les données doivent être un objet");
+  rejectUnsafeKeys(data, "données");
   let d = stripNulls(TEMPLATES[key].draft_schema, data, TEMPLATES[key].draft_schema);
   if (key === "quote" && (d.reference === undefined || d.reference === null || d.reference === "")) d = {...d, reference: id.toUpperCase()};
   const tpl = TEMPLATES[key];
@@ -380,6 +400,7 @@ function onlyKeys(v, allowed, name) { for (const k of Object.keys(v)) if (!allow
 
 // Company and brand as expected by the template/v1 contract. A logo is a reference, never an upload.
 function normalizeProfile(p) {
+  rejectUnsafeKeys(p, "profil");
   if (!isObject(p) || (p.schema_version !== undefined && p.schema_version !== 1)) fail("profile_invalid", "schema_version 1 attendu");
   onlyKeys(p, ["schema_version", "company", "brand"], "profile");
   const c = p.company, b = p.brand;
@@ -505,7 +526,7 @@ NUMBERING = r'''
 // Number reservation: lists the year folder, takes max + 1, writes the token without overwrite, reads it back and
 // checks the owner. Not atomic: the check narrows the window, it does not close it.
 async function reserveNumber(rec) {
-  const year = new Date().getUTCFullYear();
+  const year = clock().getUTCFullYear();
   const dir = ROOT + "/numbers/" + rec.template_key + "/" + year;
   let last = "";
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -542,7 +563,7 @@ def node(action_id, source, output_key, tools=None):
 def lib(*, templates=None, io=False, profile=False, render=False, numbering=False):
     parts = [IMPORT if io else '']
     if templates is not None:
-        parts.append('const TEMPLATES = ' + js_embed(load_templates(templates == 'full')) + ';\n')
+        parts.append('const TEMPLATES = ' + js_embed(load_templates(templates == 'full')) + ';\nObject.setPrototypeOf(TEMPLATES, null);\n')
     if render:
         parts.append('const I18N = ' + js_embed(I18N) + ';\n')
     parts.append(CORE)
@@ -640,6 +661,7 @@ const locale = input.locale || "fr";
 if (locale !== "fr") fail("locale_unsupported", "seul fr est disponible en V0");
 if (input.doc_id !== undefined && input.doc_id !== null && input.doc_id !== "") docIdOf(input.doc_id);
 if (input.answers !== undefined && input.answers !== null && !isObject(input.answers)) fail("answers_invalid", "objet attendu");
+rejectUnsafeKeys(input.answers, "answers");
 const prompt = "Brief du demandeur :\n" + brief + "\n\n" + (input.answers && Object.keys(input.answers).length ? "Réponses complémentaires du demandeur :\n" + JSON.stringify(input.answers) + "\n\n" : "") + "Date du jour : " + today() + ".\n\nRemplis les données du document \"" + key + "\" selon ce schéma JSON :\n" + JSON.stringify(TEMPLATES[key].draft_schema) + "\n\nRègles : réponds par l'objet de données seul, conforme au schéma. N'invente ni client, ni prix, ni date, ni participant : si une donnée requise manque, réponds uniquement {\"missing\": [\"description de ce qui manque\"]}. Ne calcule aucun total ni montant TTC. Dates au format AAAA-MM-JJ. Texte en français.";
 return {prompt, template_key: key, locale};
 '''
@@ -670,6 +692,7 @@ if (rec.status === "issued" || rec.status === "cancelled") fail("document_locked
 let data = rec.data;
 if (input.data_patch !== undefined && input.data_patch !== null) {
   if (!isObject(input.data_patch)) fail("data_patch_invalid", "objet attendu");
+  rejectUnsafeKeys(input.data_patch, "data_patch");
   data = {...rec.data, ...input.data_patch};
 }
 data = normalizeData(rec.template_key, data, id);
@@ -717,6 +740,14 @@ const approved = rec.renders.length ? rec.renders[rec.renders.length - 1] : null
 if (!approved || typeof approved.profile_sha256 !== "string" || typeof approved.data_sha256 !== "string") fail("render_outdated", "ce rendu ne porte pas d'empreintes : rendez et approuvez à nouveau");
 if (approved.profile_sha256 !== await fingerprint(profile)) fail("profile_changed", "la charte a changé depuis le rendu approuvé : rendez et approuvez à nouveau");
 if (approved.data_sha256 !== await fingerprint(normalizeData(rec.template_key, rec.data, id))) fail("data_changed", "les données ont changé depuis le rendu approuvé : rendez et approuvez à nouveau");
+if (rec.number) {
+  // A number reserved in a previous year is abandoned, never reused: a new one is reserved in the current year.
+  const m = /^[A-Z]+-(\d{4})-\d+$/.exec(String(rec.number));
+  if (!m || Number(m[1]) !== clock().getUTCFullYear()) {
+    rec.history.push({at: nowIso(), action: "number_abandoned", note: String(rec.number)});
+    rec.number = null;
+  }
+}
 if (!rec.number) {
   rec.number = await reserveNumber(rec);
   rec.revision += 1;
