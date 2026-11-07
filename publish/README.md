@@ -86,6 +86,12 @@ messages and prompts are French.
   nothing is written: the journal is `published` with `superseded_by` and the
   removal answers `destination_superseded` (an unclear index gives
   `outcome_unknown`).
+- The previous owner of a destination is restored after a definitive refusal
+  only if the index is still this attempt's reservation; otherwise nothing is
+  written.
+- A tool result carrying an `error` field (string or object, in the usual
+  envelopes) is an error whatever `status` or `state` says; a failing
+  `publish-status` read leaves the journal unchanged.
 - `isError: true` always wins in a tool result, even next to a
   `structuredContent` or a text saying ok. The code is read from the content;
   without any code the outcome is `outcome_unknown`.

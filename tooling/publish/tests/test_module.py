@@ -74,7 +74,7 @@ async function rawTool(name, args) {
   if (name === "ssh_upload_v1") {
     snapshot(name);
     if (opts.tamper) tamper();
-    if (opts.hijack_dest) for (const p of Object.keys(store)) if (p.startsWith("/publish/dest/")) store[p] = {text: JSON.stringify({...JSON.parse(store[p].text), owner: "page-2", state: "pending_owner", attempt: 1})};
+    if (opts.hijack_dest) for (const p of Object.keys(store)) if (p.startsWith("/publish/dest/")) store[p] = {text: JSON.stringify({...JSON.parse(store[p].text), owner: opts.hijack_owner || "page-2", state: opts.hijack_state || "pending_owner", attempt: 1})};
     if (opts.vanish_dest) for (const p of Object.keys(store)) if (p.startsWith("/publish/dest/")) delete store[p];
     if (opts.upload_throw) throw new Error(opts.upload_throw);
     if (opts.upload_error) throw new Error(JSON.stringify({error: opts.upload_error, message: "refused"}));
@@ -111,6 +111,7 @@ async function rawTool(name, args) {
 }
 async function callTool(name, args) {
   const r = await rawTool(name, args);
+  if (opts.ok_with_error && ["ssh_upload_v1", "ssh_remove_v1", "social_post_create_v1", "social_post_get_v1", "social_post_delete_v1"].includes(name) && r && typeof r === "object") return {...r, error: {code: "remote_boom"}};
   if (opts.iserror_env && ["ssh_upload_v1", "google_mail_send", "social_post_create_v1"].includes(name)) {
     const code = {ssh_upload_v1: "file_exists", google_mail_send: "not_connected", social_post_create_v1: "rate_limited"}[name];
     return {isError: true, structuredContent: r, content: [{type: "text", text: opts.iserror_env === "code" ? JSON.stringify({error_code: code}) : "ok"}]};
@@ -921,6 +922,34 @@ class Review8Test(unittest.TestCase):
             rec = record(out, pid)
             self.assertEqual(rec['error']['code'], code, pid)
             self.assertNotEqual(rec['status'], 'published', pid)
+
+
+class Review9Test(unittest.TestCase):
+    def test_a_restoration_never_overwrites_a_newer_owner(self):
+        fs = dict(FILES)
+        fs['/docs/other.html'] = {'text': '<h1>New</h1>'}
+        p = run_node('publish-web', 'publish', WEB, fs)
+        a = run_node('publish-web', 'publish', {**WEB, 'publication_id': 'page-2', 'source_path': '/docs/other.html'}, p['fs'], upload_error='file_exists', hijack_dest=True, hijack_owner='page-3', hijack_state='owner')
+        self.assertIn('file_exists', a['error'])
+        dests = [json.loads(v['text']) for k, v in a['fs'].items() if k.startswith('/publish/dest/')]
+        self.assertEqual([(d['owner'], d['state']) for d in dests], [('page-3', 'owner')])
+        self.assertEqual(record(a, 'page-2')['status'], 'failed')
+
+    def test_an_error_field_wins_over_status_and_state(self):
+        for runner, pid in ((web, 'page-1'), (social, 'post-a')):
+            out = runner(ok_with_error=True)
+            self.assertEqual(record(out, pid)['status'], 'failed', pid)
+            self.assertEqual(record(out, pid)['error']['code'], 'remote_boom', pid)
+        done = social()
+        st = run_node('publish-status', 'status', {'publication_id': 'post-a'}, done['fs'], ok_with_error=True)
+        self.assertTrue(st['error'].startswith('remote_boom'), st)
+        self.assertEqual(writes(st), [])
+        self.assertEqual(record(st, 'post-a'), record(done, 'post-a'))
+        for pid, runner in (('post-a', social), ('page-1', web)):
+            d = runner()
+            rm = run_node('publish-remove', 'remove', {'publication_id': pid, **CONFIRMED}, d['fs'], ok_with_error=True)
+            self.assertTrue(rm['error'].startswith('removal_failed'), rm)
+            self.assertEqual(record(rm, pid)['status'], 'published')
 
 
 class QueryTest(unittest.TestCase):

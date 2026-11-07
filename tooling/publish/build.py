@@ -332,7 +332,10 @@ async function writeDest(channel, key, owner, contentSha, state, attempt) {
   const back = await readDestOrNull(channel, key);
   if (!back || back.owner !== owner || back.state !== state || back.updated_at !== value.updated_at) fail("journal_unverified", "index de destination non confirmé");
 }
-async function restoreDest(channel, key, prior) {
+// Same rule as the confirmation: the previous owner is restored only if the index is still this attempt's reservation.
+async function restoreDest(channel, key, prior, owner, attempt) {
+  const cur = await readDestOrNull(channel, key);
+  if (!cur || cur.owner !== owner || cur.state !== "pending_owner" || cur.attempt !== attempt) return;
   await writeJson(destPath(channel, key), prior, true);
   const back = await readDestOrNull(channel, key);
   if (!back || back.owner !== prior.owner || back.state !== prior.state || back.updated_at !== prior.updated_at) fail("journal_unverified", "index de destination non restauré");
@@ -438,6 +441,9 @@ async function callExternal(name, args) {
     const parts = (Array.isArray(r.content) ? r.content.filter((c) => isObject(c) && typeof c.text === "string").map((c) => c.text) : []).concat(isObject(r.structuredContent) ? [JSON.stringify(r.structuredContent)] : [], typeof r.message === "string" ? [r.message] : [], isObject(r.error) || typeof r.error === "string" ? [JSON.stringify({error: isObject(r.error) ? r.error.code : r.error})] : []);
     throw externalError(name, parts.join(" ") || "isError", true);
   }
+  // An `error` field anywhere in the usual envelopes is an error, whatever status or state sits next to it.
+  const inner = structuredError(r, true);
+  if (inner !== null) throw externalError(name, JSON.stringify({error: inner.code, message: inner.message}), false);
   // MCP envelope: {content: [{type: "text", text}]}, the text usually being JSON.
   if (isObject(r) && Array.isArray(r.content)) {
     const texts = r.content.filter((c) => isObject(c) && typeof c.text === "string").map((c) => c.text);
@@ -614,7 +620,7 @@ let res;
 try { res = await callExternal("ssh_upload_v1", {target, path: remotePath, file: {content_base64: src.b64}, overwrite}); } catch (e) {
   // A definitive refusal wrote nothing: the reservation is cancelled and the previous owner gets the destination back (read back).
   if (prior && !(e && e.unknown) && ["file_exists", "publish_not_enabled", "invalid_arguments", "file_too_large", "atomic_replace_unavailable"].includes(e && e.code)) {
-    try { await restoreDest("web", destKey, prior); } catch (r) { e.detail = clip((e.detail || "") + " ; restauration de l'index non confirmée : " + clip(String(r && r.message), 80), 300); }
+    try { await restoreDest("web", destKey, prior, rec.publication_id, rec.attempts); } catch (r) { e.detail = clip((e.detail || "") + " ; restauration de l'index non confirmée : " + clip(String(r && r.message), 80), 300); }
   }
   await markFailed(rec, e);
 }
