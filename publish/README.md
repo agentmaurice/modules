@@ -58,6 +58,20 @@ messages and prompts are French.
   `already_published` / `already_removed`, and only then the checks that depend
   on the date (a scheduled post whose date has passed is still answered
   `already_published`).
+- Every journal write (`requested`, `published`, `failed`, `outcome_unknown`,
+  `removed`) is read back. A write that is not visible answers
+  `journal_unverified`, saying what is known of the external call (for example
+  the file is published but the journal could not be confirmed): never `ok`.
+- Web destinations have an index `/publish/dest/web/<sha256 of target and
+  path>.json` (`publish.dest/v1`) naming the publication that owns the
+  destination, updated and read back at each `published`. `publish-remove`
+  refuses with `destination_superseded` when the publication no longer owns it
+  (`destination_index_missing` when there is no index). The server gives no
+  remote SHA-256, so the index is the check. Social posts are removed by their
+  own `post_id`, which a newer post never replaces.
+- A remote identifier (post, group, channel, message, thread) is never
+  truncated: 1 to 1024 characters, else `remote_id_invalid` and the
+  publication is not marked `published`.
 - The journal write at `requested` is read back before any external call
   (`journal_unverified`, no call otherwise). A Storage result carrying `error`
   (string or object), `isError`, `status: "error"` or a JSON text with an

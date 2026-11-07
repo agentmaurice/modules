@@ -250,7 +250,36 @@ async function commit(rec) {
   rec.revision = was.revision + 1;
   rec.updated_at = nowIso();
   await writeJson(recordPath(rec.publication_id), rec, true);
+  // Every journal write is read back: a write that is not visible is journal_unverified, never a success.
+  let back;
+  try { back = await readJson(recordPath(rec.publication_id)); } catch (e) { fail("journal_unverified", rec.publication_id + " : relecture impossible (" + clip(String(e && e.message), 100) + ")"); }
+  if (!isObject(back) || back.revision !== rec.revision || back.status !== rec.status || back.updated_at !== rec.updated_at || !Array.isArray(back.history) || back.history.length !== rec.history.length) fail("journal_unverified", rec.publication_id + " : le journal relu n'a pas l'état écrit (" + rec.status + ")");
   remember(rec);
+}
+function journalFail(e, id, what) {
+  const m = String(e && e.message);
+  fail(m.startsWith("journal_unverified") ? "journal_unverified" : "log_write_failed", id + " : " + what + " ; journal : " + clip(m, 150));
+}
+// Index of destinations: /publish/dest/<channel>/<sha256 of the normalized destination>.json holds the publication that
+// currently owns the destination. A publication that lost it can no longer remove what is there now.
+async function destinationKey(destination) { return sha256Hex(new TextEncoder().encode(destination)); }
+function destPath(channel, key) { return ROOT + "/dest/" + channel + "/" + key + ".json"; }
+async function readDestOrNull(channel, key) {
+  let d;
+  try { d = await readJson(destPath(channel, key)); } catch (e) {
+    const m = String(e && e.message);
+    if (m.startsWith("storage_not_found")) return null;
+    if (m.startsWith("json_corrupt")) fail("record_corrupt", "index de destination");
+    throw e;
+  }
+  if (!isObject(d) || d.schema !== "publish.dest/v1" || typeof d.owner !== "string") fail("record_invalid", "index de destination");
+  return d;
+}
+async function writeDest(channel, key, owner, contentSha) {
+  const value = {schema: "publish.dest/v1", channel, destination_sha256: key, owner, content_sha256: contentSha, updated_at: nowIso()};
+  await writeJson(destPath(channel, key), value, true);
+  const back = await readDestOrNull(channel, key);
+  if (!back || back.owner !== owner || back.updated_at !== value.updated_at) fail("journal_unverified", "index de destination non confirmé");
 }
 // The journal is written at "requested" BEFORE the external call. An existing publication is never published twice.
 // A publication that is published, removed, requested or of unknown outcome is never sent again by itself:
@@ -317,6 +346,7 @@ async function markFailed(rec, e) {
   rec.history.push({at: nowIso(), action: unknown ? "outcome_unknown" : "failed", note: code});
   let logError = "";
   try { await commit(rec); } catch (c) { logError = clip(String(c && c.message), 120); }
+  if (logError.startsWith("journal_unverified")) fail("journal_unverified", rec.publication_id + " : " + (unknown ? "l'issue de l'appel externe est inconnue" : "l'appel externe a échoué (" + code + ")") + ", et le journal n'a pas pu être confirmé : " + logError);
   fail(unknown ? "publication_outcome_unknown" : "publication_failed", rec.publication_id + " : " + code + (detail ? " (" + detail + ")" : "") + (unknown ? " ; ne pas relancer sans vérifier la destination" : "") + (logError ? " ; journal non mis à jour : " + logError : ""));
 }
 async function finishPublished(rec, remote, note) {
@@ -325,7 +355,7 @@ async function finishPublished(rec, remote, note) {
   rec.error = null;
   rec.history.push({at: nowIso(), action: "published", note});
   try { await commit(rec); } catch (e) {
-    fail("log_write_failed", rec.publication_id + " : la diffusion a eu lieu (" + clip(JSON.stringify(remote), 300) + ") mais le journal n'a pas pu passer à published : " + clip(String(e && e.message), 150));
+    journalFail(e, rec.publication_id, "la diffusion a eu lieu (" + clip(JSON.stringify(remote), 300) + ") mais le journal n'a pas pu être confirmé à published");
   }
   return {...summarize(rec), already_published: false};
 }
@@ -350,6 +380,16 @@ async function callExternal(name, args) {
   if (isObject(r) && (r.isError === true || (typeof r.error === "string" && r.error) || (typeof r.error_code === "string" && r.error_code))) throw externalError(name, JSON.stringify({error: r.error || r.error_code, message: r.message}), false);
   if (!isObject(r)) throw externalError(name, "réponse inattendue", true);
   return r;
+}
+// A remote identifier is never truncated: 1 to 1024 characters or remote_id_invalid.
+function remoteIdOf(v, required) {
+  if (v === undefined || v === null || v === "") { if (required) throw Object.assign(new Error("remote_id_invalid: identifiant distant absent"), {code: "remote_id_invalid", detail: "identifiant distant absent"}); return null; }
+  if (typeof v !== "string" || v.length > 1024 || /[\u0000-\u001f]/.test(v)) throw Object.assign(new Error("remote_id_invalid"), {code: "remote_id_invalid", detail: "identifiant distant invalide (1 à 1024 caractères, sans caractère de contrôle)"});
+  return v;
+}
+function remoteChannels(list) {
+  if (!Array.isArray(list)) return [];
+  return list.slice(0, 10).map((c) => (isObject(c) ? {id: remoteIdOf(c.id, false), state: str(c.state, 40), url: str(c.url, 1024), error: str(c.error, 300)} : {id: remoteIdOf(c, false), state: null, url: null, error: null}));
 }
 function str(v, max) { return typeof v === "string" ? clip(v, max) : null; }
 '''
@@ -496,6 +536,8 @@ try { res = await callExternal("ssh_upload_v1", {target, path: remotePath, file:
 if (res.status !== "ok" || typeof res.sha256 !== "string" || res.sha256.toLowerCase() !== src.sha256 || (res.bytes !== undefined && res.bytes !== src.bytes)) {
   await markFailed(rec, {code: "remote_integrity_failed", detail: "le serveur n'a pas confirmé l'empreinte ou la taille envoyées"});
 }
+const destKey = await destinationKey(target + "\n" + remotePath);
+try { await writeDest("web", destKey, rec.publication_id, src.sha256); } catch (e) { await markFailed(rec, {unknown: true, detail: "fichier publié, index de destination non confirmé : " + clip(String(e && e.message), 100)}); }
 return finishPublished(rec, {target, path: str(res.path, 200) || remotePath, bytes: src.bytes, sha256: src.sha256}, "fichier déposé, empreinte relue");
 '''
 
@@ -534,7 +576,9 @@ if (isObject(answer)) rejectUnsafeKeys(answer, "réponse du connecteur");
 if (isObject(answer) && typeof answer.error_code === "string" && answer.error_code) await markFailed(rec, {code: clip(answer.error_code, 60).replace(/[^a-z0-9_]/g, "_"), detail: "erreur du connecteur"});
 if (Number.isInteger(res.status_code) && (res.status_code < 200 || res.status_code >= 300)) await markFailed(rec, {code: "email_rejected", detail: "statut " + res.status_code});
 if (!Number.isInteger(res.status_code) || !isObject(answer) || typeof answer.id !== "string" || !answer.id) await markFailed(rec, {unknown: true, detail: "réponse du connecteur sans statut 2xx ou sans identifiant de message : l'envoi n'est ni prouvé ni exclu"});
-return finishPublished(rec, {message_id: clip(answer.id, 200), thread_id: str(answer.threadId, 200), sent_at: nowIso()}, "e-mail transmis au connecteur de messagerie");
+let ids;
+try { ids = {message_id: remoteIdOf(answer.id, true), thread_id: remoteIdOf(answer.threadId, false)}; } catch (e) { await markFailed(rec, {unknown: true, detail: "identifiant de message inexploitable : l'envoi est possible"}); }
+return finishPublished(rec, {message_id: ids.message_id, thread_id: ids.thread_id, sent_at: nowIso()}, "e-mail transmis au connecteur de messagerie");
 '''
 
 SOCIAL_CODE = r'''
@@ -586,7 +630,9 @@ if (media.length) args.media = media;
 let res;
 try { res = await callExternal("social_post_create_v1", args); } catch (e) { await markFailed(rec, e); }
 if (res.status !== "ok" || typeof res.post_id !== "string" || !res.post_id) await markFailed(rec, {code: "remote_response_invalid", detail: "post_id absent de la réponse du service social ; relancer avec le même publication_id est sans risque (clé d'idempotence)"});
-return finishPublished(rec, {post_id: clip(res.post_id, 200), state: str(res.state, 40), group: str(res.group, 200), channels: Array.isArray(res.channels) ? res.channels.slice(0, 10).map((c) => (isObject(c) ? {id: str(c.id, 100), state: str(c.state, 40), url: str(c.url, 500), error: str(c.error, 300)} : {id: str(c, 100), state: null, url: null, error: null})) : []}, "post accepté par le service social (état " + str(res.state, 40) + ")");
+let remote;
+try { remote = {post_id: remoteIdOf(res.post_id, true), state: str(res.state, 40), group: remoteIdOf(res.group, false), channels: remoteChannels(res.channels)}; } catch (e) { await markFailed(rec, e); }
+return finishPublished(rec, remote, "post accepté par le service social (état " + str(res.state, 40) + ")");
 '''
 
 REMOVE_CODE = r'''
@@ -604,6 +650,13 @@ else {
   if (!isObject(rec.remote) || typeof rec.remote.post_id !== "string" || !rec.remote.post_id) fail("record_invalid", id + " : post_id absent");
   tool = "social_post_delete_v1"; args = {post_id: rec.remote.post_id};
 }
+if (rec.channel === "web") {
+  // Only the current owner of the destination removes it: a newer publication may have replaced the file. The server gives
+  // no remote SHA-256 (ssh_list_v1 lists path, size, mode, date), so the index of destinations is the check.
+  const dest = await readDestOrNull("web", await destinationKey(args.target + "\n" + args.path));
+  if (!dest) fail("destination_index_missing", id + " : aucun propriétaire connu pour cette destination ; rien n'est retiré");
+  if (dest.owner !== id) fail("destination_superseded", id + " n'est plus propriétaire de sa destination (propriétaire actuel : " + dest.owner + ") ; rien n'est retiré");
+}
 rec.history.push({at: nowIso(), action: "remove_requested", note: tool});
 await commit(rec);
 let res;
@@ -618,7 +671,7 @@ try {
 }
 rec.status = "removed";
 rec.history.push({at: nowIso(), action: "removed", note: tool === "ssh_remove_v1" && res.removed === false ? "le fichier était déjà absent" : "retrait confirmé"});
-try { await commit(rec); } catch (e) { fail("log_write_failed", id + " : le retrait a eu lieu mais le journal n'a pas pu passer à removed : " + clip(String(e && e.message), 150)); }
+try { await commit(rec); } catch (e) { journalFail(e, id, "le retrait a eu lieu mais le journal n'a pas pu être confirmé à removed"); }
 return {...summarize(rec), already_published: false};
 '''
 
@@ -632,7 +685,7 @@ if (rec.channel !== "social" || rec.status !== "published" || !isObject(rec.remo
 }
 const res = await callExternal("social_post_get_v1", {post_id: rec.remote.post_id});
 if (typeof res.state !== "string" || !res.state) fail("remote_response_invalid", "état absent de la réponse du service social");
-rec.remote = {post_id: rec.remote.post_id, state: clip(res.state, 40), group: rec.remote.group === undefined ? null : rec.remote.group, channels: Array.isArray(res.channels) ? res.channels.slice(0, 10).map((c) => (isObject(c) ? {id: str(c.id, 100), state: str(c.state, 40), url: str(c.url, 500), error: str(c.error, 300)} : {id: null, state: null, url: null, error: null})) : [], checked_at: nowIso()};
+rec.remote = {post_id: rec.remote.post_id, state: clip(res.state, 40), group: rec.remote.group === undefined ? null : rec.remote.group, channels: remoteChannels(res.channels), checked_at: nowIso()};
 rec.history.push({at: nowIso(), action: "status_checked", note: "état " + rec.remote.state});
 await commit(rec);
 return {...summarize(rec), remote_checked: true, message: "État relu auprès du service social : " + rec.remote.state + "."};

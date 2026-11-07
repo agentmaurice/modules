@@ -38,6 +38,7 @@ const calls = [];
 const sha = (buf) => require("crypto").createHash("sha256").update(buf).digest("hex");
 const b64 = (s) => Buffer.from(s).toString("base64");
 const atCall = [];
+let logWrites = 0;
 function snapshot(name) { const logs = {}; for (const p of Object.keys(store)) if (p.startsWith("/publish/log/")) logs[p] = JSON.parse(store[p].text); atCall.push({name, logs}); }
 function tamper() { for (const p of Object.keys(store)) if (p.startsWith("/publish/log/")) { const r = JSON.parse(store[p].text); r.revision += 5; store[p] = {text: JSON.stringify(r)}; } }
 async function callTool(name, args) {
@@ -55,6 +56,7 @@ async function callTool(name, args) {
   }
   if (name === "write_file") {
     if (opts.drop_writes && args.path.startsWith("/publish/")) return {ok: true};
+    if (opts.drop_from && args.path.startsWith("/publish/log/")) { logWrites += 1; if (logWrites >= opts.drop_from) return {ok: true}; }
     if (opts.write_error && args.path.startsWith("/publish/")) throw new Error(opts.write_error);
     if (args.overwrite === false && store[args.path]) throw new Error("file exists: " + args.path);
     store[args.path] = {text: args.content};
@@ -83,7 +85,7 @@ async function callTool(name, args) {
     if (opts.social_throw) throw new Error(opts.social_throw);
     if (opts.social_error) throw new Error(JSON.stringify({error: opts.social_error, message: "slow down", retry_after_s: 60}));
     if (opts.no_post_id) return {status: "ok"};
-    return {status: "ok", post_id: "post-1", state: args.mode === "now" ? "published" : args.mode === "schedule" ? "scheduled" : "draft", group: "g-1", channels: args.channels.map((id) => ({id, state: "draft"}))};
+    return {status: "ok", post_id: opts.post_id_len ? "p".repeat(opts.post_id_len) : "post-1", state: args.mode === "now" ? "published" : args.mode === "schedule" ? "scheduled" : "draft", group: "g-1", channels: args.channels.map((id) => ({id, state: "draft"}))};
   }
   if (name === "social_post_get_v1") return {post_id: args.post_id, state: "published", channels: [{id: "c1", state: "published", url: "https://social.example.invalid/p/1"}]};
   if (name === "social_post_delete_v1") { snapshot(name); if (opts.delete_error) throw new Error(JSON.stringify({error: opts.delete_error})); return {status: "ok", deleted: true}; }
@@ -96,7 +98,7 @@ async function callTool(name, args) {
     if (opts.mail_body_string) return {status_code: 200, body: JSON.stringify({id: "msg-s", threadId: "t"})};
     if (opts.mail_returned_error) return {error_code: "authorization_required", authorization_id: "a1"};
     if (opts.mail_status) return {status_code: opts.mail_status, body: {}};
-    return {status_code: 200, body: {id: "msg-1", threadId: "thr-1"}, assistant_summary: "sent"};
+    return {status_code: 200, body: {id: opts.mail_id_len ? "m".repeat(opts.mail_id_len) : "msg-1", threadId: "thr-1"}, assistant_summary: "sent"};
   }
   throw new Error("unexpected tool " + name);
 }
@@ -684,6 +686,66 @@ class Review2Test(unittest.TestCase):
         pid = [k for k in a['fs'] if k.startswith('/publish/log/')][0].split('/')[-1][:-5]
         b = run_node('publish-web', 'publish', {**WEB, 'publication_id': None, 'overwrite': 'oui'}, a['fs'])
         self.assertEqual(ok(self, b)['publication_id'], pid)
+
+
+class Review3Test(unittest.TestCase):
+    CASES = (('publish-web', WEB, 'page-1'), ('publish-email', EMAIL, 'mail-1'), ('publish-social', SOCIAL, 'post-a'))
+
+    def test_every_journal_write_is_read_back(self):
+        # published: the call happened, the journal write is not visible
+        for wf, ctx, pid in self.CASES:
+            out = run_node(wf, 'publish', ctx, dict(FILES), drop_from=2)
+            self.assertTrue(out['error'].startswith('journal_unverified'), (wf, out))
+            self.assertIn('la diffusion a eu lieu', out['error'])
+            self.assertEqual(len(external(out)), 1, wf)
+        # failed
+        out = web(upload_error='publish_not_enabled', drop_from=2)
+        self.assertTrue(out['error'].startswith('journal_unverified'), out)
+        self.assertIn('publish_not_enabled', out['error'])
+        # outcome_unknown
+        out = email(mail_throw='deadline exceeded', drop_from=2)
+        self.assertTrue(out['error'].startswith('journal_unverified'), out)
+        self.assertIn('inconnue', out['error'])
+        # removed
+        done = web()
+        out = run_node('publish-remove', 'remove', {'publication_id': 'page-1', **CONFIRMED}, done['fs'], drop_from=2)
+        self.assertTrue(out['error'].startswith('journal_unverified'), out)
+        self.assertIn('retrait a eu lieu', out['error'])
+
+    def test_a_newer_publication_on_the_same_destination_cannot_be_removed_by_the_older_one(self):
+        fs = dict(FILES)
+        fs['/docs/other.html'] = {'text': '<h1>New</h1>'}
+        a = run_node('publish-web', 'publish', WEB, fs)
+        b = run_node('publish-web', 'publish', {**WEB, 'publication_id': 'page-2', 'source_path': '/docs/other.html', 'overwrite': 'oui'}, a['fs'])
+        self.assertEqual(ok(self, b)['status'], 'published')
+        rm = run_node('publish-remove', 'remove', {'publication_id': 'page-1', **CONFIRMED}, b['fs'])
+        self.assertTrue(rm['error'].startswith('destination_superseded'), rm)
+        self.assertIn('page-2', rm['error'])
+        self.assertEqual((external(rm), writes(rm)), ([], []))
+        self.assertEqual(record(rm, 'page-1')['status'], 'published')
+        rm2 = run_node('publish-remove', 'remove', {'publication_id': 'page-2', **CONFIRMED}, b['fs'])
+        self.assertEqual(ok(self, rm2)['status'], 'removed')
+        self.assertEqual(external(rm2)[0]['raw'], {'target': 'site-main', 'path': 'news/page.html'})
+        # an index that cannot be confirmed leaves the publication in outcome_unknown, never published
+        out = run_node('publish-web', 'publish', WEB, dict(FILES), ret_error={'tool': 'write_file', 'prefix': '/publish/dest/', 'mode': 'object', 'msg': 'x'})
+        self.assertTrue(out['error'].startswith('publication_outcome_unknown'), out)
+        self.assertEqual(record(out, 'page-1')['status'], 'outcome_unknown')
+
+    def test_remote_ids_are_never_truncated(self):
+        long_id = 'p' * 1024
+        out = social(post_id_len=1024)
+        self.assertEqual(record(out, 'post-a')['remote']['post_id'], long_id)
+        st = run_node('publish-status', 'status', {'publication_id': 'post-a'}, out['fs'])
+        self.assertEqual(external(st)[0]['raw'], {'post_id': long_id})
+        rm = run_node('publish-remove', 'remove', {'publication_id': 'post-a', **CONFIRMED}, out['fs'])
+        self.assertEqual(external(rm)[0]['raw'], {'post_id': long_id})
+        bad = social(post_id_len=1025)
+        self.assertTrue(bad['error'].startswith('publication_failed'), bad)
+        self.assertIn('remote_id_invalid', bad['error'])
+        self.assertEqual(record(bad, 'post-a')['status'], 'failed')
+        mail = email(mail_id_len=1025)
+        self.assertEqual(record(mail, 'mail-1')['status'], 'outcome_unknown')
+        self.assertEqual(record(email(mail_id_len=1024), 'mail-1')['remote']['message_id'], 'm' * 1024)
 
 
 class QueryTest(unittest.TestCase):
