@@ -1,0 +1,611 @@
+"""Offline checks of the publish Module: references, guard rails, JavaScript steps.
+
+Every code step is executed under Node with a mocked Storage and mocked tools (ssh, social, e-mail), on synthetic
+data. Nothing here touches a One, a model, a server or the network, so none of it proves the runtime behaviour:
+that is a separate replay.
+"""
+import base64
+import hashlib
+import importlib.util
+import json
+import re
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[3]
+MODULE = ROOT / 'publish'
+TOOLING = ROOT / 'tooling/publish'
+WORKFLOWS = MODULE / 'agents/main/workflows'
+NOW = '2026-11-07T10:00:00Z'
+
+
+def load(path):
+    return json.loads(Path(path).read_text(encoding='utf-8'))
+
+
+spec = importlib.util.spec_from_file_location('publish_build', TOOLING / 'build.py')
+build = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(build)
+
+HARNESS = r'''
+const fs = require("fs");
+const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+const {code, ctx, opts} = payload;
+const store = payload.fs;
+const calls = [];
+const sha = (buf) => require("crypto").createHash("sha256").update(buf).digest("hex");
+const b64 = (s) => Buffer.from(s).toString("base64");
+const atCall = [];
+function snapshot(name) { const logs = {}; for (const p of Object.keys(store)) if (p.startsWith("/publish/log/")) logs[p] = JSON.parse(store[p].text); atCall.push({name, logs}); }
+function tamper() { for (const p of Object.keys(store)) if (p.startsWith("/publish/log/")) { const r = JSON.parse(store[p].text); r.revision += 5; store[p] = {text: JSON.stringify(r)}; } }
+async function callTool(name, args) {
+  const shown = JSON.parse(JSON.stringify(args, (k, v) => (k === "content_base64" ? "[b64:" + sha(Buffer.from(v, "base64")).slice(0, 8) + "]" : v)));
+  calls.push({name, args: shown, raw: args});
+  if (name === "read_file") {
+    if (opts.read_error && args.path.includes(opts.read_error_path || "")) throw new Error(opts.read_error);
+    const e = store[args.path];
+    if (!e) throw new Error("not found: " + args.path);
+    if (args.encoding === "base64") return {content: e.b64 !== undefined ? e.b64 : b64(e.text)};
+    if (e.text === undefined) throw new Error("binary file");
+    return {content: e.text};
+  }
+  if (name === "write_file") {
+    if (opts.write_error && args.path.startsWith("/publish/")) throw new Error(opts.write_error);
+    if (args.overwrite === false && store[args.path]) throw new Error("file exists: " + args.path);
+    store[args.path] = {text: args.content};
+    return {ok: true};
+  }
+  if (name === "list_files") {
+    if (opts.list_error) throw new Error(opts.list_error);
+    const prefix = args.path.replace(/\/$/, "") + "/";
+    return Object.keys(store).filter((p) => p.startsWith(prefix)).map((p) => ({path: p}));
+  }
+  if (name === "ssh_upload_v1") {
+    snapshot(name);
+    if (opts.tamper) tamper();
+    if (opts.upload_error) throw new Error(JSON.stringify({error: opts.upload_error, message: "refused"}));
+    const bytes = Buffer.from(args.file.content_base64, "base64");
+    return {status: "ok", target: args.target, path: args.path, bytes: bytes.length, sha256: opts.bad_sha ? "00" : sha(bytes)};
+  }
+  if (name === "ssh_remove_v1") {
+    snapshot(name);
+    if (opts.remove_error) throw new Error(JSON.stringify({error: opts.remove_error, message: "refused"}));
+    return {status: "ok", removed: opts.removed === false ? false : true};
+  }
+  if (name === "social_post_create_v1") {
+    snapshot(name);
+    if (opts.social_error) throw new Error(JSON.stringify({error: opts.social_error, message: "slow down", retry_after_s: 60}));
+    if (opts.no_post_id) return {status: "ok"};
+    return {status: "ok", post_id: "post-1", state: args.mode === "now" ? "published" : args.mode === "schedule" ? "scheduled" : "draft", group: "g-1", channels: args.channels.map((id) => ({id, state: "draft"}))};
+  }
+  if (name === "social_post_get_v1") return {post_id: args.post_id, state: "published", channels: [{id: "c1", state: "published", url: "https://social.example.invalid/p/1"}]};
+  if (name === "social_post_delete_v1") { snapshot(name); if (opts.delete_error) throw new Error(JSON.stringify({error: opts.delete_error})); return {status: "ok", deleted: true}; }
+  if (name === "google_mail_send") {
+    snapshot(name);
+    if (opts.mail_error) throw new Error(JSON.stringify({error_code: opts.mail_error, connector_key: "google-mail"}));
+    if (opts.mail_status) return {status_code: opts.mail_status, body: {}};
+    return {status_code: 200, body: {id: "msg-1", threadId: "thr-1"}, assistant_summary: "sent"};
+  }
+  throw new Error("unexpected tool " + name);
+}
+globalThis.__pubNow = opts.now || "2026-11-07T10:00:00Z";
+const source = code.replace("import { callTool } from './tools/nats_bridge.ts';", "").split("{{ json . }}").join(opts.raw_ctx !== undefined ? opts.raw_ctx : JSON.stringify(ctx));
+const main = new Function("callTool", "return (async () => {" + source + "})();");
+main(callTool).then((result) => console.log(JSON.stringify({result, fs: store, calls, atCall})))
+  .catch((error) => console.log(JSON.stringify({error: String(error.message), fs: store, calls, atCall})));
+'''
+
+
+def run_node(workflow, node_id, ctx, fs=None, **opts):
+    wf = load(WORKFLOWS / f'{workflow}.json')
+    action = next(a for a in wf['actions'] if a['id'] == node_id)
+    payload = json.dumps({'code': action['code'], 'ctx': ctx, 'fs': fs or {}, 'opts': opts})
+    with tempfile.TemporaryDirectory() as tmp:
+        harness = Path(tmp) / 'harness.js'
+        harness.write_text(HARNESS, encoding='utf-8')
+        proc = subprocess.run(['node', str(harness)], input=payload, capture_output=True, text=True)
+    if proc.returncode != 0:
+        raise AssertionError(proc.stderr)
+    return json.loads(proc.stdout)
+
+
+def ok(case, out):
+    case.assertNotIn('error', out, out.get('error'))
+    return out['result']
+
+
+def names(out):
+    return [c['name'] for c in out['calls']]
+
+
+def external(out):
+    return [c for c in out['calls'] if c['name'] not in ('read_file', 'write_file', 'list_files')]
+
+
+def writes(out):
+    return [c for c in out['calls'] if c['name'] == 'write_file']
+
+
+HTML = '<h1>Hello</h1>'
+HTML_SHA = hashlib.sha256(HTML.encode()).hexdigest()
+FILES = {'/docs/page.html': {'text': HTML}, '/docs/post.md': {'text': 'Bonjour le monde'},
+         '/docs/note.pdf': {'b64': base64.b64encode(b'%PDF-1.7 fake').decode()}, '/docs/logo.png': {'b64': base64.b64encode(b'\x89PNG fake').decode()}}
+CONFIRMED = {'confirmation_manuelle': 'oui'}
+WEB = {'source_path': '/docs/page.html', 'target': 'site-main', 'remote_path': 'news/page.html', 'publication_id': 'page-1', **CONFIRMED}
+EMAIL = {'to': ['ada@example.invalid', 'bob@example.invalid'], 'subject': 'Nouvelles', 'body': 'Bonjour', 'publication_id': 'mail-1', **CONFIRMED}
+SOCIAL = {'channels': ['c1', 'c2'], 'content': 'Un post', 'publication_id': 'post-a', **CONFIRMED}
+
+
+def web(**kw):
+    ctx = {**WEB, **kw.pop('ctx', {})}
+    return run_node('publish-web', 'publish', ctx, kw.pop('fs', dict(FILES)), **kw)
+
+
+def email(**kw):
+    ctx = {**EMAIL, **kw.pop('ctx', {})}
+    return run_node('publish-email', 'publish', ctx, kw.pop('fs', dict(FILES)), **kw)
+
+
+def social(**kw):
+    ctx = {**SOCIAL, **kw.pop('ctx', {})}
+    return run_node('publish-social', 'publish', ctx, kw.pop('fs', dict(FILES)), **kw)
+
+
+def record(out, pid):
+    return json.loads(out['fs'][f'/publish/log/{pid}.json']['text'])
+
+
+class ResourcesTest(unittest.TestCase):
+    def setUp(self):
+        self.workflows = {p.stem: load(p) for p in WORKFLOWS.glob('*.json')}
+
+    def test_manifest_lists_every_resource(self):
+        manifest = load(MODULE / 'module.yaml')
+        refs = {r['workflow_id'] for kind in ('actions', 'queries') for r in manifest['provides'][kind]}
+        self.assertEqual(refs, set(self.workflows))
+        self.assertEqual(refs, {'publish-plan', 'publish-web', 'publish-email', 'publish-social', 'publish-remove', 'publish-status', 'publish-list', 'publish-read'})
+        apps = {r['miniapp_id'] for r in manifest['provides']['apps']}
+        self.assertEqual(apps, {p.stem for p in (MODULE / 'agents/main/miniapps').glob('*.json')})
+        self.assertEqual((manifest['key'], manifest['schema_version']), ('publish', 2))
+
+    def test_input_schemas_are_closed_and_forms_match(self):
+        for name, wf in self.workflows.items():
+            self.assertEqual(wf['input_schema']['type'], 'object', name)
+            self.assertIs(wf['input_schema']['additionalProperties'], False, name)
+            for form in wf.get('forms', []):
+                for field in form['fields']:
+                    self.assertIn(field['name'], wf['input_schema']['properties'], f'{name}: {field["name"]}')
+
+    def test_code_has_no_template_action_and_declares_exactly_its_tools(self):
+        expected = {'publish-web': {'read_file', 'write_file', 'ssh_upload_v1'}, 'publish-email': {'read_file', 'write_file', 'google_mail_send'},
+                    'publish-social': {'read_file', 'write_file', 'social_post_create_v1'}, 'publish-remove': {'read_file', 'write_file', 'ssh_remove_v1', 'social_post_delete_v1'},
+                    'publish-status': {'read_file', 'write_file', 'social_post_get_v1'}, 'publish-list': {'read_file', 'list_files'}, 'publish-read': {'read_file'},
+                    'publish-plan': {'read_file'}}
+        for name, wf in self.workflows.items():
+            declared_all = set()
+            for action in wf['actions']:
+                if action['type'] != 'code_execution':
+                    continue
+                source = action['code']
+                self.assertNotIn('{{', source.replace('{{ json . }}', ''), f'{name}/{action["id"]}')
+                used = set(re.findall(r'call(?:Tool|External)\("([^"]+)"', source))
+                declared = set(action.get('context', {}).get('allowed_tools', []))
+                self.assertEqual(used, declared, f'{name}/{action["id"]}')
+                self.assertNotIn('--', ''.join(used), 'tools are called by their bare name')
+                declared_all |= declared
+            self.assertEqual(declared_all, expected[name], name)
+
+    def test_plan_writes_nothing_and_llm_answers_text(self):
+        plan = self.workflows['publish-plan']
+        self.assertNotIn('write_file', json.dumps(plan))
+        for action in plan['actions']:
+            if action['type'] == 'llm_call':
+                self.assertEqual(action['llm_response_format'], 'text')
+                self.assertNotIn('llm_response_schema', action)
+
+    def test_every_diffusion_demands_a_manual_confirmation_before_any_call(self):
+        for name, node_id in (('publish-web', 'publish'), ('publish-email', 'publish'), ('publish-social', 'publish'), ('publish-remove', 'remove')):
+            self.assertIn('confirmation_manuelle', self.workflows[name]['input_schema']['required'], name)
+            base = {'publish-web': WEB, 'publish-email': EMAIL, 'publish-social': SOCIAL, 'publish-remove': {'publication_id': 'page-1'}}[name]
+            for value in ('non', False, '', None, 'false'):
+                out = run_node(name, node_id, {**base, 'confirmation_manuelle': value}, dict(FILES))
+                self.assertTrue(out['error'].startswith('manual_confirmation_required'), (name, value, out))
+                self.assertEqual(out['calls'], [], 'nothing may be read or written before the confirmation')
+        self.assertNotIn('confirmation_manuelle', self.workflows['publish-status']['input_schema']['properties'])
+
+    def test_destinations_are_explicit_arguments(self):
+        self.assertLessEqual({'target', 'remote_path'}, set(self.workflows['publish-web']['input_schema']['required']))
+        self.assertIn('to', self.workflows['publish-email']['input_schema']['required'])
+        self.assertIn('channels', self.workflows['publish-social']['input_schema']['required'])
+        for name in ('publish-web', 'publish-email', 'publish-social'):
+            self.assertNotIn('llm_call', json.dumps([a['type'] for a in self.workflows[name]['actions']]), name)
+
+    def test_miniapp_events_point_at_existing_workflows_and_forms(self):
+        app = load(MODULE / 'agents/main/miniapps/publish-tracker.json')
+        events = {e['event_id']: e for e in app['events']}
+        for event in events.values():
+            wf = self.workflows[event['workflow']['workflow_id']]
+            self.assertLessEqual(set(event['workflow']['input']), set(wf['input_schema']['properties']))
+            if event['trigger'] == 'form.submit':
+                self.assertTrue(wf.get('forms') and any(f['name'] == 'publication_id' for f in wf['forms'][0]['fields']), event['event_id'])
+        self.assertEqual(events['remove']['workflow']['input']['confirmation_manuelle'], '{{ state.confirmation_manuelle }}')
+        buttons = []
+
+        def walk(node):
+            if isinstance(node, dict):
+                if node.get('type') == 'button':
+                    buttons.append(node['on_click'])
+                for v in node.values():
+                    walk(v)
+            elif isinstance(node, list):
+                for v in node:
+                    walk(v)
+        walk(app['ui'])
+        self.assertTrue(buttons and set(buttons) <= set(events))
+
+    def test_generator_reproduces_the_published_files(self):
+        files = [p for p in MODULE.rglob('*') if p.is_file() and p.name != 'README.md']
+        before = {p: p.read_bytes() for p in files}
+        build.build()
+        after = {p: p.read_bytes() for p in MODULE.rglob('*') if p.is_file() and p in before}
+        self.assertEqual(before, after)
+        self.assertEqual({p for p in MODULE.rglob('*') if p.is_file() and p.suffix == '.json'} - set(before), set())
+
+
+class WebTest(unittest.TestCase):
+    def test_upload_goes_through_base64_and_the_journal_is_written_before(self):
+        out = web()
+        res = ok(self, out)
+        self.assertEqual((res['status'], res['channel'], res['publication_id'], res['already_published']), ('published', 'web', 'page-1', False))
+        self.assertEqual(res['remote']['sha256'], HTML_SHA)
+        up = external(out)
+        self.assertEqual([c['name'] for c in up], ['ssh_upload_v1'])
+        self.assertEqual(up[0]['raw'], {'target': 'site-main', 'path': 'news/page.html', 'file': {'content_base64': base64.b64encode(HTML.encode()).decode()}, 'overwrite': False})
+        # the source is read as base64 and the journal already says requested when the upload is called
+        self.assertTrue(any(c['name'] == 'read_file' and c['args'].get('encoding') == 'base64' for c in out['calls']))
+        before = out['atCall'][0]['logs']['/publish/log/page-1.json']
+        self.assertEqual((before['status'], before['attempts'], before['remote']), ('requested', 1, None))
+        rec = record(out, 'page-1')
+        self.assertEqual((rec['schema'], rec['status'], rec['revision']), ('publish.record/v1', 'published', 2))
+        self.assertEqual(rec['source'], {'kind': 'storage', 'path': '/docs/page.html', 'sha256': HTML_SHA, 'bytes': len(HTML)})
+        self.assertEqual(rec['target'], {'ssh_target': 'site-main', 'path': 'news/page.html', 'overwrite': False})
+        self.assertEqual([h['action'] for h in rec['history']], ['requested', 'published'])
+
+    def test_a_derived_id_and_a_published_publication_is_not_published_twice(self):
+        first = web(ctx={'publication_id': None})
+        res = ok(self, first)
+        self.assertRegex(res['publication_id'], r'^web-[0-9a-f]{12}$')
+        second = run_node('publish-web', 'publish', {**WEB, 'publication_id': None}, first['fs'])
+        again = ok(self, second)
+        self.assertEqual((again['publication_id'], again['already_published'], again['status']), (res['publication_id'], True, 'published'))
+        self.assertEqual(external(second), [])
+        self.assertEqual(writes(second), [])
+
+    def test_same_id_with_another_request_is_a_conflict(self):
+        first = ok(self, web()) and web()
+        out = run_node('publish-web', 'publish', {**WEB, 'remote_path': 'news/other.html'}, first['fs'])
+        self.assertTrue(out['error'].startswith('publication_conflict'), out)
+        self.assertEqual(external(out), [])
+
+    def test_upload_error_is_journaled_failed_then_retried(self):
+        out = web(upload_error='publish_not_enabled')
+        self.assertTrue(out['error'].startswith('publication_failed: page-1 : publish_not_enabled'), out)
+        rec = record(out, 'page-1')
+        self.assertEqual((rec['status'], rec['error']['code']), ('failed', 'publish_not_enabled'))
+        retry = run_node('publish-web', 'publish', WEB, out['fs'])
+        res = ok(self, retry)
+        self.assertEqual((res['status'], res['attempts']), ('published', 2))
+
+    def test_returned_sha256_is_checked(self):
+        out = web(bad_sha=True)
+        self.assertIn('remote_integrity_failed', out['error'])
+        self.assertEqual(record(out, 'page-1')['status'], 'failed')
+
+    def test_source_integrity_and_storage_errors(self):
+        out = web(ctx={'source_sha256': '0' * 64})
+        self.assertTrue(out['error'].startswith('source_integrity_failed'), out)
+        self.assertEqual((writes(out), external(out)), ([], []))
+        ok(self, web(ctx={'source_sha256': HTML_SHA.upper()}))
+        out = web(fs={})
+        self.assertTrue(out['error'].startswith('source_not_found'), out)
+        out = web(read_error='backend down')
+        self.assertTrue(out['error'].startswith('storage_unavailable'), out)
+        self.assertEqual((writes(out), external(out)), ([], []))
+
+    def test_storage_write_errors_are_not_swallowed(self):
+        out = web(write_error='disk full')
+        self.assertTrue(out['error'].startswith('storage_unavailable'), out)
+        self.assertEqual(external(out), [], 'no external call when the journal cannot be written')
+
+    def test_concurrent_update_of_the_journal_is_reported_with_the_remote_ids(self):
+        out = web(tamper=True)
+        self.assertTrue(out['error'].startswith('log_write_failed'), out)
+        self.assertIn('concurrent_update', out['error'])
+        self.assertIn(HTML_SHA, out['error'])
+
+    def test_bad_arguments_are_refused_before_any_call(self):
+        for extra in ({'remote_path': '../x.html'}, {'remote_path': '/abs.html'}, {'remote_path': 'a//b'}, {'remote_path': 'a/./b'}, {'remote_path': 'a/'},
+                      {'target': 'x y'}, {'target': ''}, {'source_path': '/publish/log/page-1.json'}, {'source_path': '/docs/../etc'}, {'source_path': 'docs/page.html'},
+                      {'publication_id': 'Bad_ID'}, {'source_path': '/docs/x.html\n'}):
+            out = web(ctx=extra)
+            self.assertIn('error', out, extra)
+            self.assertEqual((writes(out), external(out)), ([], []), extra)
+
+    def test_unsafe_keys_are_refused(self):
+        raw = json.dumps({**WEB}).rstrip('}') + ', "__proto__": {"x": 1}}'
+        out = run_node('publish-web', 'publish', WEB, dict(FILES), raw_ctx=raw)
+        self.assertTrue(out['error'].startswith('data_invalid'), out)
+        out = web(ctx={'extra': {'constructor': 1}})
+        self.assertTrue(out['error'].startswith('data_invalid'), out)
+        self.assertEqual(out['calls'], [])
+
+    def test_a_binary_source_goes_through_unchanged(self):
+        out = web(ctx={'source_path': '/docs/note.pdf', 'remote_path': 'files/note.pdf', 'publication_id': 'pdf-1'})
+        res = ok(self, out)
+        self.assertEqual(res['remote']['sha256'], hashlib.sha256(b'%PDF-1.7 fake').hexdigest())
+
+    def test_overwrite_is_an_explicit_choice(self):
+        out = web(ctx={'overwrite': 'oui'})
+        self.assertIs(external(ok(self, out) and out)[0]['raw']['overwrite'], True)
+
+
+class EmailTest(unittest.TestCase):
+    def test_send_email_shape_and_journal(self):
+        out = email()
+        res = ok(self, out)
+        self.assertEqual((res['status'], res['channel']), ('published', 'email'))
+        sent = external(out)
+        self.assertEqual([c['name'] for c in sent], ['google_mail_send'])
+        self.assertEqual(sent[0]['raw'], {'to': 'ada@example.invalid, bob@example.invalid', 'subject': 'Nouvelles', 'body': 'Bonjour'})
+        self.assertEqual(out['atCall'][0]['logs']['/publish/log/mail-1.json']['status'], 'requested')
+        rec = record(out, 'mail-1')
+        self.assertEqual((rec['status'], rec['remote']['message_id'], rec['remote']['thread_id']), ('published', 'msg-1', 'thr-1'))
+        self.assertEqual(rec['target']['to'], EMAIL['to'])
+
+    def test_recipients_can_be_a_comma_separated_string_and_body_a_text_file(self):
+        out = email(ctx={'to': 'ada@example.invalid, bob@example.invalid', 'body': None, 'source_path': '/docs/post.md'})
+        ok(self, out)
+        self.assertEqual(external(out)[0]['raw']['body'], 'Bonjour le monde')
+
+    def test_header_injection_and_bad_addresses_are_refused(self):
+        for extra in ({'subject': 'a\r\nBcc: x@example.invalid'}, {'to': ['not-an-address']}, {'to': ['a@example.invalid\nBcc: b@example.invalid']},
+                      {'to': []}, {'to': ['a@example.invalid'] * 2}, {'to': [f'u{i}@example.invalid' for i in range(11)]}, {'subject': ''},
+                      {'body': 'x', 'source_path': '/docs/post.md'}, {'body': None}, {'body': None, 'source_path': '/docs/note.pdf'},
+                      {'body': None, 'source_path': '/docs/page.html'}):
+            out = email(ctx=extra)
+            self.assertIn('error', out, extra)
+            self.assertEqual((writes(out), external(out)), ([], []), extra)
+
+    def test_connector_error_is_journaled_with_its_code(self):
+        out = email(mail_error='not_connected')
+        self.assertIn('publication_failed: mail-1 : not_connected', out['error'])
+        self.assertEqual(record(out, 'mail-1')['status'], 'failed')
+
+    def test_non_2xx_answer_is_a_failure(self):
+        out = email(mail_status=500)
+        self.assertIn('email_rejected', out['error'])
+        self.assertEqual(record(out, 'mail-1')['status'], 'failed')
+
+    def test_an_unknown_outcome_is_never_retried_automatically(self):
+        out = email(write_error=None)
+        done = ok(self, out) and out
+        rec = record(done, 'mail-1')
+        rec['status'] = 'requested'
+        done['fs']['/publish/log/mail-1.json'] = {'text': json.dumps(rec)}
+        retry = run_node('publish-email', 'publish', EMAIL, done['fs'])
+        self.assertTrue(retry['error'].startswith('publication_outcome_unknown'), retry)
+        self.assertEqual(external(retry), [])
+
+    def test_a_sent_email_is_not_sent_twice(self):
+        first = email()
+        again = run_node('publish-email', 'publish', EMAIL, first['fs'])
+        self.assertIs(ok(self, again)['already_published'], True)
+        self.assertEqual(external(again), [])
+
+
+class SocialTest(unittest.TestCase):
+    def test_draft_post_uses_the_publication_id_as_idempotency_key(self):
+        out = social()
+        res = ok(self, out)
+        self.assertEqual((res['status'], res['remote']['post_id'], res['remote']['state']), ('published', 'post-1', 'draft'))
+        call = external(out)[0]
+        self.assertEqual(call['name'], 'social_post_create_v1')
+        self.assertEqual(call['raw'], {'channels': ['c1', 'c2'], 'content': 'Un post', 'mode': 'draft', 'idempotency_key': 'post-a'})
+        self.assertEqual(out['atCall'][0]['logs']['/publish/log/post-a.json']['status'], 'requested')
+
+    def test_derived_id_is_the_idempotency_key_and_repeat_does_not_republish(self):
+        first = social(ctx={'publication_id': None})
+        pid = ok(self, first)['publication_id']
+        self.assertEqual(external(first)[0]['raw']['idempotency_key'], pid)
+        again = run_node('publish-social', 'publish', {**SOCIAL, 'publication_id': None}, first['fs'])
+        self.assertIs(ok(self, again)['already_published'], True)
+        self.assertEqual(external(again), [])
+
+    def test_schedule_rules(self):
+        out = social(ctx={'mode': 'schedule', 'schedule_at': '2026-12-01T09:00:00+01:00'})
+        self.assertEqual(ok(self, out)['remote']['state'], 'scheduled')
+        self.assertEqual(external(out)[0]['raw']['schedule_at'], '2026-12-01T09:00:00+01:00')
+        for extra in ({'mode': 'schedule'}, {'mode': 'schedule', 'schedule_at': '2026-11-07T09:00:00Z'}, {'mode': 'schedule', 'schedule_at': 'tomorrow'},
+                      {'mode': 'draft', 'schedule_at': '2026-12-01T09:00:00Z'}, {'mode': 'later'}):
+            out = social(ctx=extra)
+            self.assertIn('error', out, extra)
+            self.assertEqual((writes(out), external(out)), ([], []), extra)
+
+    def test_media_and_text_file(self):
+        out = social(ctx={'content': None, 'source_path': '/docs/post.md', 'media_paths': ['/docs/logo.png'], 'mode': 'now'})
+        res = ok(self, out)
+        self.assertEqual(res['remote']['state'], 'published')
+        raw = external(out)[0]['raw']
+        self.assertEqual(raw['content'], 'Bonjour le monde')
+        self.assertEqual([(m['filename'], m['mime_type']) for m in raw['media']], [('logo.png', 'image/png')])
+        self.assertEqual(record(out, 'post-a')['target']['media'][0]['path'], '/docs/logo.png')
+
+    def test_bad_arguments(self):
+        for extra in ({'channels': []}, {'channels': ['a b']}, {'channels': ['c1', 'c1']}, {'channels': [f'c{i}' for i in range(11)]}, {'content': ''},
+                      {'content': 'x' * 5001}, {'content': 'x', 'source_path': '/docs/post.md'}, {'media_paths': ['/docs/note.pdf']},
+                      {'media_paths': ['/docs/logo.png'] * 5}):
+            out = social(ctx=extra)
+            self.assertIn('error', out, extra)
+            self.assertEqual((writes(out), external(out)), ([], []), extra)
+
+    def test_service_errors_are_journaled(self):
+        out = social(social_error='rate_limited')
+        self.assertIn('rate_limited', out['error'])
+        self.assertEqual(record(out, 'post-a')['status'], 'failed')
+        out = social(no_post_id=True)
+        self.assertIn('remote_response_invalid', out['error'])
+        self.assertEqual(record(out, 'post-a')['status'], 'failed')
+        retry = run_node('publish-social', 'publish', SOCIAL, out['fs'])
+        self.assertEqual(ok(self, retry)['attempts'], 2)
+
+
+class RemoveStatusTest(unittest.TestCase):
+    def published(self, kind):
+        out = {'web': web, 'email': email, 'social': social}[kind]()
+        ok(self, out)
+        return out['fs'], {'web': 'page-1', 'email': 'mail-1', 'social': 'post-a'}[kind]
+
+    def remove(self, fs, pid, **opts):
+        return run_node('publish-remove', 'remove', {'publication_id': pid, **CONFIRMED}, fs, **opts)
+
+    def test_remove_web_uses_the_recorded_target(self):
+        fs, pid = self.published('web')
+        out = self.remove(fs, pid)
+        res = ok(self, out)
+        self.assertEqual(res['status'], 'removed')
+        call = external(out)[0]
+        self.assertEqual((call['name'], call['raw']), ('ssh_remove_v1', {'target': 'site-main', 'path': 'news/page.html'}))
+        # the intent is journaled before the call and the status stays published until it is confirmed
+        mid = out['atCall'][0]['logs'][f'/publish/log/{pid}.json']
+        self.assertEqual((mid['status'], mid['history'][-1]['action']), ('published', 'remove_requested'))
+        self.assertEqual([h['action'] for h in record(out, pid)['history']], ['requested', 'published', 'remove_requested', 'removed'])
+
+    def test_remove_social_and_republish_after_removal(self):
+        fs, pid = self.published('social')
+        out = self.remove(fs, pid)
+        self.assertEqual(external(out)[0]['raw'], {'post_id': 'post-1'})
+        self.assertEqual(record(out, pid)['status'], 'removed')
+        again = run_node('publish-social', 'publish', SOCIAL, out['fs'])
+        self.assertEqual(ok(self, again)['attempts'], 2)
+
+    def test_an_email_is_not_removable(self):
+        fs, pid = self.published('email')
+        out = self.remove(fs, pid)
+        self.assertTrue(out['error'].startswith('not_removable'), out)
+        self.assertEqual((external(out), writes(out)), ([], []))
+
+    def test_only_a_published_publication_is_removed(self):
+        fs, pid = self.published('web')
+        done = self.remove(fs, pid)
+        again = self.remove(done['fs'], pid)
+        self.assertTrue(again['error'].startswith('status_invalid'), again)
+        out = self.remove({}, 'unknown')
+        self.assertTrue(out['error'].startswith('publication_not_found'), out)
+        bad = web(upload_error='x')
+        self.assertTrue(self.remove(bad['fs'], 'page-1')['error'].startswith('status_invalid'))
+
+    def test_a_failed_removal_keeps_the_status_and_the_trace(self):
+        fs, pid = self.published('web')
+        out = self.remove(fs, pid, remove_error='permission_denied')
+        self.assertTrue(out['error'].startswith('removal_failed'), out)
+        self.assertIn('permission_denied', out['error'])
+        rec = record(out, pid)
+        self.assertEqual((rec['status'], rec['history'][-1]['action']), ('published', 'remove_failed'))
+
+    def test_a_tampered_journal_cannot_aim_the_removal_elsewhere(self):
+        fs, pid = self.published('web')
+        rec = json.loads(fs[f'/publish/log/{pid}.json']['text'])
+        rec['target']['path'] = '../../etc/passwd'
+        fs[f'/publish/log/{pid}.json'] = {'text': json.dumps(rec)}
+        out = self.remove(fs, pid)
+        self.assertTrue(out['error'].startswith('remote_path_invalid'), out)
+        self.assertEqual(external(out), [])
+
+    def test_status_reads_the_social_post_again(self):
+        fs, pid = self.published('social')
+        out = run_node('publish-status', 'status', {'publication_id': pid}, fs)
+        res = ok(self, out)
+        self.assertIs(res['remote_checked'], True)
+        self.assertEqual((external(out)[0]['name'], external(out)[0]['raw']), ('social_post_get_v1', {'post_id': 'post-1'}))
+        rec = record(out, pid)
+        self.assertEqual((rec['remote']['state'], rec['remote']['channels'][0]['url']), ('published', 'https://social.example.invalid/p/1'))
+        self.assertEqual(rec['history'][-1]['action'], 'status_checked')
+
+    def test_status_of_a_web_or_email_publication_is_the_journal(self):
+        for kind in ('web', 'email'):
+            fs, pid = self.published(kind)
+            out = run_node('publish-status', 'status', {'publication_id': pid}, fs)
+            self.assertIs(ok(self, out)['remote_checked'], False)
+            self.assertEqual((external(out), writes(out)), ([], []))
+
+
+class QueryTest(unittest.TestCase):
+    def test_list_and_read(self):
+        a = web()
+        b = run_node('publish-email', 'publish', EMAIL, a['fs'])
+        c = run_node('publish-social', 'publish', SOCIAL, b['fs'])
+        fs = c['fs']
+        out = run_node('publish-list', 'list', {}, fs)
+        res = ok(self, out)
+        self.assertEqual((res['total'], [i['publication_id'] for i in res['items']]), (3, ['mail-1', 'page-1', 'post-a']))
+        self.assertEqual({i['publication_id']: i['target'] for i in res['items']}['page-1'], 'site-main : news/page.html')
+        self.assertEqual(ok(self, run_node('publish-list', 'list', {'channel': 'email'}, fs))['total'], 1)
+        self.assertEqual(ok(self, run_node('publish-list', 'list', {'status': 'failed'}, fs))['total'], 0)
+        self.assertTrue(run_node('publish-list', 'list', {'status': 'bogus'}, fs)['error'].startswith('status_invalid'))
+        read = ok(self, run_node('publish-read', 'read', {'publication_id': 'page-1'}, fs))
+        self.assertEqual((read['status'], read['record']['publication_id'], len(read['history'])), ('published', 'page-1', 2))
+
+    def test_empty_folder_is_empty_but_a_storage_error_is_not(self):
+        self.assertEqual(ok(self, run_node('publish-list', 'list', {}, {}))['total'], 0)
+        out = run_node('publish-list', 'list', {}, {}, list_error='backend down')
+        self.assertTrue(out['error'].startswith('storage_unavailable'), out)
+
+    def test_read_errors(self):
+        self.assertTrue(run_node('publish-read', 'read', {'publication_id': 'nope'}, {})['error'].startswith('publication_not_found'))
+        out = run_node('publish-read', 'read', {'publication_id': 'x'}, {'/publish/log/x.json': {'text': '{'}})
+        self.assertTrue(out['error'].startswith('record_corrupt'), out)
+        out = run_node('publish-read', 'read', {'publication_id': 'x'}, {'/publish/log/x.json': {'text': '{}'}})
+        self.assertTrue(out['error'].startswith('record_invalid'), out)
+        out = run_node('publish-read', 'read', {'publication_id': 'x'}, {}, read_error='backend down')
+        self.assertTrue(out['error'].startswith('storage_unavailable'), out)
+
+
+class PlanTest(unittest.TestCase):
+    def test_prepare_reads_without_writing_and_never_asks_for_a_destination(self):
+        out = run_node('publish-plan', 'prepare', {'source_path': '/docs/page.html', 'goal': 'annoncer'}, dict(FILES))
+        res = ok(self, out)
+        self.assertEqual(names(out), ['read_file'])
+        self.assertEqual((res['source']['sha256'], res['source']['textual'], res['source']['extension']), (HTML_SHA, True, 'html'))
+        self.assertIn('Ne propose JAMAIS de destination', res['prompt'])
+        self.assertIn('<h1>Hello</h1>', res['prompt'])
+        binary = ok(self, run_node('publish-plan', 'prepare', {'source_path': '/docs/note.pdf'}, dict(FILES)))
+        self.assertFalse(binary['source']['textual'])
+        self.assertNotIn('%PDF', binary['prompt'])
+        text = ok(self, run_node('publish-plan', 'prepare', {'text': 'Bonjour'}, {}))
+        self.assertEqual(text['source']['kind'], 'text')
+        for extra in ({}, {'text': 'a', 'source_path': '/docs/page.html'}):
+            self.assertTrue(run_node('publish-plan', 'prepare', extra, dict(FILES))['error'].startswith('source_required'))
+
+    def normalize(self, answer):
+        prep = {'source': {'kind': 'storage', 'path': '/docs/note.pdf', 'extension': 'pdf', 'bytes': 3, 'sha256': 'a' * 64, 'textual': False}}
+        return run_node('publish-plan', 'normalize', {'prep': prep, 'plan_draft': answer}, {})
+
+    def test_normalize_is_strict(self):
+        out = self.normalize({'text': json.dumps({'channel': 'email', 'reasons': ['court'], 'email_subject': 'Hello', 'post_text': 'x', 'warnings': [], 'server': 'evil.example.invalid'}), 'model': 'm'})
+        res = ok(self, out)
+        self.assertEqual((res['channel'], res['email_subject']), ('email', 'Hello'))
+        self.assertNotIn('server', res)
+        self.assertIn('destination', res)
+        social = ok(self, self.normalize('```json\n{"channel": "social"}\n```'))
+        self.assertTrue(any('image' in w for w in social['warnings']))
+        for bad in ('not json', '{"channel": "fax"}', '{"channel": "web", "reasons": "x"}', '{"channel": "web", "post_text": 3}', '[]',
+                    '{"channel": "web", "__proto__": {"a": 1}}'):
+            out = self.normalize(bad)
+            self.assertIn('error', out, bad)
+            self.assertEqual(out['calls'], [])
+
+
+if __name__ == '__main__':
+    unittest.main()

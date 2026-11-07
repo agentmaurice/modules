@@ -1,0 +1,171 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "miniapp_id": "publish-tracker",
+  "kind": "miniapp",
+  "title": "Publication tracker",
+  "version": "1",
+  "description": "Suivre une diffusion, relire son état distant et la retirer.",
+  "ui": {
+    "renderer": "component",
+    "component": "publish-tracker",
+    "configuration": {
+      "layout": [
+        {
+          "type": "callout",
+          "title": "Suivi des diffusions",
+          "tone": "info",
+          "value": "Ouvrez le formulaire « Relire une diffusion » et saisissez l'identifiant (publication_id) : le journal est chargé ici. Retirer ouvre un formulaire de confirmation manuelle. Un e-mail envoyé ne se retire pas."
+        },
+        {
+          "type": "button",
+          "label": "Actualiser le journal",
+          "on_click": "load"
+        },
+        {
+          "type": "section",
+          "title": "Diffusion",
+          "children": [
+            {
+              "type": "kpi_grid",
+              "items": [
+                {
+                  "label": "Canal",
+                  "value": {
+                    "state": "review.channel"
+                  }
+                },
+                {
+                  "label": "Statut",
+                  "value": {
+                    "state": "review.status"
+                  }
+                },
+                {
+                  "label": "Tentatives",
+                  "value": {
+                    "state": "review.attempts"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "table",
+              "columns": [
+                "at",
+                "action",
+                "note"
+              ],
+              "column_labels": {
+                "at": "Date",
+                "action": "Action",
+                "note": "Note"
+              },
+              "rows": {
+                "state": "review.history"
+              }
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "title": "Actions",
+          "children": [
+            {
+              "type": "button",
+              "label": "Relire l'état distant",
+              "on_click": "status"
+            },
+            {
+              "type": "text",
+              "value": "Retirer ouvre un formulaire de confirmation manuelle dans les interactions disponibles."
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "result.message"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "publication_id": {
+        "type": "string"
+      },
+      "confirmation_manuelle": {
+        "type": "string"
+      },
+      "review": {
+        "type": "object"
+      },
+      "result": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "publication_id": "",
+    "confirmation_manuelle": "non",
+    "review": {
+      "channel": "",
+      "status": "",
+      "attempts": 0,
+      "history": []
+    },
+    "result": {
+      "message": "Aucune action."
+    }
+  },
+  "events": [
+    {
+      "event_id": "load",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "publish-read",
+        "input": {
+          "publication_id": "{{ state.publication_id }}"
+        }
+      },
+      "result_to_state": "review"
+    },
+    {
+      "event_id": "review",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "publish-read",
+        "input": {
+          "publication_id": "{{ state.publication_id }}"
+        }
+      },
+      "result_to_state": "review"
+    },
+    {
+      "event_id": "status",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "publish-status",
+        "input": {
+          "publication_id": "{{ state.publication_id }}"
+        }
+      },
+      "result_to_state": "result"
+    },
+    {
+      "event_id": "remove",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "publish-remove",
+        "input": {
+          "publication_id": "{{ state.publication_id }}",
+          "confirmation_manuelle": "{{ state.confirmation_manuelle }}"
+        }
+      },
+      "result_to_state": "result"
+    }
+  ]
+}

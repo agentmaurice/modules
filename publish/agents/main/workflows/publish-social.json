@@ -1,0 +1,180 @@
+{
+  "$schema": "agentmaurice.workflow/v2",
+  "schema_version": 2,
+  "workflow_id": "publish-social",
+  "kind": "workflow",
+  "title": "Publish a post on social channels",
+  "version": "1",
+  "description": "Creates a post with social_post_create_v1 on the explicit channel ids of the caller (draft, scheduled or immediate). The publication identifier is the idempotency key. The journal is written at requested before the call. Requires a manual confirmation.",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "channels",
+      "confirmation_manuelle"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "publication_id": {
+        "type": "string",
+        "description": "Publication identifier: lowercase letters, digits and hyphens. Derived from the request when absent; also the idempotency key of a social post",
+        "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"
+      },
+      "channels": {
+        "type": [
+          "array",
+          "string"
+        ],
+        "items": {
+          "type": "string"
+        },
+        "description": "Channel ids of the social service (1 to 10), as a list or comma separated"
+      },
+      "content": {
+        "type": "string",
+        "description": "Post text (5000 characters at most)"
+      },
+      "source_path": {
+        "type": "string",
+        "description": "Storage path of a .md or .txt file used as the text, instead of content"
+      },
+      "source_sha256": {
+        "type": "string",
+        "description": "Expected SHA-256 of the file (optional)"
+      },
+      "media_paths": {
+        "type": [
+          "array",
+          "string"
+        ],
+        "items": {
+          "type": "string"
+        },
+        "description": "Storage paths of up to 4 images (png, jpg, gif, webp)"
+      },
+      "mode": {
+        "type": "string",
+        "description": "draft (default), schedule or now",
+        "enum": [
+          "draft",
+          "schedule",
+          "now"
+        ]
+      },
+      "schedule_at": {
+        "type": "string",
+        "description": "RFC 3339 date in the future, required with mode schedule"
+      },
+      "confirmation_manuelle": {
+        "type": [
+          "boolean",
+          "string"
+        ],
+        "description": "Manual confirmation: oui (or true) to proceed"
+      }
+    }
+  },
+  "forms": [
+    {
+      "id": "post",
+      "title": "Publier un post",
+      "fields": [
+        {
+          "name": "channels",
+          "title": "Canaux (identifiants, séparés par des virgules)",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "content",
+          "title": "Texte du post",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "source_path",
+          "title": "Ou fichier texte Storage",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "mode",
+          "title": "Mode",
+          "type": "select",
+          "required": false,
+          "options": [
+            {
+              "value": "draft",
+              "label": "Brouillon"
+            },
+            {
+              "value": "schedule",
+              "label": "Programmé"
+            },
+            {
+              "value": "now",
+              "label": "Maintenant"
+            }
+          ],
+          "default": "draft"
+        },
+        {
+          "name": "schedule_at",
+          "title": "Date de programmation (RFC 3339)",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "publication_id",
+          "title": "Identifiant (facultatif)",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "confirmation_manuelle",
+          "title": "Confirmation manuelle",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "non",
+              "label": "Non"
+            },
+            {
+              "value": "oui",
+              "label": "Oui"
+            }
+          ],
+          "default": "non"
+        }
+      ],
+      "actions_on_submit": [
+        "publish"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "id": "publish",
+      "type": "code_execution",
+      "context": {
+        "allowed_tools": [
+          "read_file",
+          "social_post_create_v1",
+          "write_file"
+        ]
+      },
+      "code": "import { callTool } from './tools/nats_bridge.ts';\n\nconst ROOT = \"/publish\";\nconst LOG = ROOT + \"/log\";\nconst ID_RE = /^[a-z0-9][a-z0-9-]{0,47}$/;\nconst STATUSES = [\"requested\", \"published\", \"failed\", \"removed\"];\nconst CHANNELS = [\"web\", \"email\", \"social\"];\nconst MAX_SOURCE_BYTES = 10485760;\nconst BODY_EXT = /\\.(md|markdown|txt)$/i;\nconst TEXT_EXT = /\\.(md|markdown|txt|html?|csv)$/i;\nconst MEDIA_MIME = {png: \"image/png\", jpg: \"image/jpeg\", jpeg: \"image/jpeg\", gif: \"image/gif\", webp: \"image/webp\"};\n\nfunction fail(code, message) { throw new Error(message ? code + \": \" + message : code); }\nfunction isObject(v) { return v !== null && typeof v === \"object\" && !Array.isArray(v); }\nfunction confirmed(v) { return v === true || v === \"true\" || v === \"oui\"; }\nfunction requireConfirmation(input) { if (!confirmed(input.confirmation_manuelle)) fail(\"manual_confirmation_required\", \"confirmez explicitement (confirmation_manuelle = oui)\"); }\n// The clock can be injected by the offline test bench (globalThis.__pubNow); in a One it is always the real clock.\nfunction clock() { return typeof globalThis.__pubNow === \"string\" ? new Date(globalThis.__pubNow) : new Date(); }\nfunction nowIso() { return clock().toISOString(); }\nfunction own(o, k) { return Object.prototype.hasOwnProperty.call(o, k); }\nfunction clip(s, n) { s = String(s); return s.length > n ? s.slice(0, n) : s; }\n// External data (model answer, caller input, tool answers) never carries these keys, at any depth.\nfunction rejectUnsafeKeys(v, label) {\n  if (Array.isArray(v)) { v.forEach((x) => rejectUnsafeKeys(x, label)); return; }\n  if (!isObject(v)) return;\n  // An object literal written as {\"__proto__\": ...} in generated code sets the prototype instead of a key.\n  const proto = Object.getPrototypeOf(v);\n  if (proto !== Object.prototype && proto !== null) fail(\"data_invalid\", label + \" : prototype inattendu\");\n  for (const k of Object.keys(v)) {\n    if (k === \"__proto__\" || k === \"constructor\" || k === \"prototype\") fail(\"data_invalid\", label + \" : clé interdite \" + k);\n    rejectUnsafeKeys(v[k], label);\n  }\n}\nfunction idOf(v) { if (typeof v !== \"string\" || !ID_RE.test(v)) fail(\"publication_id_invalid\", \"attendu : minuscules, chiffres et tirets, 48 caractères au plus\"); return v; }\nfunction optionalId(v) { return v === undefined || v === null || v === \"\" ? null : idOf(v); }\nfunction text(v, name, max, required) {\n  if (v === undefined || v === null || v === \"\") { if (required) fail(name + \"_required\"); return \"\"; }\n  if (typeof v !== \"string\" || v.length > max) fail(name + \"_invalid\");\n  const t = v.trim();\n  if (required && !t) fail(name + \"_required\");\n  return t;\n}\nfunction canonical(v) { return Array.isArray(v) ? \"[\" + v.map(canonical).join(\",\") + \"]\" : isObject(v) ? \"{\" + Object.keys(v).sort().map((k) => JSON.stringify(k) + \":\" + canonical(v[k])).join(\",\") + \"}\" : JSON.stringify(v === undefined ? null : v); }\nasync function fingerprint(v) { return sha256Hex(new TextEncoder().encode(canonical(v))); }\nfunction b64ToBytes(b64) { const bin = atob(b64); const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; }\nasync function sha256Hex(bytes) { const d = await crypto.subtle.digest(\"SHA-256\", bytes); return Array.from(new Uint8Array(d), (x) => x.toString(16).padStart(2, \"0\")).join(\"\"); }\nfunction parseJsonValue(v) {\n  // llm_call with llm_response_format \"text\" yields {text, model, provider}.\n  if (v && typeof v === \"object\" && !Array.isArray(v) && typeof v.text === \"string\") v = v.text;\n  if (typeof v !== \"string\") { rejectUnsafeKeys(v, \"réponse du modèle\"); return v; }\n  const cleaned = v.trim().replace(/^```(?:json)?\\s*/i, \"\").replace(/\\s*```$/, \"\");\n  let parsed;\n  try { parsed = JSON.parse(cleaned); } catch (e) { fail(\"llm_output_invalid\", \"réponse non JSON\"); }\n  rejectUnsafeKeys(parsed, \"réponse du modèle\");\n  return parsed;\n}\n// A list given as an array or as a comma separated string (a form field only produces a string).\nfunction listOf(v, name, min, max, pattern) {\n  let items = v;\n  if (typeof items === \"string\") items = items.split(/[,;\\n]/).map((x) => x.trim()).filter(Boolean);\n  if (!Array.isArray(items) || items.length < min || items.length > max) fail(name + \"_invalid\", min + \" à \" + max + \" éléments attendus\");\n  const out = [];\n  for (const item of items) {\n    if (typeof item !== \"string\" || !pattern.test(item.trim())) fail(name + \"_invalid\", \"élément invalide\");\n    if (out.includes(item.trim())) fail(name + \"_invalid\", \"élément en double\");\n    out.push(item.trim());\n  }\n  return out;\n}\nfunction storagePathOf(v, name) {\n  if (typeof v !== \"string\" || !v.startsWith(\"/\") || v.length > 300 || v.includes(\"..\") || v.includes(\"//\") || v.includes(\"\\\\\") || /[\\u0000-\\u001f]/.test(v) || /\\s$/.test(v) || v.endsWith(\"/\")) fail(name + \"_invalid\", \"chemin Storage absolu attendu\");\n  if (v === ROOT || v.startsWith(ROOT + \"/\")) fail(name + \"_invalid\", \"la source doit être hors de \" + ROOT);\n  return v;\n}\nfunction sshTargetOf(v) { if (typeof v !== \"string\" || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(v)) fail(\"target_invalid\", \"nom de cible ssh attendu\"); return v; }\nfunction remotePathOf(v) {\n  if (typeof v !== \"string\" || v.length < 1 || v.length > 200 || !/^[A-Za-z0-9._\\-\\/]+$/.test(v) || v.startsWith(\"/\") || v.endsWith(\"/\") || !v.split(\"/\").every((s) => s && s !== \".\" && s !== \"..\")) fail(\"remote_path_invalid\", \"chemin relatif à la racine de publication attendu, sans .. ni /\");\n  return v;\n}\nconst EMAIL_RE = /^[A-Za-z0-9._%+\\-]{1,64}@[A-Za-z0-9\\-]{1,63}(\\.[A-Za-z0-9\\-]{1,63})+$/;\n\nfunction unwrap(r) {\n  if (isObject(r) && isObject(r.data) && r.content === undefined && r.file === undefined && r.status === undefined) return r.data;\n  return r;\n}\nfunction isMissing(message) { return /not found|does not exist|no such/i.test(message); }\nasync function readText(path, extra) {\n  let r;\n  try { r = unwrap(await callTool(\"read_file\", {path, ...(extra || {})})); } catch (e) {\n    const message = String(e && e.message);\n    if (isMissing(message)) fail(\"storage_not_found\", path);\n    fail(\"storage_unavailable\", message.slice(0, 200));\n  }\n  if (typeof r === \"string\") return r;\n  if (isObject(r) && typeof r.content === \"string\") return r.content;\n  fail(\"storage_read_failed\", path);\n}\nasync function readJson(path) {\n  const raw = await readText(path);\n  try { return JSON.parse(raw); } catch (e) { fail(\"json_corrupt\", path); }\n}\n// Reads a Storage file in base64 and fingerprints it. The bytes sent later are exactly the bytes hashed here.\nasync function readSource(path, expectedSha) {\n  let encoded;\n  try { encoded = await readText(path, {encoding: \"base64\"}); } catch (e) {\n    if (String(e && e.message).startsWith(\"storage_not_found\")) fail(\"source_not_found\", path);\n    throw e;\n  }\n  encoded = encoded.replace(/\\s+/g, \"\");\n  if (encoded.length > Math.ceil(MAX_SOURCE_BYTES / 3) * 4) fail(\"source_too_large\", \"10 Mio au plus\");\n  let data;\n  try { data = b64ToBytes(encoded); } catch (e) { fail(\"source_invalid\", path); }\n  if (data.length > MAX_SOURCE_BYTES) fail(\"source_too_large\", \"10 Mio au plus\");\n  const sha = await sha256Hex(data);\n  if (expectedSha !== undefined && expectedSha !== null && expectedSha !== \"\") {\n    if (typeof expectedSha !== \"string\" || !/^[0-9a-fA-F]{64}$/.test(expectedSha)) fail(\"source_sha256_invalid\", \"64 caractères hexadécimaux attendus\");\n    if (sha !== expectedSha.toLowerCase()) fail(\"source_integrity_failed\", \"l'empreinte du fichier lu ne correspond pas à source_sha256\");\n  }\n  return {path, bytes: data.length, sha256: sha, b64: encoded, data};\n}\nfunction sourceText(src, pattern, name) {\n  if (!pattern.test(src.path)) fail(name + \"_not_text\", \"extension .md, .markdown ou .txt attendue\");\n  try { return new TextDecoder(\"utf-8\", {fatal: true}).decode(src.data); } catch (e) { fail(name + \"_not_text\", \"le fichier n'est pas de l'UTF-8\"); }\n}\n\nfunction recordPath(id) { return LOG + \"/\" + id + \".json\"; }\nfunction remember(rec) { Object.defineProperty(rec, \"_loaded\", {value: {revision: rec.revision, status: rec.status}, enumerable: false, writable: true, configurable: true}); return rec; }\nfunction checkRecord(rec, id) {\n  if (!isObject(rec) || rec.schema !== \"publish.record/v1\" || rec.publication_id !== id || !STATUSES.includes(rec.status) || !CHANNELS.includes(rec.channel) || !Number.isInteger(rec.revision) || !Number.isInteger(rec.attempts) || !Array.isArray(rec.history) || !isObject(rec.target) || !isObject(rec.source) || typeof rec.request_sha256 !== \"string\") fail(\"record_invalid\", id);\n  return rec;\n}\nfunction summarize(rec) {\n  return {publication_id: rec.publication_id, channel: rec.channel, status: rec.status, revision: rec.revision, attempts: rec.attempts, source: rec.source, target: rec.target, remote: rec.remote, error: rec.error, updated_at: rec.updated_at};\n}\n// Only a missing record gives null: any other Storage error stops the operation (storage_unavailable).\nasync function loadRecordOrNull(id) {\n  let rec;\n  try { rec = await readJson(recordPath(id)); } catch (e) {\n    const m = String(e && e.message);\n    if (m.startsWith(\"storage_not_found\")) return null;\n    if (m.startsWith(\"json_corrupt\")) fail(\"record_corrupt\", id);\n    throw e;\n  }\n  return remember(checkRecord(rec, id));\n}\nasync function loadRecord(id) {\n  const rec = await loadRecordOrNull(id);\n  if (!rec) fail(\"publication_not_found\", id);\n  return rec;\n}\n\nasync function writeJson(path, value, overwrite) {\n  await callTool(\"write_file\", {path, content: JSON.stringify(value, null, 2) + \"\\n\", overwrite});\n}\n// Storage has no conditional write: the record is read again just before the write, and the write is abandoned when\n// another actor changed it (revision or status). The window is small, not null.\nasync function commit(rec) {\n  let fresh;\n  try { fresh = await readJson(recordPath(rec.publication_id)); } catch (e) {\n    const m = String(e && e.message);\n    if (m.startsWith(\"storage_not_found\")) fail(\"concurrent_update\", \"le journal a disparu : \" + rec.publication_id);\n    if (m.startsWith(\"json_corrupt\")) fail(\"record_corrupt\", rec.publication_id);\n    throw e;\n  }\n  const was = rec._loaded;\n  if (!isObject(fresh) || !was || fresh.revision !== was.revision || fresh.status !== was.status) fail(\"concurrent_update\", \"le journal \" + rec.publication_id + \" a changé pendant l'opération ; rien n'a été écrit\");\n  rec.revision = was.revision + 1;\n  rec.updated_at = nowIso();\n  try { await writeJson(recordPath(rec.publication_id), rec, true); } catch (e) { fail(\"storage_unavailable\", clip(String(e && e.message), 200)); }\n  remember(rec);\n}\n// The journal is written at \"requested\" BEFORE the external call. An existing publication is never published twice.\nasync function begin(channel, given, request) {\n  const sha = await fingerprint({channel, source: request.source, target: request.target});\n  const id = given || channel + \"-\" + sha.slice(0, 12);\n  const existing = await loadRecordOrNull(id);\n  const at = nowIso();\n  if (existing) {\n    if (existing.channel !== channel || existing.request_sha256 !== sha) fail(\"publication_conflict\", id + \" existe avec une autre demande : changez publication_id\");\n    if (existing.status === \"published\") return {rec: existing, already: true};\n    if (existing.status === \"requested\" && channel === \"email\") fail(\"publication_outcome_unknown\", id + \" : un envoi d'e-mail est en cours ou son issue est inconnue ; vérifiez la boîte d'envoi avant de relancer sous un autre publication_id\");\n    existing.status = \"requested\";\n    existing.attempts += 1;\n    existing.error = null;\n    existing.remote = null;\n    existing.history.push({at, action: \"requested\", note: \"tentative \" + existing.attempts});\n    await commit(existing);\n    return {rec: existing, already: false};\n  }\n  const rec = {schema: \"publish.record/v1\", publication_id: id, channel, status: \"requested\", revision: 1, request_sha256: sha, created_at: at, updated_at: at, attempts: 1, source: request.source, target: request.target, remote: null, error: null, history: [{at, action: \"requested\", note: \"demande enregistrée avant l'appel externe\"}]};\n  try { await writeJson(recordPath(id), rec, false); } catch (e) {\n    const m = String(e && e.message);\n    if (/exist/i.test(m)) fail(\"concurrent_update\", \"le journal \" + id + \" vient d'être créé par un autre acteur\");\n    fail(\"storage_unavailable\", clip(m, 200));\n  }\n  remember(rec);\n  return {rec, already: false};\n}\nasync function markFailed(rec, e) {\n  const code = e && typeof e.code === \"string\" ? e.code : \"external_error\";\n  const detail = e && typeof e.detail === \"string\" ? e.detail : clip(String(e && e.message), 300);\n  rec.status = \"failed\";\n  rec.error = {code, message: detail};\n  rec.history.push({at: nowIso(), action: \"failed\", note: code});\n  let logError = \"\";\n  try { await commit(rec); } catch (c) { logError = clip(String(c && c.message), 120); }\n  fail(\"publication_failed\", rec.publication_id + \" : \" + code + (detail ? \" (\" + detail + \")\" : \"\") + (logError ? \" ; journal non mis à jour : \" + logError : \"\"));\n}\nasync function finishPublished(rec, remote, note) {\n  rec.status = \"published\";\n  rec.remote = remote;\n  rec.error = null;\n  rec.history.push({at: nowIso(), action: \"published\", note});\n  try { await commit(rec); } catch (e) {\n    fail(\"log_write_failed\", rec.publication_id + \" : la diffusion a eu lieu (\" + clip(JSON.stringify(remote), 300) + \") mais le journal n'a pas pu passer à published : \" + clip(String(e && e.message), 150));\n  }\n  return {...summarize(rec), already_published: false};\n}\n\nfunction redact(s) { return String(s).replace(/[A-Za-z0-9+\\/=]{120,}/g, \"[…]\"); }\nfunction externalError(name, message) {\n  const m = /\"error(?:_code)?\"\\s*:\\s*\"([a-z0-9_]+)\"/.exec(message);\n  const code = m ? m[1] : \"external_error\";\n  const err = new Error(code + \": \" + name);\n  err.code = code;\n  err.detail = clip(redact(message), 300);\n  return err;\n}\n// Tools are called by their bare name. A tool error (thrown or returned) becomes an error with a stable code.\nasync function callExternal(name, args) {\n  let r;\n  try { r = await callTool(name, args); } catch (e) { throw externalError(name, String(e && e.message)); }\n  r = unwrap(r);\n  if (isObject(r) && (r.isError === true || (typeof r.error === \"string\" && r.error))) throw externalError(name, JSON.stringify({error: r.error, message: r.message}));\n  if (!isObject(r)) throw externalError(name, \"réponse inattendue\");\n  return r;\n}\nfunction str(v, max) { return typeof v === \"string\" ? clip(v, max) : null; }\n\nconst input = {{ json . }};\nrequireConfirmation(input);\nrejectUnsafeKeys(input, \"entrée\");\nconst given = optionalId(input.publication_id);\nconst channels = listOf(input.channels, \"channels\", 1, 10, /^[A-Za-z0-9_-]{1,64}$/);\nconst mode = input.mode === undefined || input.mode === null || input.mode === \"\" ? \"draft\" : input.mode;\nif (mode !== \"draft\" && mode !== \"schedule\" && mode !== \"now\") fail(\"mode_invalid\", \"draft, schedule ou now\");\nlet scheduleAt = null;\nif (mode === \"schedule\") {\n  scheduleAt = input.schedule_at;\n  if (typeof scheduleAt !== \"string\" || !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$/.test(scheduleAt) || Number.isNaN(Date.parse(scheduleAt))) fail(\"schedule_at_invalid\", \"date RFC 3339 attendue\");\n  if (Date.parse(scheduleAt) <= clock().getTime()) fail(\"schedule_at_invalid\", \"la date doit être dans le futur\");\n} else if (input.schedule_at !== undefined && input.schedule_at !== null && input.schedule_at !== \"\") fail(\"schedule_at_invalid\", \"schedule_at n'est admis qu'avec mode = schedule\");\nconst hasContent = input.content !== undefined && input.content !== null && input.content !== \"\";\nconst hasPath = input.source_path !== undefined && input.source_path !== null && input.source_path !== \"\";\nif (hasContent === hasPath) fail(\"content_required\", \"exactement un contenu : content ou source_path\");\nlet content, source;\nif (hasPath) {\n  const path = storagePathOf(input.source_path, \"source_path\");\n  const src = await readSource(path, input.source_sha256);\n  content = sourceText(src, BODY_EXT, \"source\").trim();\n  source = {kind: \"storage\", path, sha256: src.sha256, bytes: src.bytes};\n} else {\n  content = text(input.content, \"content\", 5000, true);\n  const data = new TextEncoder().encode(content);\n  source = {kind: \"text\", sha256: await sha256Hex(data), bytes: data.length};\n}\nif (!content || content.length > 5000) fail(\"content_invalid\", \"1 à 5000 caractères\");\nconst media = [], mediaRefs = [];\nif (input.media_paths !== undefined && input.media_paths !== null && input.media_paths !== \"\") {\n  const paths = listOf(input.media_paths, \"media_paths\", 1, 4, /^\\/.{1,299}$/);\n  for (const p of paths) {\n    const path = storagePathOf(p, \"media_paths\");\n    const ext = (/\\.([A-Za-z0-9]+)$/.exec(path) || [])[1];\n    if (!ext || !own(MEDIA_MIME, ext.toLowerCase())) fail(\"media_invalid\", \"image png, jpg, gif ou webp attendue : \" + path);\n    const m = await readSource(path, null);\n    media.push({content_base64: m.b64, filename: path.split(\"/\").pop(), mime_type: MEDIA_MIME[ext.toLowerCase()]});\n    mediaRefs.push({path, sha256: m.sha256, bytes: m.bytes});\n  }\n}\nconst begun = await begin(\"social\", given, {source, target: {channels, mode, schedule_at: scheduleAt, media: mediaRefs}});\nif (begun.already) return {...summarize(begun.rec), already_published: true};\nconst rec = begun.rec;\nconst args = {channels, content, mode, idempotency_key: rec.publication_id};\nif (scheduleAt) args.schedule_at = scheduleAt;\nif (media.length) args.media = media;\nlet res;\ntry { res = await callExternal(\"social_post_create_v1\", args); } catch (e) { await markFailed(rec, e); }\nif (res.status !== \"ok\" || typeof res.post_id !== \"string\" || !res.post_id) await markFailed(rec, {code: \"remote_response_invalid\", detail: \"post_id absent de la réponse du service social ; relancer avec le même publication_id est sans risque (clé d'idempotence)\"});\nreturn finishPublished(rec, {post_id: clip(res.post_id, 200), state: str(res.state, 40), group: str(res.group, 200), channels: Array.isArray(res.channels) ? res.channels.slice(0, 10).map((c) => (isObject(c) ? {id: str(c.id, 100), state: str(c.state, 40), url: str(c.url, 500), error: str(c.error, 300)} : {id: str(c, 100), state: null, url: null, error: null})) : []}, \"post accepté par le service social (état \" + str(res.state, 40) + \")\");\n",
+      "output_key": "result"
+    }
+  ],
+  "output": {
+    "publication_id": "{{ result.publication_id }}",
+    "channel": "{{ result.channel }}",
+    "status": "{{ result.status }}",
+    "already_published": "{{ result.already_published }}",
+    "attempts": "{{ result.attempts }}",
+    "source": "{{ result.source }}",
+    "target": "{{ result.target }}",
+    "remote": "{{ result.remote }}"
+  }
+}

@@ -2431,6 +2431,234 @@
       "publication": "native to this repository, unpublished"
     },
     {
+      "key": "publish",
+      "version": "0.1.0",
+      "manifest": "publish/module.yaml",
+      "workflows": 8,
+      "miniapps": 1,
+      "source": {
+        "repository": "github.com/agentmaurice/modules",
+        "native": true
+      },
+      "generators_and_composers": [
+        "tooling/publish/build.py"
+      ],
+      "resources": {
+        "workflows": [
+          "publish/agents/main/workflows/publish-email.json",
+          "publish/agents/main/workflows/publish-list.json",
+          "publish/agents/main/workflows/publish-plan.json",
+          "publish/agents/main/workflows/publish-read.json",
+          "publish/agents/main/workflows/publish-remove.json",
+          "publish/agents/main/workflows/publish-social.json",
+          "publish/agents/main/workflows/publish-status.json",
+          "publish/agents/main/workflows/publish-web.json"
+        ],
+        "miniapps": [
+          "publish/agents/main/miniapps/publish-tracker.json"
+        ],
+        "sha256": {
+          "publish/module.yaml": "fc2148296aac5d338e5cd381e997bcc8c65dbcf0265ec4bc2916b4192f4e7dd1",
+          "publish/agents/main/workflows/publish-email.json": "3c6320ee1097f05c4d81ca8038b8235a55eaa64ceb82d9cc4903a6217c7fab50",
+          "publish/agents/main/workflows/publish-list.json": "9a6624f759136dd547c279069e96d8eaafa713e8914b71410ebc006134a4a92d",
+          "publish/agents/main/workflows/publish-plan.json": "28224f2f94e4c1395ba9b80163881e32974a10d449c48454a94bba8b11cad1d5",
+          "publish/agents/main/workflows/publish-read.json": "e09ea8d27c0d0de117a27aa1891b9843259c7e64604a60c8fb01a3260eef1d58",
+          "publish/agents/main/workflows/publish-remove.json": "6ecc2646dac5e95c181adcb941f3c46aa4eb844c4f193884b12949cc30d3d91c",
+          "publish/agents/main/workflows/publish-social.json": "16f74728083cc790183c7392dede8e8e84ccfa89691bb47fcacbc6c6e229c9f6",
+          "publish/agents/main/workflows/publish-status.json": "a20e0cb7cf53ad1e8de9ab303d80947f086d99e9dea0a389f5544c299aea548d",
+          "publish/agents/main/workflows/publish-web.json": "7f6215711d67f2431dddaaa9e71d6386a93a8537942d46a595dafbed2eb565b2",
+          "publish/agents/main/miniapps/publish-tracker.json": "56b096773aa95998e438707300b9a771728a73570b7d9050667e8f5b5bbcaaf3"
+        }
+      },
+      "workflow_actions": {
+        "publish/agents/main/workflows/publish-email.json": {
+          "workflow_id": "publish-email",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "publish",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "0ceee5ff1d77188e01b74b6d06fc0621e3a15a3b5c7d21d27931318958bd329a"
+            }
+          ]
+        },
+        "publish/agents/main/workflows/publish-list.json": {
+          "workflow_id": "publish-list",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "list",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "2605cba92f206fe7a9a5922209989f93a8e818dd8f87ec245425bf869263d4e4"
+            }
+          ]
+        },
+        "publish/agents/main/workflows/publish-plan.json": {
+          "workflow_id": "publish-plan",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "prepare",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "4124ee28c2f1bec5d3725c94c4f6a3878455e474521e94b4d11080380e87cc75"
+            },
+            {
+              "path": "/actions/1",
+              "id": "plan-llm",
+              "type": "llm_call"
+            },
+            {
+              "path": "/actions/2",
+              "id": "normalize",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "68c3cf06dfa5765bcfac589fc770ee722cfce1b4a1815e672c60c5dd7c925176"
+            }
+          ]
+        },
+        "publish/agents/main/workflows/publish-read.json": {
+          "workflow_id": "publish-read",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "read",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "65cbcb4fb054c9079602893c3ea514f0e102ab19d6c44a7107afca742a9bf049"
+            }
+          ]
+        },
+        "publish/agents/main/workflows/publish-remove.json": {
+          "workflow_id": "publish-remove",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "remove",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "a46bbf2105b39865ae7fe70ed8251fb1e36f018a2f4e94fc4295f0ca0488276b"
+            }
+          ]
+        },
+        "publish/agents/main/workflows/publish-social.json": {
+          "workflow_id": "publish-social",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "publish",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "0df29070cbb5f655c0c7844bcf7e8eaa7740896e4adc78c6d465fa97dfd8eede"
+            }
+          ]
+        },
+        "publish/agents/main/workflows/publish-status.json": {
+          "workflow_id": "publish-status",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "status",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "d78ea5f527f2c414cb070d5067890006d7fbaf2d8af7b4ab5b4cf9bfefe81e1e"
+            }
+          ]
+        },
+        "publish/agents/main/workflows/publish-web.json": {
+          "workflow_id": "publish-web",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "publish",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "432b2f9d48dcb58ed3c9a0ffc16355f8ec078140cf214cf790253e9065ee4a0b"
+            }
+          ]
+        }
+      },
+      "provides": {
+        "actions": [
+          {
+            "key": "publish-plan",
+            "name": "Plan a publication",
+            "workflow_id": "publish-plan",
+            "workflow_version": "1"
+          },
+          {
+            "key": "publish-web",
+            "name": "Publish a file on a web server",
+            "workflow_id": "publish-web",
+            "workflow_version": "1"
+          },
+          {
+            "key": "publish-email",
+            "name": "Send a publication by e-mail",
+            "workflow_id": "publish-email",
+            "workflow_version": "1"
+          },
+          {
+            "key": "publish-social",
+            "name": "Publish a post on social channels",
+            "workflow_id": "publish-social",
+            "workflow_version": "1"
+          },
+          {
+            "key": "publish-remove",
+            "name": "Remove a publication",
+            "workflow_id": "publish-remove",
+            "workflow_version": "1"
+          },
+          {
+            "key": "publish-status",
+            "name": "Check the status of a publication",
+            "workflow_id": "publish-status",
+            "workflow_version": "1"
+          }
+        ],
+        "queries": [
+          {
+            "key": "publish-list",
+            "name": "List publications",
+            "workflow_id": "publish-list",
+            "workflow_version": "1"
+          },
+          {
+            "key": "publish-read",
+            "name": "Read a publication",
+            "workflow_id": "publish-read",
+            "workflow_version": "1"
+          }
+        ],
+        "apps": [
+          {
+            "key": "publish-tracker",
+            "name": "Publication tracker",
+            "miniapp_id": "publish-tracker",
+            "miniapp_version": "1"
+          }
+        ]
+      },
+      "requires": {},
+      "composition_dependencies": [],
+      "known_consumers": [],
+      "language": "English source",
+      "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
+      "publication": "native to this repository, unpublished"
+    },
+    {
       "key": "cib-accompagnement",
       "version": "0.2.4",
       "manifest": "support/module.yaml",
