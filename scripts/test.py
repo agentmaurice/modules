@@ -3,7 +3,7 @@
 import os, shutil, subprocess, sys, tempfile
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
-PYTHON_SUITES = ['templates/company-in-a-box/tests'] + [f'tooling/{name}/tests' for name in ('company-memory', 'memory-integration', 'daily-routine', 'work-cases', 'enterprise-admin', 'marketing-launch', 'image-studio', 'profile', 'catalog')]
+PYTHON_SUITES = ['templates/company-in-a-box/tests'] + [f'tooling/{name}/tests' for name in ('company-memory', 'memory-integration', 'daily-routine', 'work-cases', 'enterprise-admin', 'marketing-launch', 'image-studio', 'profile', 'document-studio', 'catalog')]
 NODE_TESTS = [f'tooling/{path}' for path in ('memory-integration/tests/test_publication.mjs', 'daily-routine/tests/metrics.test.mjs', 'work-cases/tests/domain.test.mjs', 'marketing-launch/tests/test_domain.cjs', 'marketing-launch/tests/test_generated_runtime.cjs')]
 def main():
     env = {**os.environ, 'PYTHONDONTWRITEBYTECODE': '1'}
@@ -18,7 +18,7 @@ def main():
             subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', str(work / name), '-p', 'test_*.py', '-v'], env=env, cwd=work, check=True)
         for name in NODE_TESTS:
             subprocess.run(['node', str(work / name)], env=env, cwd=work, check=True)
-        for name in ('work-cases', 'daily-routine', 'enterprise-admin', 'marketing-launch', 'image-studio', 'profile'):
+        for name in ('work-cases', 'daily-routine', 'enterprise-admin', 'marketing-launch', 'image-studio', 'profile', 'document-studio'):
             module = work / name
             before = {p.relative_to(module): p.read_bytes() for p in module.rglob('*') if p.is_file()}
             extras = [work / 'templates/company-in-a-box/tests/marketing-launch-plan.json', work / 'tooling/marketing-launch/service-gates.json'] if name == 'marketing-launch' else []
@@ -28,5 +28,5 @@ def main():
             if before != after or any(p.read_bytes() != data for p, data in extra_before.items()):
                 raise SystemExit(f'{name}: le générateur ne reproduit pas les ressources publiées')
 
-    print('PASS: 10 suites unittest, contrat ACL Python et 5 contrôles Node et 6 reconstructions à octets identiques, sans réseau ni runtime.')
+    print('PASS: 11 suites unittest, contrat ACL Python et 5 contrôles Node et 7 reconstructions à octets identiques, sans réseau ni runtime.')
 if __name__ == '__main__': main()

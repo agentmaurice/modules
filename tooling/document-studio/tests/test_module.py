@@ -1,0 +1,520 @@
+"""Offline checks of the document-studio Module: references, pins, embedded templates, JavaScript steps.
+
+Every code step is executed under Node with a mocked Storage and a mocked artifact tool, on synthetic data. Nothing
+here touches a One, a model or the network, so none of it proves the runtime behaviour: that is a separate replay.
+"""
+import base64
+import datetime
+import hashlib
+import importlib.util
+import json
+import re
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[3]
+YEAR = datetime.datetime.now(datetime.timezone.utc).year
+MODULE = ROOT / 'document-studio'
+TOOLING = ROOT / 'tooling/document-studio'
+WORKFLOWS = MODULE / 'agents/main/workflows'
+TEMPLATES = MODULE / 'examples/templates'
+CONTRACT_CHECK = ROOT.parent.parent / 'pilote-maurice/contracts/template/v1/tools/template_check.py'
+
+
+def load(path):
+    return json.loads(Path(path).read_text(encoding='utf-8'))
+
+
+spec = importlib.util.spec_from_file_location('document_studio_build', TOOLING / 'build.py')
+build = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(build)
+
+HARNESS = r'''
+const fs = require("fs");
+const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+const {code, ctx, opts} = payload;
+const store = payload.fs;
+const calls = [];
+const sha = (buf) => require("crypto").createHash("sha256").update(buf).digest("hex");
+const b64 = (s) => Buffer.from(s).toString("base64");
+const buffers = {};
+let races = opts.race || 0, hijacks = opts.hijack || 0;
+function pdf(label) { const bytes = Buffer.from("%PDF-1.7 fake " + label); return {bytes, sha: sha(bytes)}; }
+async function callTool(name, args) {
+  calls.push({name, args: JSON.parse(JSON.stringify(args, (k, v) => (k === "files" ? "[files]" : v)))});
+  if (name === "artifact--artifact_render_v1") {
+    if (opts.render_error) throw new Error(opts.render_error);
+    calls[calls.length - 1].full = args;
+    const f = pdf(args.mode + ":" + args.context.doc.number), p = pdf("png:" + args.mode);
+    const file = {filename: "document.pdf", mime_type: "application/pdf", bytes: f.bytes.length, sha256: f.sha};
+    const prev = {page: 1, filename: "page-1.png", mime_type: "image/png", bytes: p.bytes.length, sha256: p.sha};
+    if (opts.render_mode === "ref") { buffers["buf-doc-" + calls.length] = f.bytes.toString("base64"); file.ref = "buf-doc-" + calls.length; buffers["buf-png-" + calls.length] = p.bytes.toString("base64"); prev.ref = "buf-png-" + calls.length; }
+    else { file.content_base64 = f.bytes.toString("base64"); prev.content_base64 = p.bytes.toString("base64"); }
+    return {status: "ok", mode: args.mode, output: "pdf", file, pages: 1, previews: [prev], provenance: {engine: "mock"}};
+  }
+  if (name === "read_file") {
+    const e = store[args.path];
+    if (!e) throw new Error("not found: " + args.path);
+    if (args.encoding === "base64") return {content: e.b64 !== undefined ? e.b64 : b64(e.text)};
+    if (e.text === undefined) throw new Error("binary file");
+    return {content: e.text};
+  }
+  if (name === "write_file") {
+    if (args.overwrite === false) {
+      if (races > 0 && /\/numbers\//.test(args.path)) { races--; store[args.path] = {text: JSON.stringify({doc_id: "other-doc"})}; }
+      if (store[args.path]) throw new Error("file exists: " + args.path);
+    }
+    if (args.buffer_ref) store[args.path] = {b64: buffers[args.buffer_ref]};
+    else if (args.encoding === "base64") store[args.path] = {b64: args.content};
+    else store[args.path] = {text: args.content};
+    if (hijacks > 0 && /\/numbers\//.test(args.path)) { hijacks--; store[args.path] = {text: JSON.stringify({doc_id: "other-doc"})}; }
+    return {ok: true};
+  }
+  if (name === "list_files") {
+    const prefix = args.path.replace(/\/$/, "") + "/";
+    const paths = Object.keys(store).filter((p) => p.startsWith(prefix));
+    if (opts.list_mode === "dirs") return Array.from(new Set(paths.map((p) => prefix + p.slice(prefix.length).split("/")[0]))).map((p) => ({path: p}));
+    return paths.map((p) => ({path: p}));
+  }
+  throw new Error("unexpected tool " + name);
+}
+const source = code.replace("import { callTool } from './tools/nats_bridge.ts';", "").split("{{ json . }}").join(JSON.stringify(ctx));
+const main = new Function("callTool", "return (async () => {" + source + "})();");
+main(callTool).then((result) => console.log(JSON.stringify({result, fs: store, calls})))
+  .catch((error) => console.log(JSON.stringify({error: String(error.message), fs: store, calls})));
+'''
+
+
+def run_node(workflow, node_id, ctx, fs=None, **opts):
+    wf = load(WORKFLOWS / f'{workflow}.json')
+    action = next(a for a in wf['actions'] if a['id'] == node_id)
+    payload = json.dumps({'code': action['code'], 'ctx': ctx, 'fs': fs or {}, 'opts': opts})
+    with tempfile.TemporaryDirectory() as tmp:
+        harness = Path(tmp) / 'harness.js'
+        harness.write_text(HARNESS, encoding='utf-8')
+        proc = subprocess.run(['node', str(harness)], input=payload, capture_output=True, text=True)
+    if proc.returncode != 0:
+        raise AssertionError(proc.stderr)
+    return json.loads(proc.stdout)
+
+
+def ok(case, out):
+    case.assertNotIn('error', out, out.get('error'))
+    return out['result']
+
+
+def text_file(content):
+    return {'text': content}
+
+
+PROFILE = {
+    'schema_version': 1,
+    'company': {'legal_name': 'Atelier Exemple SAS', 'trade_name': 'Atelier Exemple', 'siret': '000 000 000 00000',
+                'address': {'line1': '1 rue de l\'Exemple', 'postal_code': '00000', 'city': 'Exemple-sur-Seine', 'country': 'France'},
+                'email': 'contact@atelier-exemple.invalid', 'legal_mentions': 'Societe fictive.'},
+    'brand': {'colors': {'primary': '#1F3A5F', 'secondary': '#4F6D8F', 'accent': '#E07A1F', 'text': '#1B1B1F', 'muted': '#6B7280', 'background': '#F5F7FA'},
+              'fonts': {'heading': {'family': 'Libertinus Serif'}, 'body': {'family': 'Libertinus Serif'}, 'mono': {'family': 'DejaVu Sans Mono'}},
+              'logo': {'ref': 'storage:///logos/exemple.svg', 'alt': 'Logo Atelier Exemple'},
+              'page': {'size': 'A4', 'margins_mm': {'top': 22, 'right': 20, 'bottom': 22, 'left': 20}}},
+}
+QUOTE_DRAFT = {
+    'customer': {'name': 'Cabinet Fictif & Associes', 'address_lines': ['12 avenue de l\'Echantillon'], 'contact': 'contact@fictif.invalid'},
+    'lines': [{'description': 'Atelier de cadrage', 'quantity': 2, 'unit': 'forfaits', 'unit_price_ht': 600, 'vat_rate': 20},
+              {'description': 'Developpement du prototype', 'quantity': 5, 'unit': 'jours', 'unit_price_ht': 700, 'vat_rate': 20},
+              {'description': 'Formation', 'quantity': 1, 'unit': 'jour', 'unit_price_ht': 650.5, 'vat_rate': 5.5}],
+    'valid_until': '2026-12-06', 'terms': ['Acompte de 30 %.'], 'payment_terms': '30 jours.',
+}
+MINUTES_DRAFT = load(TEMPLATES / 'meeting-minutes/examples/default.json')
+
+
+def seeded(profile=True):
+    return {'/document-studio/profile.json': text_file(json.dumps(PROFILE))} if profile else {}
+
+
+def create_quote(case, fs, **extra):
+    ctx = {'prep': {'template_key': 'quote', 'locale': 'fr'}, 'draft': QUOTE_DRAFT, 'doc_id': 'devis-test', **extra}
+    out = run_node('document-studio-draft', 'create', ctx, fs)
+    return ok(case, out), out['fs']
+
+
+class ResourcesTest(unittest.TestCase):
+    def setUp(self):
+        self.workflows = {p.stem: load(p) for p in WORKFLOWS.glob('*.json')}
+
+    def test_manifest_lists_every_resource(self):
+        manifest = load(MODULE / 'module.yaml')
+        refs = {r['workflow_id'] for kind in ('actions', 'queries') for r in manifest['provides'][kind]}
+        self.assertEqual(refs, set(self.workflows))
+        self.assertEqual(len(refs), 11)
+        apps = {r['miniapp_id'] for r in manifest['provides']['apps']}
+        self.assertEqual(apps, {p.stem for p in (MODULE / 'agents/main/miniapps').glob('*.json')})
+        self.assertEqual((manifest['key'], manifest['schema_version']), ('document-studio', 2))
+
+    def test_input_schemas_are_closed(self):
+        for name, wf in self.workflows.items():
+            self.assertEqual(wf['input_schema']['type'], 'object', name)
+            self.assertIs(wf['input_schema']['additionalProperties'], False, name)
+            for form in wf.get('forms', []):
+                for field in form['fields']:
+                    self.assertIn(field['name'], wf['input_schema']['properties'], f'{name}: {field["name"]}')
+
+    def test_code_has_no_template_action_and_declares_its_tools(self):
+        for name, wf in self.workflows.items():
+            for action in wf['actions']:
+                if action['type'] != 'code_execution':
+                    continue
+                source = action['code']
+                self.assertNotIn('{{', source.replace('{{ json . }}', ''), f'{name}/{action["id"]}')
+                used = set(re.findall(r'callTool\("([^"]+)"', source))
+                declared = set(action.get('context', {}).get('allowed_tools', []))
+                self.assertLessEqual(used, declared, f'{name}/{action["id"]}')
+                self.assertEqual('callTool' in source.replace("import { callTool }", ''), bool(used), name)
+
+    def test_publish_and_finalize_and_cancel_demand_a_manual_confirmation(self):
+        for name in ('document-studio-finalize', 'document-studio-publish', 'document-studio-cancel', 'document-studio-profile-save'):
+            self.assertIn('confirmation_manuelle', self.workflows[name]['input_schema']['required'], name)
+        for name, extra in (('document-studio-finalize', {}), ('document-studio-publish', {}), ('document-studio-cancel', {'reason': 'test'})):
+            node = self.workflows[name]['actions'][0]['id']
+            for value in ('non', False, '', None, 'false'):
+                out = run_node(name, node, {'doc_id': 'devis-test', 'confirmation_manuelle': value, **extra}, {})
+                self.assertTrue(out['error'].startswith('manual_confirmation_required'), (name, value, out))
+                self.assertEqual(out['calls'], [], 'nothing may be read or written before the confirmation')
+        out = run_node('document-studio-profile-save', 'save', {'profile': PROFILE, 'confirmation_manuelle': 'non'}, {})
+        self.assertTrue(out['error'].startswith('manual_confirmation_required'))
+
+    def test_no_llm_step_writes_and_llm_steps_are_json(self):
+        for name, wf in self.workflows.items():
+            for action in wf['actions']:
+                if action['type'] == 'llm_call':
+                    self.assertEqual(action['llm_response_format'], 'json', name)
+        for name in ('document-studio-plan',):
+            self.assertFalse(any('write_file' in json.dumps(a) for a in self.workflows[name]['actions']))
+
+    def test_miniapp_events_point_at_existing_workflows(self):
+        app = load(MODULE / 'agents/main/miniapps/document-studio-review.json')
+        for event in app['events']:
+            self.assertIn(event['workflow']['workflow_id'], self.workflows)
+            props = self.workflows[event['workflow']['workflow_id']]['input_schema']['properties']
+            self.assertLessEqual(set(event['workflow']['input']), set(props))
+
+    def test_generator_reproduces_the_published_files(self):
+        files = [p for p in MODULE.rglob('*') if p.is_file() and 'examples' not in p.relative_to(MODULE).parts[:1] and p.name != 'README.md']
+        before = {p: p.read_bytes() for p in files}
+        build.build()
+        after = {p: p.read_bytes() for p in MODULE.rglob('*') if p.is_file() and p in before}
+        self.assertEqual(before, after)
+        self.assertEqual({p for p in MODULE.rglob('*') if p.is_file() and p.suffix == '.json' and 'examples' not in p.relative_to(MODULE).parts[:1]} - set(before), set())
+
+
+class TemplatesTest(unittest.TestCase):
+    def test_pin_matches_the_local_files(self):
+        pin = load(TOOLING / 'contract/PIN.json')
+        self.assertRegex(pin['source_commit'], r'^[0-9a-f]{40}$')
+        self.assertEqual(sorted(pin['templates']), ['meeting-minutes', 'quote'])
+        for key, files in pin['templates'].items():
+            local = {p.relative_to(TEMPLATES / key).as_posix() for p in (TEMPLATES / key).rglob('*') if p.is_file()}
+            self.assertEqual(local, set(files), key)
+            for rel, entry in files.items():
+                self.assertEqual(hashlib.sha256((TEMPLATES / key / rel).read_bytes()).hexdigest(), entry['sha256'], f'{key}/{rel}')
+                self.assertEqual(entry['modified'], entry['sha256'] != entry['source_sha256'], f'{key}/{rel}')
+        modified = sorted(f'{k}/{r}' for k, files in pin['templates'].items() for r, e in files.items() if e['modified'])
+        self.assertEqual(modified, ['quote/main.typ'])
+        shared = pin['shared']['i18n.fr.json']
+        self.assertEqual(hashlib.sha256((TOOLING / 'contract/i18n.fr.json').read_bytes()).hexdigest(), shared['sha256'])
+
+    def test_quote_states_it_is_not_an_invoice(self):
+        self.assertIn("ce n'est pas une facture", (TEMPLATES / 'quote/main.typ').read_text(encoding='utf-8'))
+
+    @unittest.skipUnless(CONTRACT_CHECK.exists(), 'the contract checkout is not next to this repository')
+    def test_contract_checker_accepts_both_templates(self):
+        for key in ('quote', 'meeting-minutes'):
+            proc = subprocess.run(['python3', str(CONTRACT_CHECK), 'check', str(TEMPLATES / key)], capture_output=True, text=True)
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+
+    def test_example_data_matches_the_input_schema(self):
+        for key in ('quote', 'meeting-minutes'):
+            manifest = load(TEMPLATES / key / 'manifest.json')
+            self.assertEqual(manifest['source']['engine'], 'typst')
+            for example in manifest['examples']:
+                self.assertTrue((TEMPLATES / key / example['data']).exists())
+
+    def test_render_receives_the_embedded_templates_unchanged(self):
+        fs = seeded()
+        quote, fs = create_quote(self, fs)
+        out = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs)
+        ok(self, out)
+        call = next(c for c in out['calls'] if c['name'] == 'artifact--artifact_render_v1')['full']
+        directory = TEMPLATES / 'quote'
+        self.assertEqual(call['template']['files'], {p.relative_to(directory).as_posix(): p.read_text(encoding='utf-8') for p in sorted(directory.rglob('*')) if p.is_file()})
+        self.assertEqual(call['template']['manifest'], load(directory / 'manifest.json'))
+        self.assertEqual(call['context']['i18n'], load(TOOLING / 'contract/i18n.fr.json'))
+        self.assertEqual((call['output'], call['mode']), ('pdf', 'preview'))
+        self.assertEqual(call['context']['doc']['number'], 'BROUILLON')
+        self.assertEqual(call['context']['company']['trade_name'], 'Atelier Exemple')
+        self.assertEqual(call['context']['company']['phone'], '')
+
+
+class DraftTest(unittest.TestCase):
+    def test_quote_totals_are_computed_from_the_lines_and_never_from_the_model(self):
+        draft = {**QUOTE_DRAFT, 'totals': {'total_ht': '1,00 €', 'total_ttc': '1,00 €'}, 'amount': 5}
+        summary, _ = create_quote(self, seeded(), draft=draft)
+        computed = summary['computed']
+        self.assertEqual(computed['lines'][0], {'description': 'Atelier de cadrage', 'quantity': '2 forfaits', 'unit_price_ht': '600,00 €', 'vat_rate': '20 %', 'total_ht': '1 200,00 €'})
+        self.assertEqual(computed['lines'][2]['unit_price_ht'], '650,50 €')
+        self.assertEqual(computed['lines'][2]['vat_rate'], '5,5 %')
+        # 1200 + 3500 + 650.50 = 5350.50 ; VAT 20 % on 4700 = 940.00 ; VAT 5.5 % on 650.50 = 35.78 (35.7775)
+        self.assertEqual(computed['totals'], {'total_ht': '5 350,50 €', 'vat': [{'rate': '5,5 %', 'amount': '35,78 €'}, {'rate': '20 %', 'amount': '940,00 €'}], 'total_ttc': '6 326,28 €'})
+        self.assertEqual(computed['reference'], 'DEVIS-TEST')
+        self.assertEqual(summary['status'], 'draft')
+        self.assertEqual((summary['revision'], summary['renders']), (1, 0))
+
+    def test_the_stored_record_is_complete_and_created_without_overwrite(self):
+        summary, fs = create_quote(self, seeded())
+        record = json.loads(fs['/document-studio/docs/devis-test/record.json']['text'])
+        self.assertEqual(record['schema'], 'document-studio.record/v1')
+        self.assertEqual((record['status'], record['number'], record['revision'], record['issued']), ('draft', None, 1, None))
+        self.assertEqual(record['template_version'], '1.0.0')
+        self.assertEqual(record['title'], 'Devis Cabinet Fictif & Associes')
+        self.assertEqual(record['history'][0]['action'], 'created')
+        out = run_node('document-studio-draft', 'create', {'prep': {'template_key': 'quote', 'locale': 'fr'}, 'draft': QUOTE_DRAFT, 'doc_id': 'devis-test'}, fs)
+        self.assertTrue(out['error'].startswith('document_create_failed'))
+        create = [c for c in out['calls'] if c['name'] == 'write_file'][0]
+        self.assertIs(create['args']['overwrite'], False)
+
+    def test_invalid_drafts_are_refused_before_any_write(self):
+        cases = {
+            'negative price': {**QUOTE_DRAFT, 'lines': [{**QUOTE_DRAFT['lines'][0], 'unit_price_ht': -1}]},
+            'zero quantity': {**QUOTE_DRAFT, 'lines': [{**QUOTE_DRAFT['lines'][0], 'quantity': 0}]},
+            'impossible date': {**QUOTE_DRAFT, 'valid_until': '2026-02-30'},
+            'no line': {**QUOTE_DRAFT, 'lines': []},
+            'text price': {**QUOTE_DRAFT, 'lines': [{**QUOTE_DRAFT['lines'][0], 'unit_price_ht': '600,00 €'}]},
+            'no customer': {k: v for k, v in QUOTE_DRAFT.items() if k != 'customer'},
+        }
+        for label, draft in cases.items():
+            out = run_node('document-studio-draft', 'create', {'prep': {'template_key': 'quote', 'locale': 'fr'}, 'draft': draft, 'doc_id': 'devis-test'}, {})
+            self.assertTrue(out['error'].startswith('data_invalid'), (label, out))
+            self.assertEqual(out['calls'], [], label)
+
+    def test_a_model_that_reports_missing_data_stops_the_draft(self):
+        out = run_node('document-studio-draft', 'create', {'prep': {'template_key': 'quote', 'locale': 'fr'}, 'draft': {'missing': ['le nom du client']}}, {})
+        self.assertTrue(out['error'].startswith('data_missing: le nom du client'))
+
+    def test_draft_accepts_a_json_string_from_the_model_and_derives_the_id(self):
+        out = run_node('document-studio-draft', 'create', {'prep': {'template_key': 'quote', 'locale': 'fr'}, 'draft': '```json\n' + json.dumps(QUOTE_DRAFT) + '\n```'}, {})
+        summary = ok(self, out)
+        self.assertRegex(summary['doc_id'], r'^devis-cabinet-fictif-associes-[0-9a-f]{6}$')
+
+    def test_meeting_minutes_draft_and_prepare_steps(self):
+        out = run_node('document-studio-draft', 'create', {'prep': {'template_key': 'meeting-minutes', 'locale': 'fr'}, 'draft': MINUTES_DRAFT, 'doc_id': 'cr-test'}, {})
+        summary = ok(self, out)
+        self.assertEqual(summary['template_key'], 'meeting-minutes')
+        prep = ok(self, run_node('document-studio-draft', 'prepare', {'brief': 'Compte rendu du comite', 'template_key': 'meeting-minutes'}))
+        self.assertIn('Compte rendu du comite', prep['prompt'])
+        for bad in ({'brief': '', 'template_key': 'quote'}, {'brief': 'x', 'template_key': 'invoice'}, {'brief': 'x', 'template_key': 'quote', 'doc_id': 'Bad Id'}, {'brief': 'x', 'template_key': 'quote', 'locale': 'en'}):
+            self.assertIn('error', run_node('document-studio-draft', 'prepare', bad))
+
+    def test_plan_normalizes_the_model_answer_and_writes_nothing(self):
+        prep = ok(self, run_node('document-studio-plan', 'prepare', {'brief': 'Un devis pour un client'}))
+        out = run_node('document-studio-plan', 'normalize', {'prep': prep, 'plan_draft': json.dumps({'template_key': 'quote', 'title': ' Devis client ', 'missing': ['client', 3, ''], 'questions': ['Quel client ?']})})
+        plan = ok(self, out)
+        self.assertEqual((plan['template_key'], plan['title'], plan['missing'], plan['questions']), ('quote', 'Devis client', ['client'], ['Quel client ?']))
+        self.assertEqual(out['calls'], [])
+        bad = run_node('document-studio-plan', 'normalize', {'prep': prep, 'plan_draft': {'template_key': 'invoice'}})
+        self.assertTrue(bad['error'].startswith('template_unknown'))
+        forced = ok(self, run_node('document-studio-plan', 'prepare', {'brief': 'x', 'template_key': 'meeting-minutes'}))
+        self.assertEqual(forced['template_key'], 'meeting-minutes')
+
+    def test_template_read(self):
+        listing = ok(self, run_node('document-studio-template-read', 'read', {}))
+        self.assertEqual({t['template_key'] for t in listing['templates']}, {'quote', 'meeting-minutes'})
+        one = ok(self, run_node('document-studio-template-read', 'read', {'template_key': 'quote'}))
+        self.assertEqual(one['template']['prefix'], 'DEV')
+        self.assertIn('required', one['template']['input_schema'])
+        self.assertIn('error', run_node('document-studio-template-read', 'read', {'template_key': 'invoice'}))
+
+
+class LifecycleTest(unittest.TestCase):
+    def render(self, fs, **opts):
+        out = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs, **opts)
+        return ok(self, out), out['fs']
+
+    def run_lifecycle(self, **opts):
+        _, fs = create_quote(self, seeded())
+        rendered, fs = self.render(fs, **opts)
+        self.assertEqual((rendered['status'], rendered['revision'], rendered['renders']), ('draft', 2, 1))
+        self.assertEqual(rendered['last_render']['path'], '/document-studio/docs/devis-test/r2/document.pdf')
+        self.assertIn('/document-studio/docs/devis-test/r2/page-1.png', fs)
+        approved = run_node('document-studio-finalize', 'finalize', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs)
+        self.assertEqual(ok(self, approved)['status'], 'approved')
+        published = run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': True}, approved['fs'], **opts)
+        return ok(self, published), published
+
+    def test_full_lifecycle_with_inline_base64(self):
+        result, out = self.run_lifecycle()
+        number = f'DEV-{YEAR}-0001'
+        self.assertEqual((result['status'], result['number']), ('issued', number))
+        fs = out['fs']
+        record = json.loads(fs['/document-studio/docs/devis-test/record.json']['text'])
+        pdf = fs[f'/document-studio/docs/devis-test/issued/{number}.pdf']['b64']
+        self.assertEqual(record['issued']['file']['sha256'], hashlib.sha256(base64.b64decode(pdf)).hexdigest())
+        self.assertEqual(record['issued']['number'], number)
+        self.assertEqual([r['mode'] for r in record['renders']], ['preview', 'final'])
+        self.assertEqual(record['revision'], 5)
+        self.assertEqual([h['action'] for h in record['history']], ['created', 'rendered', 'approved', 'number_reserved', 'issued'])
+        self.assertEqual(json.loads(fs[f'/document-studio/numbers/quote/{YEAR}/0001.json']['text'])['doc_id'], 'devis-test')
+        call = [c for c in out['calls'] if c['name'] == 'artifact--artifact_render_v1'][0]['full']
+        self.assertEqual((call['mode'], call['context']['doc']['number'], call['context']['doc']['status']), ('final', number, 'issued'))
+        write = [c for c in out['calls'] if c['name'] == 'write_file' and c['args']['path'].endswith('.pdf')][0]['args']
+        self.assertEqual((write['encoding'], write['overwrite']), ('base64', True))
+
+    def test_lifecycle_stores_by_buffer_reference_when_the_engine_gives_one(self):
+        result, out = self.run_lifecycle(render_mode='ref')
+        self.assertEqual(result['status'], 'issued')
+        writes = [c['args'] for c in out['calls'] if c['name'] == 'write_file' and 'buffer_ref' in c['args']]
+        self.assertTrue(writes)
+        for args in writes:
+            self.assertNotIn('content', args)
+        record = json.loads(out['fs']['/document-studio/docs/devis-test/record.json']['text'])
+        pdf = out['fs'][record['issued']['file']['path']]['b64']
+        self.assertEqual(record['issued']['file']['sha256'], hashlib.sha256(base64.b64decode(pdf)).hexdigest())
+
+    def test_issued_and_cancelled_documents_are_locked(self):
+        _, out = self.run_lifecycle()
+        locked = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, out['fs'])
+        self.assertTrue(locked['error'].startswith('document_locked'))
+        self.assertEqual([c['name'] for c in locked['calls']], ['read_file'])
+        cancelled = run_node('document-studio-cancel', 'cancel', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui', 'reason': 'erreur de client'}, out['fs'])
+        record = ok(self, cancelled)
+        self.assertEqual((record['status'], record['number'] is not None), ('cancelled', True))
+        again = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, cancelled['fs'])
+        self.assertTrue(again['error'].startswith('document_locked'))
+        twice = run_node('document-studio-cancel', 'cancel', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui', 'reason': 'x'}, cancelled['fs'])
+        self.assertTrue(twice['error'].startswith('status_invalid'))
+        self.assertIn('error', run_node('document-studio-cancel', 'cancel', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui', 'reason': ' '}, out['fs']))
+
+    def test_numbers_continue_and_are_never_reused(self):
+        _, out = self.run_lifecycle()
+        fs = out['fs']
+        run_node('document-studio-cancel', 'cancel', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui', 'reason': 'x'}, fs)
+        _, fs = create_quote(self, fs, doc_id='devis-deux')
+        fs = run_node('document-studio-render', 'render', {'doc_id': 'devis-deux'}, fs)['fs']
+        fs = run_node('document-studio-finalize', 'finalize', {'doc_id': 'devis-deux', 'confirmation_manuelle': 'oui'}, fs)['fs']
+        second = ok(self, run_node('document-studio-publish', 'publish', {'doc_id': 'devis-deux', 'confirmation_manuelle': 'oui'}, fs))
+        self.assertEqual(second['number'], f'DEV-{YEAR}-0002')
+
+    def test_number_reservation_survives_lost_races_and_gives_up_after_five(self):
+        def approved_fs():
+            _, fs = create_quote(self, seeded())
+            fs = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs)['fs']
+            return run_node('document-studio-finalize', 'finalize', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs)['fs']
+        raced = run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, approved_fs(), race=2)
+        self.assertEqual(ok(self, raced)['number'], f'DEV-{YEAR}-0003')
+        hijacked = run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, approved_fs(), hijack=1)
+        self.assertEqual(ok(self, hijacked)['number'], f'DEV-{YEAR}-0002')
+        lost = run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, approved_fs(), race=9)
+        self.assertTrue(lost['error'].startswith('number_conflict'), lost)
+        record = json.loads(lost['fs']['/document-studio/docs/devis-test/record.json']['text'])
+        self.assertEqual((record['status'], record['number']), ('approved', None))
+        self.assertFalse([c for c in lost['calls'] if c['name'] == 'artifact--artifact_render_v1'])
+
+    def test_a_reserved_number_is_kept_when_the_render_fails(self):
+        _, fs = create_quote(self, seeded())
+        fs = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs)['fs']
+        fs = run_node('document-studio-finalize', 'finalize', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs)['fs']
+        failed = run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs, render_error='moteur indisponible')
+        self.assertIn('moteur indisponible', failed['error'])
+        record = json.loads(failed['fs']['/document-studio/docs/devis-test/record.json']['text'])
+        self.assertEqual(record['status'], 'approved')
+        number = record['number']
+        self.assertTrue(number)
+        retry = ok(self, run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, failed['fs']))
+        self.assertEqual(retry['number'], number)
+
+    def test_status_rules(self):
+        _, fs = create_quote(self, seeded())
+        self.assertTrue(run_node('document-studio-finalize', 'finalize', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs)['error'].startswith('render_required'))
+        self.assertTrue(run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs)['error'].startswith('status_invalid'))
+        self.assertTrue(run_node('document-studio-render', 'render', {'doc_id': 'devis-absent'}, fs)['error'].startswith('document_not_found'))
+        fs = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs)['fs']
+        fs = run_node('document-studio-finalize', 'finalize', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs)['fs']
+        reopened = ok(self, run_node('document-studio-render', 'render', {'doc_id': 'devis-test', 'data_patch': {'payment_terms': '45 jours.'}}, fs))
+        self.assertEqual(reopened['status'], 'draft')
+
+    def test_render_patch_is_validated_and_merged(self):
+        _, fs = create_quote(self, seeded())
+        bad = run_node('document-studio-render', 'render', {'doc_id': 'devis-test', 'data_patch': {'valid_until': 'demain'}}, fs)
+        self.assertTrue(bad['error'].startswith('data_invalid'))
+        self.assertFalse([c for c in bad['calls'] if c['name'] == 'artifact--artifact_render_v1'])
+        good = run_node('document-studio-render', 'render', {'doc_id': 'devis-test', 'data_patch': {'valid_until': '2027-01-31'}}, fs)
+        ok(self, good)
+        record = json.loads(good['fs']['/document-studio/docs/devis-test/record.json']['text'])
+        self.assertEqual(record['data']['valid_until'], '2027-01-31')
+        self.assertEqual(record['data']['customer']['name'], QUOTE_DRAFT['customer']['name'])
+        self.assertIn('error', run_node('document-studio-render', 'render', {'doc_id': 'devis-test', 'data_patch': 'texte'}, fs))
+
+    def test_render_needs_the_company_profile(self):
+        _, fs = create_quote(self, seeded(profile=False))
+        out = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs)
+        self.assertTrue(out['error'].startswith('profile_missing'))
+        self.assertIn('document-studio-profile-save', out['error'])
+
+    def test_profile_save_validates_and_writes(self):
+        out = run_node('document-studio-profile-save', 'save', {'profile': PROFILE, 'confirmation_manuelle': 'oui'}, {})
+        result = ok(self, out)
+        self.assertEqual(result['legal_name'], 'Atelier Exemple SAS')
+        stored = json.loads(out['fs']['/document-studio/profile.json']['text'])
+        self.assertEqual(stored['company']['legal_name'], 'Atelier Exemple SAS')
+        bad_colour = json.loads(json.dumps(PROFILE))
+        bad_colour['brand']['colors']['primary'] = 'blue'
+        no_name = json.loads(json.dumps(PROFILE))
+        del no_name['company']['legal_name']
+        bad_iban = json.loads(json.dumps(PROFILE))
+        bad_iban['company']['bank'] = {'iban': 'FR76'}
+        for label, profile in (('colour', bad_colour), ('name', no_name), ('iban', bad_iban)):
+            refused = run_node('document-studio-profile-save', 'save', {'profile': profile, 'confirmation_manuelle': 'oui'}, {})
+            self.assertIn('error', refused, label)
+            self.assertNotIn('/document-studio/profile.json', refused['fs'], label)
+        example = load(MODULE / 'examples/profile.example.json')
+        self.assertIn('result', run_node('document-studio-profile-save', 'save', {'profile': example, 'confirmation_manuelle': 'oui'}, {}))
+
+    def test_export_copies_the_issued_pdf_outside_the_studio(self):
+        _, out = self.run_lifecycle()
+        copied = run_node('document-studio-export', 'export', {'doc_id': 'devis-test', 'destination_path': '/envois/devis.pdf'}, out['fs'])
+        result = ok(self, copied)
+        record = json.loads(copied['fs']['/document-studio/docs/devis-test/record.json']['text'])
+        self.assertEqual((result['sha256'], result['draft']), (record['issued']['file']['sha256'], False))
+        self.assertEqual(copied['fs']['/envois/devis.pdf']['b64'], copied['fs'][record['issued']['file']['path']]['b64'])
+        for bad in ('/document-studio/copie.pdf', 'relatif.pdf', '/envois/../x.pdf', '/envois/'):
+            self.assertTrue(run_node('document-studio-export', 'export', {'doc_id': 'devis-test', 'destination_path': bad}, out['fs'])['error'].startswith('destination_invalid'), bad)
+        clash = run_node('document-studio-export', 'export', {'doc_id': 'devis-test', 'destination_path': '/envois/devis.pdf'}, copied['fs'])
+        self.assertIn('error', clash)
+
+    def test_export_of_a_draft_is_flagged(self):
+        _, fs = create_quote(self, seeded())
+        fs = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs)['fs']
+        result = ok(self, run_node('document-studio-export', 'export', {'doc_id': 'devis-test', 'destination_path': '/envois/brouillon.pdf'}, fs))
+        self.assertIs(result['draft'], True)
+        self.assertIn('brouillon', result['warning'])
+        empty = run_node('document-studio-export', 'export', {'doc_id': 'devis-test', 'destination_path': '/envois/x.pdf'}, create_quote(self, seeded())[1])
+        self.assertTrue(empty['error'].startswith('no_render'))
+
+    def test_list_and_review_read(self):
+        _, fs = create_quote(self, seeded())
+        _, fs = create_quote(self, fs, doc_id='devis-deux')
+        fs = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs)['fs']
+        for mode in ('recursive', 'dirs'):
+            listing = ok(self, run_node('document-studio-list', 'list', {}, fs, list_mode=mode))
+            self.assertEqual([i['doc_id'] for i in listing['items']], ['devis-deux', 'devis-test'], mode)
+        only = ok(self, run_node('document-studio-list', 'list', {'status': 'approved'}, fs))
+        self.assertEqual(only['count'], 0)
+        self.assertIn('error', run_node('document-studio-list', 'list', {'status': 'wip'}, fs))
+        review = ok(self, run_node('document-studio-review-read', 'read', {'doc_id': 'devis-test'}, fs))
+        self.assertEqual((review['status'], review['revision'], review['pages'], review['number']), ('draft', 2, 1, ''))
+        self.assertEqual(review['previews'], [{'page': 1, 'path': '/document-studio/docs/devis-test/r2/page-1.png', 'sha256': review['previews'][0]['sha256']}])
+        self.assertEqual(review['renders'][0]['mode'], 'preview')
+
+
+if __name__ == '__main__':
+    unittest.main()

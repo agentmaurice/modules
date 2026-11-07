@@ -1,0 +1,19 @@
+{
+  "capabilities": [
+    "documents",
+    "templates",
+    "pdf",
+    "review",
+    "numbering",
+    "storage"
+  ],
+  "credentials": [],
+  "description": {
+    "en": "Document studio: draft business documents from a brief, render them to PDF from templates and the company profile, review, approve and issue them with a number, and keep every revision in Storage.",
+    "fr": "Studio de documents : rédiger des documents professionnels depuis un brief, les rendre en PDF avec des gabarits et la fiche entreprise, les relire, les approuver et les émettre avec un numéro, en gardant chaque révision dans Storage."
+  },
+  "price": {
+    "model": "free"
+  },
+  "schema": "agentmaurice.module_catalog_entry/v1"
+}

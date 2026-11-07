@@ -1,0 +1,122 @@
+{
+  "contract": "agentmaurice.template/v1",
+  "source_path": "contracts/template/v1",
+  "source_commit": "b2133665efeb7ed8b3358d0aafed8914587526d6",
+  "note": "Frozen copies of the reference templates and their shared fragments. \"sha256\" is the hash of the file in this Module, \"source_sha256\" the hash of the file in the contract at source_commit; a file with \"modified\": true was changed here on purpose. Refresh with a new commit only through a reviewed change.",
+  "templates": {
+    "quote": {
+      "examples/default.json": {
+        "source": "golden/valid/quote/examples/default.json",
+        "sha256": "c77832ef47dea2ff02b9cfc7cf04e47b5d3830a8719d99f68fecc6eddde12c04",
+        "source_sha256": "c77832ef47dea2ff02b9cfc7cf04e47b5d3830a8719d99f68fecc6eddde12c04",
+        "modified": false
+      },
+      "fragments/footer.typ": {
+        "source": "fragments/footer.typ",
+        "sha256": "d2e39519e8be16615ec1cbcaed286336f10a6063f30853d2093d88ae7cbf55e8",
+        "source_sha256": "d2e39519e8be16615ec1cbcaed286336f10a6063f30853d2093d88ae7cbf55e8",
+        "modified": false
+      },
+      "fragments/header.typ": {
+        "source": "fragments/header.typ",
+        "sha256": "f07498658f437939a053c333eb75a026861bd7901a3542350d89d734d21f1f2f",
+        "source_sha256": "f07498658f437939a053c333eb75a026861bd7901a3542350d89d734d21f1f2f",
+        "modified": false
+      },
+      "fragments/legal-mentions.typ": {
+        "source": "fragments/legal-mentions.typ",
+        "sha256": "2afa5a85a1cda3df02d2b1300a0379c7be21d7c5f8a7902d8c59ba590b24535b",
+        "source_sha256": "2afa5a85a1cda3df02d2b1300a0379c7be21d7c5f8a7902d8c59ba590b24535b",
+        "modified": false
+      },
+      "fragments/lines-table.typ": {
+        "source": "fragments/lines-table.typ",
+        "sha256": "bf816c0b8b6e652a4382d6293a2a1186500cd2ca762ae9a15146a85edbdf2a08",
+        "source_sha256": "bf816c0b8b6e652a4382d6293a2a1186500cd2ca762ae9a15146a85edbdf2a08",
+        "modified": false
+      },
+      "input.schema.json": {
+        "source": "golden/valid/quote/input.schema.json",
+        "sha256": "512325c63e3cd39a6b015bda172c323417d236f0d8b77dd924dc412790623c0d",
+        "source_sha256": "512325c63e3cd39a6b015bda172c323417d236f0d8b77dd924dc412790623c0d",
+        "modified": false
+      },
+      "main.typ": {
+        "source": "golden/valid/quote/main.typ",
+        "sha256": "dab983866937730fc40e391a0cec5cb525014893404e40eb66de9e8977eb3c8e",
+        "source_sha256": "78044191b1569c5c6203e2bffcf612260de565e31178ec5c9ff476e26e697ca6",
+        "modified": true
+      },
+      "manifest.json": {
+        "source": "golden/valid/quote/manifest.json",
+        "sha256": "c2bb0c970d4b085c1817f0f6b376fb6200059c71f92410770596eb131f54d1f7",
+        "source_sha256": "c2bb0c970d4b085c1817f0f6b376fb6200059c71f92410770596eb131f54d1f7",
+        "modified": false
+      }
+    },
+    "meeting-minutes": {
+      "examples/default.json": {
+        "source": "golden/valid/meeting-minutes/examples/default.json",
+        "sha256": "01b23415d897ca8af699514df156fd7a6ff324a51e761e4c31e931f473eab172",
+        "source_sha256": "01b23415d897ca8af699514df156fd7a6ff324a51e761e4c31e931f473eab172",
+        "modified": false
+      },
+      "examples/minimal.json": {
+        "source": "golden/valid/meeting-minutes/examples/minimal.json",
+        "sha256": "3db4b99a6060ed10d470a80505464b61c142ddec80f3331297ae06ff1e9e8eeb",
+        "source_sha256": "3db4b99a6060ed10d470a80505464b61c142ddec80f3331297ae06ff1e9e8eeb",
+        "modified": false
+      },
+      "fragments/footer.typ": {
+        "source": "fragments/footer.typ",
+        "sha256": "d2e39519e8be16615ec1cbcaed286336f10a6063f30853d2093d88ae7cbf55e8",
+        "source_sha256": "d2e39519e8be16615ec1cbcaed286336f10a6063f30853d2093d88ae7cbf55e8",
+        "modified": false
+      },
+      "fragments/header.typ": {
+        "source": "fragments/header.typ",
+        "sha256": "f07498658f437939a053c333eb75a026861bd7901a3542350d89d734d21f1f2f",
+        "source_sha256": "f07498658f437939a053c333eb75a026861bd7901a3542350d89d734d21f1f2f",
+        "modified": false
+      },
+      "fragments/legal-mentions.typ": {
+        "source": "fragments/legal-mentions.typ",
+        "sha256": "2afa5a85a1cda3df02d2b1300a0379c7be21d7c5f8a7902d8c59ba590b24535b",
+        "source_sha256": "2afa5a85a1cda3df02d2b1300a0379c7be21d7c5f8a7902d8c59ba590b24535b",
+        "modified": false
+      },
+      "fragments/lines-table.typ": {
+        "source": "fragments/lines-table.typ",
+        "sha256": "bf816c0b8b6e652a4382d6293a2a1186500cd2ca762ae9a15146a85edbdf2a08",
+        "source_sha256": "bf816c0b8b6e652a4382d6293a2a1186500cd2ca762ae9a15146a85edbdf2a08",
+        "modified": false
+      },
+      "input.schema.json": {
+        "source": "golden/valid/meeting-minutes/input.schema.json",
+        "sha256": "7412e969fff179641ca1f909ec290d3a85efa8bbfb21c32fe2c3b317bab61b15",
+        "source_sha256": "7412e969fff179641ca1f909ec290d3a85efa8bbfb21c32fe2c3b317bab61b15",
+        "modified": false
+      },
+      "main.typ": {
+        "source": "golden/valid/meeting-minutes/main.typ",
+        "sha256": "b2b0bec20b76b557c7a150664fbf531d63275b8ce2ec18843c996665e4431a92",
+        "source_sha256": "b2b0bec20b76b557c7a150664fbf531d63275b8ce2ec18843c996665e4431a92",
+        "modified": false
+      },
+      "manifest.json": {
+        "source": "golden/valid/meeting-minutes/manifest.json",
+        "sha256": "a7bf1b08964d4cb0569daad0e2da9b117fe7029f3db21fa1c189898449897180",
+        "source_sha256": "a7bf1b08964d4cb0569daad0e2da9b117fe7029f3db21fa1c189898449897180",
+        "modified": false
+      }
+    }
+  },
+  "shared": {
+    "i18n.fr.json": {
+      "source": "golden/context/i18n.fr.json",
+      "sha256": "1fd7fde8819aef77a9c9c8a95ce38465a9cdd5f1926e32435f38ba3c277a5840",
+      "source_sha256": "1fd7fde8819aef77a9c9c8a95ce38465a9cdd5f1926e32435f38ba3c277a5840",
+      "modified": false
+    }
+  }
+}
