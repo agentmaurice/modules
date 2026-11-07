@@ -50,6 +50,8 @@ NATIVE = {
                      'language': 'English source', 'publication': 'native to this repository, unpublished'},
     'profile': {'generators': ['tooling/profile/build.py', 'tooling/profile/compose.py'],
                 'language': 'English source', 'publication': 'native to this repository, unpublished'},
+    'document-studio': {'generators': ['tooling/document-studio/build.py'],
+                        'language': 'English source', 'publication': 'native to this repository, unpublished'},
 }
 CONSUMERS = {
     'watch-memory': ['watch', 'company-memory'], 'content-memory': ['content', 'company-memory'],

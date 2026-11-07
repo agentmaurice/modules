@@ -1,0 +1,200 @@
+{
+  "$schema": "agentmaurice.miniapp/v2",
+  "schema_version": 2,
+  "miniapp_id": "document-studio-review",
+  "kind": "miniapp",
+  "title": "Document studio",
+  "version": "1",
+  "description": "Relire un document, relancer un rendu, l'approuver puis l'émettre.",
+  "ui": {
+    "renderer": "component",
+    "component": "document-studio-review",
+    "configuration": {
+      "layout": [
+        {
+          "type": "callout",
+          "title": "Relecture humaine",
+          "tone": "info",
+          "value": "Ouvrez le formulaire « Relire un document » et saisissez l'identifiant (doc_id) du document : il est chargé ici. Relisez les rendus, puis approuvez et émettez avec une confirmation manuelle. Un document émis est verrouillé et son numéro n'est jamais réutilisé."
+        },
+        {
+          "type": "button",
+          "label": "Actualiser le document",
+          "on_click": "load"
+        },
+        {
+          "type": "section",
+          "title": "Document",
+          "children": [
+            {
+              "type": "kpi_grid",
+              "items": [
+                {
+                  "label": "Statut",
+                  "value": {
+                    "state": "review.status"
+                  }
+                },
+                {
+                  "label": "Révision",
+                  "value": {
+                    "state": "review.revision"
+                  }
+                },
+                {
+                  "label": "Numéro",
+                  "value": {
+                    "state": "review.number"
+                  }
+                },
+                {
+                  "label": "Pages",
+                  "value": {
+                    "state": "review.pages"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "stat",
+              "label": "Titre",
+              "value": {
+                "state": "review.title"
+              }
+            },
+            {
+              "type": "table",
+              "columns": [
+                "revision",
+                "mode",
+                "sha256",
+                "path"
+              ],
+              "column_labels": {
+                "revision": "Révision",
+                "mode": "Mode",
+                "sha256": "Empreinte SHA-256",
+                "path": "Chemin"
+              },
+              "rows": {
+                "state": "review.renders"
+              }
+            }
+          ]
+        },
+        {
+          "type": "section",
+          "title": "Actions",
+          "children": [
+            {
+              "type": "button",
+              "label": "Nouveau rendu",
+              "on_click": "render"
+            },
+            {
+              "type": "text",
+              "value": "Approuver et Émettre ouvrent un formulaire de confirmation manuelle dans les interactions disponibles."
+            },
+            {
+              "type": "text",
+              "value": {
+                "state": "result.message"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "state_schema": {
+    "type": "object",
+    "properties": {
+      "doc_id": {
+        "type": "string"
+      },
+      "confirmation_manuelle": {
+        "type": "string"
+      },
+      "review": {
+        "type": "object"
+      },
+      "result": {
+        "type": "object"
+      }
+    }
+  },
+  "initial_state": {
+    "doc_id": "",
+    "confirmation_manuelle": "non",
+    "review": {
+      "status": "",
+      "revision": 0,
+      "number": "",
+      "pages": 0,
+      "title": "",
+      "renders": []
+    },
+    "result": {
+      "message": "Aucune action."
+    }
+  },
+  "events": [
+    {
+      "event_id": "load",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "document-studio-review-read",
+        "input": {
+          "doc_id": "{{ state.doc_id }}"
+        }
+      },
+      "result_to_state": "review"
+    },
+    {
+      "event_id": "review",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "document-studio-review-read",
+        "input": {
+          "doc_id": "{{ state.doc_id }}"
+        }
+      },
+      "result_to_state": "review"
+    },
+    {
+      "event_id": "render",
+      "trigger": "action.click",
+      "workflow": {
+        "workflow_id": "document-studio-render",
+        "input": {
+          "doc_id": "{{ state.doc_id }}"
+        }
+      },
+      "result_to_state": "result"
+    },
+    {
+      "event_id": "approve",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "document-studio-finalize",
+        "input": {
+          "doc_id": "{{ state.doc_id }}",
+          "confirmation_manuelle": "{{ state.confirmation_manuelle }}"
+        }
+      },
+      "result_to_state": "result"
+    },
+    {
+      "event_id": "issue",
+      "trigger": "form.submit",
+      "workflow": {
+        "workflow_id": "document-studio-publish",
+        "input": {
+          "doc_id": "{{ state.doc_id }}",
+          "confirmation_manuelle": "{{ state.confirmation_manuelle }}"
+        }
+      },
+      "result_to_state": "result"
+    }
+  ]
+}

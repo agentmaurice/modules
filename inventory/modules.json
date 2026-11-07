@@ -1204,6 +1204,310 @@
       "migration_m5_m6": "to define and qualify; deployment status is not inferred"
     },
     {
+      "key": "document-studio",
+      "version": "0.1.0",
+      "manifest": "document-studio/module.yaml",
+      "workflows": 11,
+      "miniapps": 1,
+      "source": {
+        "repository": "github.com/agentmaurice/modules",
+        "native": true
+      },
+      "generators_and_composers": [
+        "tooling/document-studio/build.py"
+      ],
+      "resources": {
+        "workflows": [
+          "document-studio/agents/main/workflows/document-studio-cancel.json",
+          "document-studio/agents/main/workflows/document-studio-draft.json",
+          "document-studio/agents/main/workflows/document-studio-export.json",
+          "document-studio/agents/main/workflows/document-studio-finalize.json",
+          "document-studio/agents/main/workflows/document-studio-list.json",
+          "document-studio/agents/main/workflows/document-studio-plan.json",
+          "document-studio/agents/main/workflows/document-studio-profile-save.json",
+          "document-studio/agents/main/workflows/document-studio-publish.json",
+          "document-studio/agents/main/workflows/document-studio-render.json",
+          "document-studio/agents/main/workflows/document-studio-review-read.json",
+          "document-studio/agents/main/workflows/document-studio-template-read.json"
+        ],
+        "miniapps": [
+          "document-studio/agents/main/miniapps/document-studio-review.json"
+        ],
+        "sha256": {
+          "document-studio/module.yaml": "89c05d34793969a8fccb1b767f9b6aa87bda29d6fb9edaf4f80e1f827e2a0299",
+          "document-studio/agents/main/workflows/document-studio-cancel.json": "899e24cb5688d92497891ea09a3181f64093df9d2802d818da78f1298f807965",
+          "document-studio/agents/main/workflows/document-studio-draft.json": "72be0b86b67c6fc4392bff1795c38c59763334582fedf1ccdd95b296e9492b4e",
+          "document-studio/agents/main/workflows/document-studio-export.json": "52aa5bcc2ee64715be59fab234804fcebd3cc1cfec4e32dd5f9ea5d69c9371db",
+          "document-studio/agents/main/workflows/document-studio-finalize.json": "07f6f1bce4cb549c1973b06b3523abefc77c253967711415d51bd499360ed020",
+          "document-studio/agents/main/workflows/document-studio-list.json": "38daf2284f500b2e71d0bbd73dbfbd8d3c3ca1259f600384a6ce95c565ba5a33",
+          "document-studio/agents/main/workflows/document-studio-plan.json": "47a1a75463b75cdfc287a56f80a23f3faef513ae46b6b980a0851579089eb99b",
+          "document-studio/agents/main/workflows/document-studio-profile-save.json": "686d4ccf1265c6b3990a0fdec57b7ddc3e3252bcc66025f25d640f12c7f9454e",
+          "document-studio/agents/main/workflows/document-studio-publish.json": "350a0c4318d39c76b907891181c8abb66c6d21ce372f03548c013e7e3653a8b1",
+          "document-studio/agents/main/workflows/document-studio-render.json": "ac51133ecc9eb27b71e68c7316acde0dc75d8c88e3c68d676f87d12943a5d4c4",
+          "document-studio/agents/main/workflows/document-studio-review-read.json": "a7c0b4a35ac7e2f68193a71d2aa40711366abac924b079d85d76ca7bcbbfa6ac",
+          "document-studio/agents/main/workflows/document-studio-template-read.json": "c5df42ab731d7c56aa483d0a0e19370afdcc24fe0151a61b76ceb3cbbc773fed",
+          "document-studio/agents/main/miniapps/document-studio-review.json": "126750a2bcf33970f52a3e946381661136ec5cae9a918546cca289a268c1088c"
+        }
+      },
+      "workflow_actions": {
+        "document-studio/agents/main/workflows/document-studio-cancel.json": {
+          "workflow_id": "document-studio-cancel",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "cancel",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "f1917d69e3f6037738be1d01b1596f493e100e8531724aa9c3f812277e34441c"
+            }
+          ]
+        },
+        "document-studio/agents/main/workflows/document-studio-draft.json": {
+          "workflow_id": "document-studio-draft",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "prepare",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "207b283c868a152a256499c22a8c326ef2964e886470af161555e4d593184ab6"
+            },
+            {
+              "path": "/actions/1",
+              "id": "draft-llm",
+              "type": "llm_call"
+            },
+            {
+              "path": "/actions/2",
+              "id": "create",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "84cd3cdb86438410be7feb0f37a661dbbee58c1009a1de60fad4aa46cea6253e"
+            }
+          ]
+        },
+        "document-studio/agents/main/workflows/document-studio-export.json": {
+          "workflow_id": "document-studio-export",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "export",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "7afe7e008045c2dbd7a94dd38795eef6b03f53e9fe22b24714523dbacf542792"
+            }
+          ]
+        },
+        "document-studio/agents/main/workflows/document-studio-finalize.json": {
+          "workflow_id": "document-studio-finalize",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "finalize",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "0b7fb78a4eaf763a38684b03c62e39340c51c5244295f1eb00c43d5f934e9117"
+            }
+          ]
+        },
+        "document-studio/agents/main/workflows/document-studio-list.json": {
+          "workflow_id": "document-studio-list",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "list",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "9ea76c328efb36d97b4cda1c4cff6f290a56ec5950564155f3b549fdb955a2c4"
+            }
+          ]
+        },
+        "document-studio/agents/main/workflows/document-studio-plan.json": {
+          "workflow_id": "document-studio-plan",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "prepare",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "2ac66d02a50a28ca257a7ca29db2c889f526232cff0966f4ef1540f469f0086f"
+            },
+            {
+              "path": "/actions/1",
+              "id": "plan-llm",
+              "type": "llm_call"
+            },
+            {
+              "path": "/actions/2",
+              "id": "normalize",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "d1d7a101fc37bb9df5bbd36ae53daaddff842d0805502d5981ab9549b1cefcc0"
+            }
+          ]
+        },
+        "document-studio/agents/main/workflows/document-studio-profile-save.json": {
+          "workflow_id": "document-studio-profile-save",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "save",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "d7534ddd9f68d4a12d292c697b8696f6b40d21d4140d89f8a010c589ae9f90c8"
+            }
+          ]
+        },
+        "document-studio/agents/main/workflows/document-studio-publish.json": {
+          "workflow_id": "document-studio-publish",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "publish",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "7acdf05706263ae55bb475399eeccd796b6965f15b32c3c54239d24741467edd"
+            }
+          ]
+        },
+        "document-studio/agents/main/workflows/document-studio-render.json": {
+          "workflow_id": "document-studio-render",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "render",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "00664e1d1bc38d410cfe9da07f7a4149ad8b8d22db1b92d744c017bc9521f6b7"
+            }
+          ]
+        },
+        "document-studio/agents/main/workflows/document-studio-review-read.json": {
+          "workflow_id": "document-studio-review-read",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "read",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "c9790097344a4efb7d26f1908662ed92d374fbffa30d1b877864adb75f717175"
+            }
+          ]
+        },
+        "document-studio/agents/main/workflows/document-studio-template-read.json": {
+          "workflow_id": "document-studio-template-read",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "read",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "40f2171f8f5961701e504bac3229aad182836315a01613fcc56de44ca5903521"
+            }
+          ]
+        }
+      },
+      "provides": {
+        "actions": [
+          {
+            "key": "document-studio-plan",
+            "name": "Plan a document",
+            "workflow_id": "document-studio-plan",
+            "workflow_version": "1"
+          },
+          {
+            "key": "document-studio-draft",
+            "name": "Draft a document",
+            "workflow_id": "document-studio-draft",
+            "workflow_version": "1"
+          },
+          {
+            "key": "document-studio-render",
+            "name": "Render a document preview",
+            "workflow_id": "document-studio-render",
+            "workflow_version": "1"
+          },
+          {
+            "key": "document-studio-finalize",
+            "name": "Approve a document",
+            "workflow_id": "document-studio-finalize",
+            "workflow_version": "1"
+          },
+          {
+            "key": "document-studio-publish",
+            "name": "Issue a document",
+            "workflow_id": "document-studio-publish",
+            "workflow_version": "1"
+          },
+          {
+            "key": "document-studio-cancel",
+            "name": "Cancel a document",
+            "workflow_id": "document-studio-cancel",
+            "workflow_version": "1"
+          },
+          {
+            "key": "document-studio-export",
+            "name": "Export a document",
+            "workflow_id": "document-studio-export",
+            "workflow_version": "1"
+          },
+          {
+            "key": "document-studio-profile-save",
+            "name": "Save the company profile",
+            "workflow_id": "document-studio-profile-save",
+            "workflow_version": "1"
+          }
+        ],
+        "queries": [
+          {
+            "key": "document-studio-list",
+            "name": "List documents",
+            "workflow_id": "document-studio-list",
+            "workflow_version": "1"
+          },
+          {
+            "key": "document-studio-review-read",
+            "name": "Read a document for review",
+            "workflow_id": "document-studio-review-read",
+            "workflow_version": "1"
+          },
+          {
+            "key": "document-studio-template-read",
+            "name": "Read the templates",
+            "workflow_id": "document-studio-template-read",
+            "workflow_version": "1"
+          }
+        ],
+        "apps": [
+          {
+            "key": "document-studio-review",
+            "name": "Document studio",
+            "miniapp_id": "document-studio-review",
+            "miniapp_version": "1"
+          }
+        ]
+      },
+      "requires": {},
+      "composition_dependencies": [],
+      "known_consumers": [],
+      "language": "English source",
+      "runtime": "Static observation of Agent Spec V2 definitions; runtime execution and qualification are not inferred",
+      "publication": "native to this repository, unpublished"
+    },
+    {
       "key": "cib-enterprise-admin",
       "version": "0.2.2",
       "manifest": "enterprise-admin/module.yaml",

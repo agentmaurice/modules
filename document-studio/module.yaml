@@ -1,0 +1,88 @@
+{
+  "$schema": "agentmaurice.module/v2",
+  "schema_version": 2,
+  "key": "document-studio",
+  "name": "Document studio",
+  "version": "0.1.0",
+  "provides": {
+    "actions": [
+      {
+        "key": "document-studio-plan",
+        "name": "Plan a document",
+        "workflow_id": "document-studio-plan",
+        "workflow_version": "1"
+      },
+      {
+        "key": "document-studio-draft",
+        "name": "Draft a document",
+        "workflow_id": "document-studio-draft",
+        "workflow_version": "1"
+      },
+      {
+        "key": "document-studio-render",
+        "name": "Render a document preview",
+        "workflow_id": "document-studio-render",
+        "workflow_version": "1"
+      },
+      {
+        "key": "document-studio-finalize",
+        "name": "Approve a document",
+        "workflow_id": "document-studio-finalize",
+        "workflow_version": "1"
+      },
+      {
+        "key": "document-studio-publish",
+        "name": "Issue a document",
+        "workflow_id": "document-studio-publish",
+        "workflow_version": "1"
+      },
+      {
+        "key": "document-studio-cancel",
+        "name": "Cancel a document",
+        "workflow_id": "document-studio-cancel",
+        "workflow_version": "1"
+      },
+      {
+        "key": "document-studio-export",
+        "name": "Export a document",
+        "workflow_id": "document-studio-export",
+        "workflow_version": "1"
+      },
+      {
+        "key": "document-studio-profile-save",
+        "name": "Save the company profile",
+        "workflow_id": "document-studio-profile-save",
+        "workflow_version": "1"
+      }
+    ],
+    "queries": [
+      {
+        "key": "document-studio-list",
+        "name": "List documents",
+        "workflow_id": "document-studio-list",
+        "workflow_version": "1"
+      },
+      {
+        "key": "document-studio-review-read",
+        "name": "Read a document for review",
+        "workflow_id": "document-studio-review-read",
+        "workflow_version": "1"
+      },
+      {
+        "key": "document-studio-template-read",
+        "name": "Read the templates",
+        "workflow_id": "document-studio-template-read",
+        "workflow_version": "1"
+      }
+    ],
+    "apps": [
+      {
+        "key": "document-studio-review",
+        "name": "Document studio",
+        "miniapp_id": "document-studio-review",
+        "miniapp_version": "1"
+      }
+    ]
+  },
+  "requires": {}
+}

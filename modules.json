@@ -30,6 +30,13 @@
       "miniapps": 3
     },
     {
+      "key": "document-studio",
+      "version": "0.1.0",
+      "manifest": "document-studio/module.yaml",
+      "workflows": 11,
+      "miniapps": 1
+    },
+    {
       "key": "cib-enterprise-admin",
       "version": "0.2.2",
       "manifest": "enterprise-admin/module.yaml",
