@@ -746,6 +746,16 @@ if (rec.number) {
   if (!m || Number(m[1]) !== clock().getUTCFullYear()) {
     rec.history.push({at: nowIso(), action: "number_abandoned", note: String(rec.number)});
     rec.number = null;
+  } else {
+    // The token must still name this document: the reservation is not atomic, so it is read back on every retry.
+    const seqm = /-(\d{4,})$/.exec(String(rec.number));
+    let token = null;
+    try { token = await readJson(ROOT + "/numbers/" + rec.template_key + "/" + m[1] + "/" + seqm[1] + ".json"); }
+    catch (e) { if (!String(e && e.message).startsWith("storage_not_found") && !String(e && e.message).startsWith("json_corrupt")) throw e; }
+    if (!isObject(token) || token.doc_id !== rec.doc_id) {
+      rec.history.push({at: nowIso(), action: "number_abandoned", note: String(rec.number) + " (jeton d'un autre document)"});
+      rec.number = null;
+    }
   }
 }
 if (!rec.number) {

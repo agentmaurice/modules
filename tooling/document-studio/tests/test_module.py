@@ -479,6 +479,21 @@ class DraftTest(unittest.TestCase):
         same_year = run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, failed['fs'], now='2025-12-31T23:30:00Z')
         self.assertEqual(ok(self, same_year)['number'], 'DEV-2025-0001')
 
+    def test_a_reserved_number_whose_token_was_taken_is_abandoned(self):
+        _, fs = create_quote(self, seeded())
+        fs = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs)['fs']
+        fs = run_node('document-studio-finalize', 'finalize', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs)['fs']
+        failed = run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs, render_error='moteur indisponible', now='2026-03-01T09:00:00Z')
+        self.assertEqual(json.loads(failed['fs']['/document-studio/docs/devis-test/record.json']['text'])['number'], 'DEV-2026-0001')
+        fs = json.loads(json.dumps(failed['fs']))
+        token = '/document-studio/numbers/quote/2026/0001.json'
+        fs[token]['text'] = json.dumps({'doc_id': 'devis-b', 'at': '2026-03-01T09:00:01Z'})
+        resumed = run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs, now='2026-03-01T09:05:00Z')
+        self.assertEqual(ok(self, resumed)['number'], 'DEV-2026-0002')
+        self.assertEqual(json.loads(resumed['fs'][token]['text'])['doc_id'], 'devis-b')
+        stored = json.loads(resumed['fs']['/document-studio/docs/devis-test/record.json']['text'])
+        self.assertTrue(any(h['action'] == 'number_abandoned' and h['note'].startswith('DEV-2026-0001') for h in stored['history']))
+
     def test_plan_refuses_malformed_model_answers(self):
         prep = ok(self, run_node('document-studio-plan', 'prepare', {'brief': 'Un devis'}))
         good = {'template_key': 'quote', 'title': 'T', 'missing': [], 'questions': []}
