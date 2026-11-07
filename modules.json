@@ -65,6 +65,13 @@
       "miniapps": 1
     },
     {
+      "key": "publish",
+      "version": "0.1.0",
+      "manifest": "publish/module.yaml",
+      "workflows": 8,
+      "miniapps": 1
+    },
+    {
       "key": "cib-accompagnement",
       "version": "0.2.4",
       "manifest": "support/module.yaml",

@@ -1,0 +1,70 @@
+{
+  "$schema": "agentmaurice.module/v2",
+  "schema_version": 2,
+  "key": "publish",
+  "name": "Publish",
+  "version": "0.1.0",
+  "provides": {
+    "actions": [
+      {
+        "key": "publish-plan",
+        "name": "Plan a publication",
+        "workflow_id": "publish-plan",
+        "workflow_version": "1"
+      },
+      {
+        "key": "publish-web",
+        "name": "Publish a file on a web server",
+        "workflow_id": "publish-web",
+        "workflow_version": "1"
+      },
+      {
+        "key": "publish-email",
+        "name": "Send a publication by e-mail",
+        "workflow_id": "publish-email",
+        "workflow_version": "1"
+      },
+      {
+        "key": "publish-social",
+        "name": "Publish a post on social channels",
+        "workflow_id": "publish-social",
+        "workflow_version": "1"
+      },
+      {
+        "key": "publish-remove",
+        "name": "Remove a publication",
+        "workflow_id": "publish-remove",
+        "workflow_version": "1"
+      },
+      {
+        "key": "publish-status",
+        "name": "Check the status of a publication",
+        "workflow_id": "publish-status",
+        "workflow_version": "1"
+      }
+    ],
+    "queries": [
+      {
+        "key": "publish-list",
+        "name": "List publications",
+        "workflow_id": "publish-list",
+        "workflow_version": "1"
+      },
+      {
+        "key": "publish-read",
+        "name": "Read a publication",
+        "workflow_id": "publish-read",
+        "workflow_version": "1"
+      }
+    ],
+    "apps": [
+      {
+        "key": "publish-tracker",
+        "name": "Publication tracker",
+        "miniapp_id": "publish-tracker",
+        "miniapp_version": "1"
+      }
+    ]
+  },
+  "requires": {}
+}
