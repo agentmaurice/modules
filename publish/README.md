@@ -69,6 +69,17 @@ messages and prompts are French.
   (`destination_index_missing` when there is no index). The server gives no
   remote SHA-256, so the index is the check. Social posts are removed by their
   own `post_id`, which a newer post never replaces.
+- The destination is reserved (`state: pending_owner`, read back) BEFORE
+  `ssh_upload_v1`, then confirmed (`owner`). A previous owner loses it as soon
+  as the next publication tries to write, even if that attempt ends `failed` or
+  `outcome_unknown`; its removal then answers `destination_superseded`. If the
+  reservation cannot be confirmed, nothing is uploaded.
+- E-mail: only a code known to happen before the sending (`not_connected`,
+  `authorization_required`, `identity_unproven`) or a 4xx answer gives
+  `failed`. A 5xx, any other error code or any answer without proof of
+  non-sending gives `outcome_unknown`.
+- Storage errors are found in the usual envelopes (`data`, `result`, JSON
+  text in `content[0].text`) up to a depth of 3.
 - A remote identifier (post, group, channel, message, thread) is never
   truncated: 1 to 1024 characters, else `remote_id_invalid` and the
   publication is not marked `published`.

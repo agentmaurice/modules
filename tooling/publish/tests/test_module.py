@@ -38,14 +38,14 @@ const calls = [];
 const sha = (buf) => require("crypto").createHash("sha256").update(buf).digest("hex");
 const b64 = (s) => Buffer.from(s).toString("base64");
 const atCall = [];
-let logWrites = 0;
-function snapshot(name) { const logs = {}; for (const p of Object.keys(store)) if (p.startsWith("/publish/log/")) logs[p] = JSON.parse(store[p].text); atCall.push({name, logs}); }
+let logWrites = 0, destWrites = 0;
+function snapshot(name) { const logs = {}; const dests = {}; for (const p of Object.keys(store)) if (p.startsWith("/publish/dest/")) dests[p] = JSON.parse(store[p].text); for (const p of Object.keys(store)) if (p.startsWith("/publish/log/")) logs[p] = JSON.parse(store[p].text); atCall.push({name, logs, dests}); }
 function tamper() { for (const p of Object.keys(store)) if (p.startsWith("/publish/log/")) { const r = JSON.parse(store[p].text); r.revision += 5; store[p] = {text: JSON.stringify(r)}; } }
 async function callTool(name, args) {
   const shown = JSON.parse(JSON.stringify(args, (k, v) => (k === "content_base64" ? "[b64:" + sha(Buffer.from(v, "base64")).slice(0, 8) + "]" : v)));
   calls.push({name, args: shown, raw: args});
   const re = opts.ret_error;
-  if (re && re.tool === name && (!re.prefix || String(args.path).startsWith(re.prefix))) return re.mode === "error" ? {error: re.msg} : re.mode === "object" ? {error: {code: "disk_full"}} : re.mode === "status" ? {status: "error", message: re.msg} : re.mode === "json" ? {content: [{type: "text", text: JSON.stringify({error: {code: "disk_full"}})}]} : re.mode === "string" ? JSON.stringify({error: "disk_full"}) : {isError: true, content: [{type: "text", text: re.msg}]};
+  if (re && re.tool === name && (!re.prefix || String(args.path).startsWith(re.prefix))) return re.mode === "raw" ? re.raw : re.mode === "error" ? {error: re.msg} : re.mode === "object" ? {error: {code: "disk_full"}} : re.mode === "status" ? {status: "error", message: re.msg} : re.mode === "json" ? {content: [{type: "text", text: JSON.stringify({error: {code: "disk_full"}})}]} : re.mode === "string" ? JSON.stringify({error: "disk_full"}) : {isError: true, content: [{type: "text", text: re.msg}]};
   if (name === "read_file") {
     if (opts.read_error && args.path.includes(opts.read_error_path || "")) throw new Error(opts.read_error);
     const e = store[args.path];
@@ -55,6 +55,7 @@ async function callTool(name, args) {
     return {content: e.text};
   }
   if (name === "write_file") {
+    if (opts.dest_fail_from && args.path.startsWith("/publish/dest/")) { destWrites += 1; if (destWrites >= opts.dest_fail_from) return {error: {code: "disk_full"}}; }
     if (opts.drop_writes && args.path.startsWith("/publish/")) return {ok: true};
     if (opts.drop_from && args.path.startsWith("/publish/log/")) { logWrites += 1; if (logWrites >= opts.drop_from) return {ok: true}; }
     if (opts.write_error && args.path.startsWith("/publish/")) throw new Error(opts.write_error);
@@ -395,8 +396,8 @@ class EmailTest(unittest.TestCase):
         self.assertIn('publication_failed: mail-1 : not_connected', out['error'])
         self.assertEqual(record(out, 'mail-1')['status'], 'failed')
 
-    def test_non_2xx_answer_is_a_failure(self):
-        out = email(mail_status=500)
+    def test_a_4xx_answer_is_a_failure(self):
+        out = email(mail_status=400)
         self.assertIn('email_rejected', out['error'])
         self.assertEqual(record(out, 'mail-1')['status'], 'failed')
 
@@ -570,7 +571,7 @@ class RemoveStatusTest(unittest.TestCase):
 class ReviewTest(unittest.TestCase):
     def test_email_is_published_only_on_proof(self):
         for opts, status, code in (({'mail_empty': True}, 'outcome_unknown', 'outcome_unknown'), ({'mail_no_id': True}, 'outcome_unknown', 'outcome_unknown'),
-                                   ({'mail_status': 500}, 'failed', 'email_rejected'), ({'mail_returned_error': True}, 'failed', 'authorization_required'),
+                                   ({'mail_status': 400}, 'failed', 'email_rejected'), ({'mail_status': 500}, 'outcome_unknown', 'outcome_unknown'), ({'mail_error': 'quota_exceeded'}, 'outcome_unknown', 'outcome_unknown'), ({'mail_returned_error': True}, 'failed', 'authorization_required'),
                                    ({'mail_error': 'identity_unproven'}, 'failed', 'identity_unproven')):
             out = email(**opts)
             self.assertIn('error', out, opts)
@@ -726,8 +727,12 @@ class Review3Test(unittest.TestCase):
         rm2 = run_node('publish-remove', 'remove', {'publication_id': 'page-2', **CONFIRMED}, b['fs'])
         self.assertEqual(ok(self, rm2)['status'], 'removed')
         self.assertEqual(external(rm2)[0]['raw'], {'target': 'site-main', 'path': 'news/page.html'})
-        # an index that cannot be confirmed leaves the publication in outcome_unknown, never published
+        # a reservation that cannot be confirmed: no upload at all
         out = run_node('publish-web', 'publish', WEB, dict(FILES), ret_error={'tool': 'write_file', 'prefix': '/publish/dest/', 'mode': 'object', 'msg': 'x'})
+        self.assertIn('destination_index_failed', out['error'])
+        self.assertEqual(external(out), [])
+        # a final index that cannot be confirmed leaves the publication in outcome_unknown, never published
+        out = run_node('publish-web', 'publish', WEB, dict(FILES), dest_fail_from=2)
         self.assertTrue(out['error'].startswith('publication_outcome_unknown'), out)
         self.assertEqual(record(out, 'page-1')['status'], 'outcome_unknown')
 
@@ -746,6 +751,41 @@ class Review3Test(unittest.TestCase):
         mail = email(mail_id_len=1025)
         self.assertEqual(record(mail, 'mail-1')['status'], 'outcome_unknown')
         self.assertEqual(record(email(mail_id_len=1024), 'mail-1')['remote']['message_id'], 'm' * 1024)
+
+
+class Review4Test(unittest.TestCase):
+    def test_the_destination_is_reserved_before_the_upload_and_a_failed_replacement_still_supersedes(self):
+        fs = dict(FILES)
+        fs['/docs/other.html'] = {'text': '<h1>New</h1>'}
+        for opts in ({}, {'upload_error': 'publish_not_enabled'}, {'upload_throw': 'connection reset'}):
+            a = run_node('publish-web', 'publish', WEB, dict(fs))
+            b = run_node('publish-web', 'publish', {**WEB, 'publication_id': 'page-2', 'source_path': '/docs/other.html', 'overwrite': 'oui'}, a['fs'], **opts)
+            dests = list(b['atCall'][0]['dests'].values())
+            self.assertEqual([(d['owner'], d['state']) for d in dests], [('page-2', 'pending_owner')], opts)
+            rm = run_node('publish-remove', 'remove', {'publication_id': 'page-1', **CONFIRMED}, b['fs'])
+            self.assertTrue(rm['error'].startswith('destination_superseded'), (opts, rm))
+            self.assertEqual(external(rm), [], opts)
+
+    def test_an_error_in_an_envelope_is_an_error_on_every_storage_tool(self):
+        wrapped = {'data': {'error': {'code': 'disk_full'}}}
+        for tool, wf, node_id, ctx in (('list_files', 'publish-list', 'list', {}), ('write_file', 'publish-web', 'publish', WEB), ('read_file', 'publish-read', 'read', {'publication_id': 'x'})):
+            for payload in (wrapped, {'result': {'data': {'error': 'disk_full'}}}, {'content': [{'type': 'text', 'text': json.dumps(wrapped)}]}):
+                if tool == 'read_file' and 'content' in payload:
+                    continue
+                out = run_node(wf, node_id, ctx, dict(FILES), ret_error={'tool': tool, 'prefix': '/publish/' if tool != 'read_file' else None, 'mode': 'raw', 'raw': payload})
+                self.assertTrue(out['error'].startswith('storage_unavailable'), (tool, payload, out))
+                self.assertEqual(external(out), [], tool)
+        # depth is bounded and plain data is untouched
+        out = run_node('publish-read', 'read', {'publication_id': 'x'}, {'/publish/log/x.json': {'text': json.dumps({'error': {'code': 'in the file'}})}})
+        self.assertTrue(out['error'].startswith('record_invalid'), out)
+
+    def test_an_email_5xx_is_an_unknown_outcome_and_is_not_replayed(self):
+        out = email(mail_status=500)
+        self.assertTrue(out['error'].startswith('publication_outcome_unknown'), out)
+        self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
+        again = run_node('publish-email', 'publish', EMAIL, out['fs'])
+        self.assertTrue(again['error'].startswith('publication_outcome_unknown'), again)
+        self.assertEqual(external(again), [])
 
 
 class QueryTest(unittest.TestCase):

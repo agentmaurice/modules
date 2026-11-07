@@ -129,10 +129,12 @@ function errorMessageOf(v) {
   if (isObject(v)) return [v.code, v.message].filter((x) => typeof x === "string").join(" ") || JSON.stringify(v).slice(0, 200);
   return "erreur";
 }
-function structuredError(r, textual) {
+function structuredError(r, textual, depth) {
+  depth = depth || 0;
+  if (depth > 3) return null;
   if (typeof r === "string") {
     if (!textual || !/^\s*\{/.test(r)) return null;
-    try { return structuredError(JSON.parse(r), false); } catch (e) { return null; }
+    try { return structuredError(JSON.parse(r), textual, depth + 1); } catch (e) { return null; }
   }
   if (!isObject(r)) return null;
   if (r.isError === true) {
@@ -142,7 +144,9 @@ function structuredError(r, textual) {
   }
   if ((typeof r.error === "string" && r.error) || (isObject(r.error) && Object.keys(r.error).length)) return errorMessageOf(r.error) + (typeof r.message === "string" ? " " + r.message : "");
   if (r.status === "error") return errorMessageOf(r.message || r.error || "status error");
-  if (textual && Array.isArray(r.content)) for (const part of r.content) if (isObject(part) && typeof part.text === "string") { const m = structuredError(part.text, true); if (m) return m; }
+  // Common envelopes, at a bounded depth: data, result, and the JSON text parts of an MCP content array.
+  for (const key of ["data", "result"]) { const m = structuredError(r[key], textual, depth + 1); if (m) return m; }
+  if (textual && Array.isArray(r.content)) for (const part of r.content) if (isObject(part) && typeof part.text === "string") { const m = structuredError(part.text, true, depth + 1); if (m) return m; }
   return null;
 }
 async function storageCall(name, args) {
@@ -275,11 +279,12 @@ async function readDestOrNull(channel, key) {
   if (!isObject(d) || d.schema !== "publish.dest/v1" || typeof d.owner !== "string") fail("record_invalid", "index de destination");
   return d;
 }
-async function writeDest(channel, key, owner, contentSha) {
-  const value = {schema: "publish.dest/v1", channel, destination_sha256: key, owner, content_sha256: contentSha, updated_at: nowIso()};
+// state: pending_owner (reserved before the upload) then owner (confirmed). A reservation already takes the destination away from the previous owner.
+async function writeDest(channel, key, owner, contentSha, state) {
+  const value = {schema: "publish.dest/v1", channel, destination_sha256: key, owner, state, content_sha256: contentSha, updated_at: nowIso()};
   await writeJson(destPath(channel, key), value, true);
   const back = await readDestOrNull(channel, key);
-  if (!back || back.owner !== owner || back.updated_at !== value.updated_at) fail("journal_unverified", "index de destination non confirmé");
+  if (!back || back.owner !== owner || back.state !== state || back.updated_at !== value.updated_at) fail("journal_unverified", "index de destination non confirmé");
 }
 // The journal is written at "requested" BEFORE the external call. An existing publication is never published twice.
 // A publication that is published, removed, requested or of unknown outcome is never sent again by itself:
@@ -531,13 +536,16 @@ const src = await readSource(path, input.source_sha256);
 const begun = await begin("web", given, {source: {kind: "storage", path, sha256: src.sha256, bytes: src.bytes}, target: {ssh_target: target, path: remotePath}, options: {overwrite}}, {resend: confirmed(input.resend_after_unknown), attempt: input.attempt});
 if (begun.done) return begun.done;
 const rec = begun.rec;
+const destKey = await destinationKey(target + "\n" + remotePath);
+// The destination is reserved for this publication BEFORE the upload (and read back): from now on the previous owner cannot remove it,
+// whatever the outcome of the upload.
+try { await writeDest("web", destKey, rec.publication_id, src.sha256, "pending_owner"); } catch (e) { await markFailed(rec, {code: "destination_index_failed", detail: "réservation de la destination non confirmée : aucun appel externe (" + clip(String(e && e.message), 100) + ")"}); }
 let res;
 try { res = await callExternal("ssh_upload_v1", {target, path: remotePath, file: {content_base64: src.b64}, overwrite}); } catch (e) { await markFailed(rec, e); }
 if (res.status !== "ok" || typeof res.sha256 !== "string" || res.sha256.toLowerCase() !== src.sha256 || (res.bytes !== undefined && res.bytes !== src.bytes)) {
   await markFailed(rec, {code: "remote_integrity_failed", detail: "le serveur n'a pas confirmé l'empreinte ou la taille envoyées"});
 }
-const destKey = await destinationKey(target + "\n" + remotePath);
-try { await writeDest("web", destKey, rec.publication_id, src.sha256); } catch (e) { await markFailed(rec, {unknown: true, detail: "fichier publié, index de destination non confirmé : " + clip(String(e && e.message), 100)}); }
+try { await writeDest("web", destKey, rec.publication_id, src.sha256, "owner"); } catch (e) { await markFailed(rec, {unknown: true, detail: "fichier publié, index de destination non confirmé : " + clip(String(e && e.message), 100)}); }
 return finishPublished(rec, {target, path: str(res.path, 200) || remotePath, bytes: src.bytes, sha256: src.sha256}, "fichier déposé, empreinte relue");
 '''
 
@@ -568,13 +576,16 @@ const begun = await begin("email", given, {source, target: {tool: "google_mail_s
 if (begun.done) return begun.done;
 const rec = begun.rec;
 let res;
-try { res = await callExternal("google_mail_send", {to: to.join(", "), subject, body}); } catch (e) { await markFailed(rec, e); }
+// Only a code known to happen BEFORE the sending proves that nothing was sent; any other error leaves the outcome unknown.
+const PRESEND = ["not_connected", "authorization_required", "identity_unproven"];
+try { res = await callExternal("google_mail_send", {to: to.join(", "), subject, body}); } catch (e) { if (!PRESEND.includes(e && e.code)) e.unknown = true; await markFailed(rec, e); }
 // Published only on proof: a 2xx status and the Gmail message id. The body may arrive as JSON text.
 let answer = res.body;
 if (typeof answer === "string") { try { answer = JSON.parse(answer); } catch (e) { answer = null; } }
 if (isObject(answer)) rejectUnsafeKeys(answer, "réponse du connecteur");
-if (isObject(answer) && typeof answer.error_code === "string" && answer.error_code) await markFailed(rec, {code: clip(answer.error_code, 60).replace(/[^a-z0-9_]/g, "_"), detail: "erreur du connecteur"});
-if (Number.isInteger(res.status_code) && (res.status_code < 200 || res.status_code >= 300)) await markFailed(rec, {code: "email_rejected", detail: "statut " + res.status_code});
+if (isObject(answer) && typeof answer.error_code === "string" && answer.error_code) { const c = clip(answer.error_code, 60).replace(/[^a-z0-9_]/g, "_"); await markFailed(rec, {code: c, unknown: !PRESEND.includes(c), detail: "erreur du connecteur"}); }
+if (Number.isInteger(res.status_code) && res.status_code >= 400 && res.status_code < 500) await markFailed(rec, {code: "email_rejected", detail: "statut " + res.status_code});
+if (Number.isInteger(res.status_code) && (res.status_code < 200 || res.status_code >= 300)) await markFailed(rec, {unknown: true, detail: "statut " + res.status_code + " : l'envoi n'est pas exclu"});
 if (!Number.isInteger(res.status_code) || !isObject(answer) || typeof answer.id !== "string" || !answer.id) await markFailed(rec, {unknown: true, detail: "réponse du connecteur sans statut 2xx ou sans identifiant de message : l'envoi n'est ni prouvé ni exclu"});
 let ids;
 try { ids = {message_id: remoteIdOf(answer.id, true), thread_id: remoteIdOf(answer.threadId, false)}; } catch (e) { await markFailed(rec, {unknown: true, detail: "identifiant de message inexploitable : l'envoi est possible"}); }
