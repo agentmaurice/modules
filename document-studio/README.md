@@ -21,7 +21,7 @@ messages) is French; `fr` is the only locale in V0.
 | `document-studio-finalize` | `draft` to `approved`. Requires a render of the current revision and `confirmation_manuelle` |
 | `document-studio-publish` | requires `approved` and `confirmation_manuelle`. Reserves the next number, renders in `final` mode, stores the issued PDF, moves to `issued` |
 | `document-studio-cancel` | moves to `cancelled` with a reason. An issued number is never reused |
-| `document-studio-export` | copies the issued PDF (or the latest render, flagged as a draft) to a Storage path outside `/document-studio/`, with its SHA-256. Mail and SFTP are out of V0 |
+| `document-studio-export` | refuses a cancelled document (`document_cancelled`); otherwise copies the issued PDF (or the latest render, flagged as a draft) to a Storage path outside `/document-studio/`, with its SHA-256. Mail and SFTP are out of V0 |
 | `document-studio-profile-save` | validates and stores the company profile and brand (`/document-studio/profile.json`), with manual confirmation |
 | `document-studio-list` | lists the documents (identifier, title, status, number, revision, latest hash) |
 | `document-studio-review-read` | full record of a document and previews of its latest render, for the MiniApp |

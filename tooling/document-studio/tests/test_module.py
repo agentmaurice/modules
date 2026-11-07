@@ -686,6 +686,14 @@ class LifecycleTest(unittest.TestCase):
         clash = run_node('document-studio-export', 'export', {'doc_id': 'devis-test', 'destination_path': '/envois/devis.pdf'}, copied['fs'])
         self.assertIn('error', clash)
 
+    def test_export_of_a_cancelled_document_is_refused(self):
+        _, out = self.run_lifecycle()
+        cancelled = run_node('document-studio-cancel', 'cancel', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui', 'reason': 'Erreur'}, out['fs'])
+        ok(self, cancelled)
+        refused = run_node('document-studio-export', 'export', {'doc_id': 'devis-test', 'destination_path': '/envois/devis.pdf'}, cancelled['fs'])
+        self.assertTrue(refused['error'].startswith('document_cancelled'))
+        self.assertNotIn('/envois/devis.pdf', refused['fs'])
+
     def test_export_of_a_draft_is_flagged(self):
         _, fs = create_quote(self, seeded())
         fs = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs)['fs']

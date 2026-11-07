@@ -1237,7 +1237,7 @@
           "document-studio/module.yaml": "89c05d34793969a8fccb1b767f9b6aa87bda29d6fb9edaf4f80e1f827e2a0299",
           "document-studio/agents/main/workflows/document-studio-cancel.json": "84795523f43dab4f697fd0cc6f8de47d795654ccab2aee121e9705ccb839b9fe",
           "document-studio/agents/main/workflows/document-studio-draft.json": "abb88bef6740eb21c413b37a1be4982aa90f1f6126a4212475a410607da989b1",
-          "document-studio/agents/main/workflows/document-studio-export.json": "81e2707d28d7e0d0986e74ef72a471fb97ce7b997c1b51203f74a5a63f6bd0b0",
+          "document-studio/agents/main/workflows/document-studio-export.json": "269225f8e46e00b6ec2b9a9fec26dc0ffcabf65f1f14cee984a40fba50edfb81",
           "document-studio/agents/main/workflows/document-studio-finalize.json": "55b27dd88b822d91754f38b4166713c9ecc75750e4e8b6cec2809a7039be591c",
           "document-studio/agents/main/workflows/document-studio-list.json": "ca9415cd6aef68f5a2b3849fb125f1686f621c0274a8ebd484018c6ebe3bffff",
           "document-studio/agents/main/workflows/document-studio-plan.json": "1c51a678f45873ed4f2f9ce5065e0797e3c862c2f0d29447b568c65d2d3c3179",
@@ -1298,7 +1298,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "e4a11bee124fb92945934cbef62089fe58b6e0a6dd340501c200709e5908d83f"
+              "code_sha256": "967141b51e455a0cc8de84a8b1240e5f827c41c7400358ec92865066e5a16e61"
             }
           ]
         },

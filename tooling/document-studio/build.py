@@ -744,6 +744,7 @@ const dest = input.destination_path;
 if (typeof dest !== "string" || !dest.startsWith("/") || dest.length > 300 || dest.includes("..") || dest.includes("//") || /\s$/.test(dest) || dest.endsWith("/")) fail("destination_invalid", "chemin Storage absolu attendu");
 if (dest === ROOT || dest.startsWith(ROOT + "/")) fail("destination_invalid", "la destination doit être hors de " + ROOT);
 const rec = await loadRecord(id);
+if (rec.status === "cancelled") fail("document_cancelled", "un document annulé ne s'exporte pas");
 const last = rec.renders.length ? rec.renders[rec.renders.length - 1] : null;
 const source = rec.issued ? rec.issued.file : (last ? last.file : null);
 if (!source) fail("no_render", "aucun rendu à exporter");
