@@ -270,6 +270,22 @@ async function loadRecordOrNull(id) {
   }
   return remember(checkRecord(rec, id));
 }
+// With an explicit publication_id, a replay is decided on the journal ALONE, before any read of the Storage source: published ->
+// already_published, removed -> already_removed, requested / outcome_unknown -> refused. The cheap parts of the request (target,
+// recipients, channels) and an optional source_sha256 are compared so that another request under the same id is still a conflict.
+async function peek(channel, given, lite, expectedSha, resend) {
+  if (!given) return null;
+  const rec = await loadRecordOrNull(given);
+  if (!rec) return null;
+  const conflict = () => fail("publication_conflict", given + " existe avec une autre demande : changez publication_id");
+  if (rec.channel !== channel) conflict();
+  for (const [k, v] of Object.entries(lite)) if (canonical(rec.target[k]) !== canonical(v)) conflict();
+  if (typeof expectedSha === "string" && expectedSha && isObject(rec.source) && typeof rec.source.sha256 === "string" && rec.source.sha256 !== expectedSha.toLowerCase()) conflict();
+  if (rec.status === "published") return {...summarize(rec), already_published: true};
+  if (rec.status === "removed") return {...summarize(rec), already_removed: true};
+  if ((rec.status === "requested" || rec.status === "outcome_unknown") && !resend) fail("publication_outcome_unknown", given + " : la diffusion est en cours ou son issue est inconnue (statut " + rec.status + ") ; vérifiez la destination, puis utilisez un nouveau publication_id ou resend_after_unknown = oui");
+  return null;
+}
 async function loadRecord(id) {
   const rec = await loadRecordOrNull(id);
   if (!rec) fail("publication_not_found", id);
@@ -604,6 +620,8 @@ const target = sshTargetOf(input.target);
 const remotePath = remotePathOf(input.remote_path);
 const overwrite = confirmed(input.overwrite);
 const path = storagePathOf(input.source_path, "source_path");
+const early = await peek("web", given, {ssh_target: target, path: remotePath}, input.source_sha256, confirmed(input.resend_after_unknown));
+if (early) return early;
 const src = await readSource(path, input.source_sha256);
 const begun = await begin("web", given, {source: {kind: "storage", path, sha256: src.sha256, bytes: src.bytes}, target: {ssh_target: target, path: remotePath}, options: {overwrite}}, {resend: confirmed(input.resend_after_unknown), attempt: input.attempt});
 if (begun.done) return begun.done;
@@ -622,7 +640,9 @@ try { await writeDest("web", destKey, rec.publication_id, src.sha256, "pending_o
 let res;
 try { res = await callExternal("ssh_upload_v1", {target, path: remotePath, file: {content_base64: src.b64}, overwrite}); } catch (e) {
   // A definitive refusal wrote nothing: the reservation is cancelled and the previous owner gets the destination back (read back).
-  if (prior && !(e && e.unknown) && ["file_exists", "publish_not_enabled", "invalid_arguments", "file_too_large", "atomic_replace_unavailable"].includes(e && e.code)) {
+  const refused = ["file_exists", "publish_not_enabled", "invalid_arguments", "file_too_large", "atomic_replace_unavailable"].includes(e && e.code);
+  if (!refused) e.unknown = true;
+  if (prior && refused && !e.unknown) {
     try { await restoreDest("web", destKey, prior, rec.publication_id, rec.attempts); } catch (r) { e.detail = clip((e.detail || "") + " ; restauration de l'index non confirmée : " + clip(String(r && r.message), 80), 300); }
   }
   await markFailed(rec, e);
@@ -653,6 +673,8 @@ if (/[\r\n]/.test(subject)) fail("subject_invalid", "pas de saut de ligne");
 const hasBody = input.body !== undefined && input.body !== null && input.body !== "";
 const hasPath = input.source_path !== undefined && input.source_path !== null && input.source_path !== "";
 if (hasBody === hasPath) fail("body_required", "exactement un corps : body ou source_path");
+const early = await peek("email", given, {to, subject}, input.source_sha256, confirmed(input.resend_after_unknown));
+if (early) return early;
 let body, source;
 if (hasPath) {
   const path = storagePathOf(input.source_path, "source_path");
@@ -701,6 +723,8 @@ if (mode === "schedule") {
 const hasContent = input.content !== undefined && input.content !== null && input.content !== "";
 const hasPath = input.source_path !== undefined && input.source_path !== null && input.source_path !== "";
 if (hasContent === hasPath) fail("content_required", "exactement un contenu : content ou source_path");
+const early = await peek("social", given, {channels, mode, schedule_at: scheduleAt}, input.source_sha256, confirmed(input.resend_after_unknown));
+if (early) return early;
 let content, source;
 if (hasPath) {
   const path = storagePathOf(input.source_path, "source_path");
@@ -732,7 +756,9 @@ const args = {channels, content, mode, idempotency_key: rec.publication_id};
 if (scheduleAt) args.schedule_at = scheduleAt;
 if (media.length) args.media = media;
 let res;
-try { res = await callExternal("social_post_create_v1", args); } catch (e) { await markFailed(rec, e); }
+// Only the codes documented as a refusal before any write allow failed; any other error (no code, status error, free text) is an unknown outcome.
+const REFUSED = ["invalid_arguments", "invalid_request", "validation_failed", "not_configured", "rate_limited", "channel_not_found", "content_too_long", "invalid_schedule", "invalid_media", "media_too_large"];
+try { res = await callExternal("social_post_create_v1", args); } catch (e) { if (!REFUSED.includes(e && e.code)) e.unknown = true; await markFailed(rec, e); }
 if (res.status !== "ok" || typeof res.post_id !== "string" || !res.post_id) await markFailed(rec, {code: "remote_response_invalid", detail: "post_id absent de la réponse du service social ; relancer avec le même publication_id est sans risque (clé d'idempotence)"});
 let remote;
 try { remote = {post_id: remoteIdOf(res.post_id, true), state: str(res.state, 40), group: remoteIdOf(res.group, false), channels: remoteChannels(res.channels)}; } catch (e) { await markFailed(rec, e); }

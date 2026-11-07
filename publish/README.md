@@ -92,6 +92,20 @@ messages and prompts are French.
 - A tool result carrying an `error` field (string or object, in the usual
   envelopes) is an error whatever `status` or `state` says; a failing
   `publish-status` read leaves the journal unchanged.
+- Only a code documented as a refusal before any write allows `failed`: for
+  ssh the five definitive refusal codes, for social the validation codes
+  (`invalid_arguments`, `invalid_request`, `validation_failed`, `not_configured`,
+  `rate_limited`, `channel_not_found`, `content_too_long`, `invalid_schedule`,
+  `invalid_media`, `media_too_large`), for e-mail the known pre-send codes and
+  4xx answers. Any other error (no code, `status: "error"`, free text such as
+  an upstream timeout) is `outcome_unknown`, and replaying the same request
+  answers `publication_outcome_unknown` without a new call.
+- With an explicit `publication_id`, `already_published`, `already_removed` and
+  the refusal of a `requested` / `outcome_unknown` publication are decided on
+  the journal alone, before any read of the Storage source (the cheap parts of
+  the request and an optional `source_sha256` are still compared:
+  `publication_conflict`). A derived id comes from the source fingerprint, so
+  its replay needs the source: pass a `publication_id` for a source-free replay.
 - `isError: true` always wins in a tool result, even next to a
   `structuredContent` or a text saying ok. The code is read from the content;
   without any code the outcome is `outcome_unknown`.

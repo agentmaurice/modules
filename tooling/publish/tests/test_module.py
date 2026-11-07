@@ -111,6 +111,7 @@ async function rawTool(name, args) {
 }
 async function callTool(name, args) {
   const r = await rawTool(name, args);
+  if (opts.status_error && ["ssh_upload_v1", "google_mail_send", "social_post_create_v1"].includes(name)) return {status: "error", message: "upstream timeout"};
   if (opts.structured_error && ["ssh_upload_v1", "google_mail_send", "social_post_create_v1", "social_post_get_v1"].includes(name)) return {content: [{type: "text", text: "ok"}], structuredContent: {...r, error: {code: "remote_boom"}}};
   if (opts.ok_with_error && ["ssh_upload_v1", "ssh_remove_v1", "social_post_create_v1", "social_post_get_v1", "social_post_delete_v1"].includes(name) && r && typeof r === "object") return {...r, error: {code: "remote_boom"}};
   if (opts.iserror_env && ["ssh_upload_v1", "google_mail_send", "social_post_create_v1"].includes(name)) {
@@ -939,8 +940,8 @@ class Review9Test(unittest.TestCase):
     def test_an_error_field_wins_over_status_and_state(self):
         for runner, pid in ((web, 'page-1'), (social, 'post-a')):
             out = runner(ok_with_error=True)
-            self.assertEqual(record(out, pid)['status'], 'failed', pid)
-            self.assertEqual(record(out, pid)['error']['code'], 'remote_boom', pid)
+            self.assertEqual(record(out, pid)['status'], 'outcome_unknown', pid)
+            self.assertNotEqual(record(out, pid)['status'], 'published', pid)
         done = social()
         st = run_node('publish-status', 'status', {'publication_id': 'post-a'}, done['fs'], ok_with_error=True)
         self.assertTrue(st['error'].startswith('remote_boom'), st)
@@ -955,7 +956,7 @@ class Review9Test(unittest.TestCase):
 
 class Review10Test(unittest.TestCase):
     def test_an_error_inside_structured_content_wins(self):
-        for runner, pid, status in ((web, 'page-1', 'failed'), (email, 'mail-1', 'outcome_unknown'), (social, 'post-a', 'failed')):
+        for runner, pid, status in ((web, 'page-1', 'outcome_unknown'), (email, 'mail-1', 'outcome_unknown'), (social, 'post-a', 'outcome_unknown')):
             out = runner(structured_error=True)
             self.assertIn('error', out, pid)
             self.assertEqual(record(out, pid)['status'], status, pid)
@@ -964,6 +965,45 @@ class Review10Test(unittest.TestCase):
         st = run_node('publish-status', 'status', {'publication_id': 'post-a'}, done['fs'], structured_error=True)
         self.assertTrue(st['error'].startswith('remote_boom'), st)
         self.assertEqual((writes(st), record(st, 'post-a')), ([], record(done, 'post-a')))
+
+
+class Review11Test(unittest.TestCase):
+    CASES = ((web, 'publish-web', WEB, 'page-1', '/docs/page.html', {}), (email, 'publish-email', {**EMAIL, 'body': None, 'source_path': '/docs/post.md'}, 'mail-1', '/docs/post.md', {}),
+             (social, 'publish-social', {**SOCIAL, 'content': None, 'source_path': '/docs/post.md'}, 'post-a', '/docs/post.md', {}))
+
+    def test_an_error_without_a_documented_refusal_code_is_an_unknown_outcome_and_replays_without_a_call(self):
+        for runner, wf, ctx, pid, src, _ in self.CASES:
+            out = runner(status_error=True, ctx=ctx)
+            self.assertTrue(out['error'].startswith('publication_outcome_unknown'), (pid, out))
+            self.assertEqual(record(out, pid)['status'], 'outcome_unknown', pid)
+            again = run_node(wf, 'publish', ctx, out['fs'])
+            self.assertTrue(again['error'].startswith('publication_outcome_unknown'), (pid, again))
+            self.assertEqual(external(again), [], pid)
+        # a documented refusal stays failed
+        self.assertEqual(record(social(social_error='validation_failed'), 'post-a')['status'], 'failed')
+
+    def test_a_replay_is_decided_on_the_journal_alone(self):
+        for runner, wf, ctx, pid, src, _ in self.CASES:
+            done = runner(ctx=ctx)
+            fs = {k: v for k, v in done['fs'].items() if k != src}
+            again = run_node(wf, 'publish', ctx, fs)
+            self.assertIs(ok(self, again)['already_published'], True, pid)
+            self.assertFalse(any(c['name'] == 'read_file' and c['args']['path'].startswith('/docs/') for c in again['calls']), pid)
+            self.assertEqual((external(again), writes(again)), ([], []), pid)
+            conflict = run_node(wf, 'publish', {**ctx, 'source_sha256': 'a' * 64}, fs)
+            self.assertTrue(conflict['error'].startswith('publication_conflict'), (pid, conflict))
+            rm = run_node('publish-remove', 'remove', {'publication_id': pid, **CONFIRMED}, done['fs']) if pid != 'mail-1' else None
+            if rm:
+                fs2 = {k: v for k, v in rm['fs'].items() if k != src}
+                gone = run_node(wf, 'publish', ctx, fs2)
+                self.assertIs(ok(self, gone)['already_removed'], True, pid)
+                self.assertFalse(any(c['name'] == 'read_file' and c['args']['path'].startswith('/docs/') for c in gone['calls']), pid)
+        # outcome_unknown, source deleted
+        out = email(mail_throw='deadline exceeded')
+        fs = {k: v for k, v in out['fs'].items() if k != '/docs/post.md'}
+        again = run_node('publish-email', 'publish', EMAIL, fs)
+        self.assertTrue(again['error'].startswith('publication_outcome_unknown'), again)
+        self.assertEqual(external(again), [])
 
 
 class QueryTest(unittest.TestCase):
