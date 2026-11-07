@@ -128,6 +128,8 @@ function text(v, name, max, required) {
   if (required && !t) fail(name + "_required");
   return t;
 }
+function canonical(v) { return Array.isArray(v) ? "[" + v.map(canonical).join(",") + "]" : isObject(v) ? "{" + Object.keys(v).sort().map((k) => JSON.stringify(k) + ":" + canonical(v[k])).join(",") + "}" : JSON.stringify(v); }
+async function fingerprint(v) { return sha256Hex(new TextEncoder().encode(canonical(v))); }
 function b64ToBytes(b64) { const bin = atob(b64); const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; }
 async function sha256Hex(bytes) { const d = await crypto.subtle.digest("SHA-256", bytes); return Array.from(new Uint8Array(d), (x) => x.toString(16).padStart(2, "0")).join(""); }
 function parseJsonValue(v) {
@@ -439,10 +441,6 @@ function projectProfile(body) {
 RENDER = r'''
 // A folder per attempt: a render that loses a race never overwrites the file of another attempt.
 function attemptTag(f) { const sha = typeof f.sha256 === "string" ? f.sha256.toLowerCase().replace(/[^0-9a-f]/g, "").slice(0, 12) : ""; return sha || shortSuffix(); }
-function safeName(name, fallback) {
-  const base = typeof name === "string" ? name.split("/").pop() : "";
-  return /^[A-Za-z0-9._-]{1,100}$/.test(base) && !base.startsWith(".") ? base : fallback;
-}
 
 async function renderDocument(rec, data, profile, mode, number, status, revision) {
   const tpl = TEMPLATES[rec.template_key];
@@ -481,10 +479,16 @@ async function storeFile(path, f) {
 }
 async function storePreviews(dir, res) {
   const previews = [];
-  for (const p of Array.isArray(res.previews) ? res.previews : []) {
-    const page = Number.isInteger(p.page) ? p.page : previews.length + 1;
-    const stored = await storeFile(dir + "/" + safeName(p.filename, "page-" + page + ".png"), p);
-    previews.push({page, path: stored.path, sha256: stored.sha256});
+  const seen = new Set();
+  const list = res.previews === undefined || res.previews === null ? [] : res.previews;
+  if (!Array.isArray(list)) fail("render_invalid", "previews doit être un tableau");
+  // The renderer's file names are never trusted: one fixed name per page.
+  for (const p of list) {
+    if (!isObject(p) || !Number.isInteger(p.page) || p.page < 1 || (Number.isInteger(res.pages) && p.page > res.pages)) fail("render_invalid", "numéro de page d'aperçu invalide");
+    if (seen.has(p.page)) fail("render_invalid", "page d'aperçu en double : " + p.page);
+    seen.add(p.page);
+    const stored = await storeFile(dir + "/page-" + p.page + ".png", p);
+    previews.push({page: p.page, path: stored.path, sha256: stored.sha256});
   }
   return previews;
 }
@@ -666,7 +670,7 @@ const profile = await loadProfile();
 const revision = rec.revision + 1;
 const res = await renderDocument(rec, data, profile, "preview", null, "draft", revision);
 const dir = ROOT + "/docs/" + id + "/r" + revision + "-" + attemptTag(res.file);
-const file = await storeFile(dir + "/" + safeName(res.file.filename, "document.pdf"), res.file);
+const file = await storeFile(dir + "/document.pdf", res.file);
 const previews = await storePreviews(dir, res);
 const at = nowIso();
 if (rec.status === "approved") rec.history.push({at, action: "reopened", note: "nouveau rendu : l'approbation est à renouveler"});
@@ -674,7 +678,7 @@ rec.history.push({at, action: "rendered", note: "r" + revision + ", " + (Number.
 rec.status = "draft";
 rec.data = data;
 rec.revision = revision;
-rec.renders.push({revision, mode: "preview", file, previews, provenance: res.provenance === undefined ? null : res.provenance});
+rec.renders.push({revision, mode: "preview", profile_sha256: await fingerprint(profile), data_sha256: await fingerprint(data), file, previews, provenance: res.provenance === undefined ? null : res.provenance});
 await saveRecord(rec);
 return summarize(rec);
 '''
@@ -701,6 +705,11 @@ const id = docIdOf(input.doc_id);
 const rec = await loadRecord(id);
 if (rec.status !== "approved") fail("status_invalid", "seul un document approuvé s'émet (statut actuel : " + rec.status + ")");
 const profile = await loadProfile();
+// What was approved is what is issued: the last render carries the fingerprints of its brand and data.
+const approved = rec.renders.length ? rec.renders[rec.renders.length - 1] : null;
+if (!approved || typeof approved.profile_sha256 !== "string" || typeof approved.data_sha256 !== "string") fail("render_outdated", "ce rendu ne porte pas d'empreintes : rendez et approuvez à nouveau");
+if (approved.profile_sha256 !== await fingerprint(profile)) fail("profile_changed", "la charte a changé depuis le rendu approuvé : rendez et approuvez à nouveau");
+if (approved.data_sha256 !== await fingerprint(normalizeData(rec.template_key, rec.data, id))) fail("data_changed", "les données ont changé depuis le rendu approuvé : rendez et approuvez à nouveau");
 if (!rec.number) {
   rec.number = await reserveNumber(rec);
   rec.revision += 1;
@@ -716,7 +725,7 @@ const previews = await storePreviews(dir + "/r" + revision + "-" + attemptTag(re
 const at = nowIso();
 rec.status = "issued";
 rec.revision = revision;
-rec.renders.push({revision, mode: "final", file, previews, provenance: res.provenance === undefined ? null : res.provenance});
+rec.renders.push({revision, mode: "final", profile_sha256: approved.profile_sha256, data_sha256: approved.data_sha256, file, previews, provenance: res.provenance === undefined ? null : res.provenance});
 rec.issued = {number: rec.number, file: {path: file.path, sha256: file.sha256}, at};
 rec.history.push({at, action: "issued", note: rec.number});
 await saveRecord(rec);

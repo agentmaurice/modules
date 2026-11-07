@@ -58,7 +58,11 @@ async function callTool(name, args) {
     const prev = {page: 1, filename: "page-1.png", mime_type: "image/png", bytes: p.bytes.length, sha256: p.sha};
     if (opts.render_mode === "ref") { buffers["buf-doc-" + calls.length] = f.bytes.toString("base64"); file.ref = "buf-doc-" + calls.length; buffers["buf-png-" + calls.length] = p.bytes.toString("base64"); prev.ref = "buf-png-" + calls.length; }
     else { file.content_base64 = f.bytes.toString("base64"); prev.content_base64 = p.bytes.toString("base64"); }
-    return {status: "ok", mode: args.mode, output: "pdf", file, pages: 1, previews: [prev], provenance: {engine: "mock"}};
+    if (opts.evil_name) { file.filename = "../x.pdf"; prev.filename = "document.pdf"; }
+    const previews = [prev];
+    if (opts.dup_page) previews.push({...prev});
+    if (opts.bad_page) previews.push({...prev, page: opts.bad_page});
+    return {status: "ok", mode: args.mode, output: "pdf", file, pages: 1, previews, provenance: {engine: "mock"}};
   }
   if (name === "read_file") {
     if (opts.read_error && args.path.includes(opts.read_error_path || "") && args.encoding === undefined) throw new Error(opts.read_error);
@@ -510,6 +514,53 @@ class LifecycleTest(unittest.TestCase):
         self.assertTrue(issued['error'].startswith('render_integrity_failed'), issued)
         record = json.loads(issued['fs']['/document-studio/docs/devis-test/record.json']['text'])
         self.assertEqual(record['status'], 'approved')
+
+    def test_renderer_file_names_are_not_trusted(self):
+        _, fs = create_quote(self, seeded())
+        out = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs, evil_name=True)
+        result = ok(self, out)
+        pdf = out['fs'][result['last_render']['path']]['b64']
+        self.assertTrue(result['last_render']['path'].endswith('/document.pdf'))
+        self.assertEqual(hashlib.sha256(base64.b64decode(pdf)).hexdigest(), result['last_render']['sha256'])
+        self.assertTrue(any(k.endswith('/page-1.png') for k in out['fs']))
+        self.assertFalse(any('x.pdf' in k for k in out['fs']))
+        for opts in ({'dup_page': True}, {'bad_page': 5}, {'bad_page': -1}):
+            bad = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs, **opts)
+            self.assertTrue(bad['error'].startswith('render_invalid'), (opts, bad))
+
+    def test_what_is_approved_is_what_is_issued(self):
+        def approved(fs=None):
+            _, fs = create_quote(self, fs or seeded())
+            fs = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs)['fs']
+            return run_node('document-studio-finalize', 'finalize', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs)['fs']
+        def publish(fs):
+            return run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs)
+        fs = approved()
+        record = json.loads(fs['/document-studio/docs/devis-test/record.json']['text'])
+        self.assertRegex(record['renders'][-1]['profile_sha256'], r'^[0-9a-f]{64}$')
+        self.assertRegex(record['renders'][-1]['data_sha256'], r'^[0-9a-f]{64}$')
+        changed = dict(fs)
+        profile = json.loads(json.dumps(PROFILE))
+        profile['brand']['colors']['primary'] = '#000000'
+        changed['/document-studio/profile.json'] = text_file(json.dumps(profile))
+        out = publish(changed)
+        self.assertTrue(out['error'].startswith('profile_changed') and 'rendez et approuvez à nouveau' in out['error'], out)
+        self.assertFalse([k for k in out['fs'] if '/numbers/' in k], 'no number may be reserved')
+        edited = dict(fs)
+        record['data']['payment_terms'] = '90 jours.'
+        edited['/document-studio/docs/devis-test/record.json'] = text_file(json.dumps(record))
+        out = publish(edited)
+        self.assertTrue(out['error'].startswith('data_changed'), out)
+        self.assertFalse([k for k in out['fs'] if '/numbers/' in k])
+        old = dict(fs)
+        legacy = json.loads(fs['/document-studio/docs/devis-test/record.json']['text'])
+        for render in legacy['renders']:
+            render.pop('profile_sha256'); render.pop('data_sha256')
+        old['/document-studio/docs/devis-test/record.json'] = text_file(json.dumps(legacy))
+        out = publish(old)
+        self.assertTrue(out['error'].startswith('render_outdated'), out)
+        self.assertFalse([k for k in out['fs'] if '/numbers/' in k])
+        self.assertEqual(ok(self, publish(fs))['status'], 'issued')
 
     def test_each_attempt_writes_its_own_files(self):
         _, fs = create_quote(self, seeded())
