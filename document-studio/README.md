@@ -6,7 +6,7 @@ fiche entreprise, relecture, approbation, émission avec un numéro. Tout vit
 dans Storage ; rien n'est envoyé à l'extérieur.
 
 Le Module ne contient aucun moteur de rendu. Le rendu passe par le tool MCP
-`artifact--artifact_render_v1` (mode `preview` pour les brouillons, `final` pour
+`artifact_render_v1` (mode `preview` pour les brouillons, `final` pour
 l'émission). Les étapes de code sont du JavaScript (`code_execution`) : pas de
 WASM en V0. Aucun binaire n'est versionné ici (ni PDF ni PNG).
 

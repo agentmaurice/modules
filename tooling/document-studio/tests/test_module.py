@@ -44,7 +44,7 @@ let races = opts.race || 0, hijacks = opts.hijack || 0;
 function pdf(label) { const bytes = Buffer.from("%PDF-1.7 fake " + label); return {bytes, sha: sha(bytes)}; }
 async function callTool(name, args) {
   calls.push({name, args: JSON.parse(JSON.stringify(args, (k, v) => (k === "files" ? "[files]" : v)))});
-  if (name === "artifact--artifact_render_v1") {
+  if (name === "artifact_render_v1") {
     if (opts.render_error) throw new Error(opts.render_error);
     calls[calls.length - 1].full = args;
     const f = pdf(args.mode + ":" + args.context.doc.number), p = pdf("png:" + args.mode);
@@ -184,11 +184,14 @@ class ResourcesTest(unittest.TestCase):
         out = run_node('document-studio-profile-save', 'save', {'profile': PROFILE, 'confirmation_manuelle': 'non'}, {})
         self.assertTrue(out['error'].startswith('manual_confirmation_required'))
 
-    def test_no_llm_step_writes_and_llm_steps_are_json(self):
+    def test_no_llm_step_writes_and_llm_steps_are_text_parsed_as_json(self):
         for name, wf in self.workflows.items():
             for action in wf['actions']:
                 if action['type'] == 'llm_call':
-                    self.assertEqual(action['llm_response_format'], 'json', name)
+                    # text: the module validator requires a closed llm_response_schema for json,
+                    # and the schema depends on the template; the next step parses and validates.
+                    self.assertEqual(action['llm_response_format'], 'text', name)
+                    self.assertNotIn('llm_response_schema', action, name)
         for name in ('document-studio-plan',):
             self.assertFalse(any('write_file' in json.dumps(a) for a in self.workflows[name]['actions']))
 
@@ -209,6 +212,16 @@ class ResourcesTest(unittest.TestCase):
 
 
 class TemplatesTest(unittest.TestCase):
+    def test_embedded_templates_send_no_platform_file(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('ds_build', ROOT / 'tooling' / 'document-studio' / 'build.py')
+        build = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(build)
+        for key, entry in build.load_templates(True).items():
+            for rel in entry['files']:
+                self.assertFalse(rel.startswith('fragments/') or rel in ('brand.typ', 'values.json'), f'{key}/{rel}')
+            self.assertIn(entry['manifest']['source']['entry'], entry['files'], key)
+
     def test_pin_matches_the_local_files(self):
         pin = load(TOOLING / 'contract/PIN.json')
         self.assertRegex(pin['source_commit'], r'^[0-9a-f]{40}$')
@@ -245,9 +258,9 @@ class TemplatesTest(unittest.TestCase):
         quote, fs = create_quote(self, fs)
         out = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs)
         ok(self, out)
-        call = next(c for c in out['calls'] if c['name'] == 'artifact--artifact_render_v1')['full']
+        call = next(c for c in out['calls'] if c['name'] == 'artifact_render_v1')['full']
         directory = TEMPLATES / 'quote'
-        self.assertEqual(call['template']['files'], {p.relative_to(directory).as_posix(): p.read_text(encoding='utf-8') for p in sorted(directory.rglob('*')) if p.is_file()})
+        self.assertEqual(call['template']['files'], {p.relative_to(directory).as_posix(): p.read_text(encoding='utf-8') for p in sorted(directory.rglob('*')) if p.is_file() and not p.relative_to(directory).as_posix().startswith('fragments/')})
         self.assertEqual(call['template']['manifest'], load(directory / 'manifest.json'))
         self.assertEqual(call['context']['i18n'], load(TOOLING / 'contract/i18n.fr.json'))
         self.assertEqual((call['output'], call['mode']), ('pdf', 'preview'))
@@ -364,7 +377,7 @@ class LifecycleTest(unittest.TestCase):
         self.assertEqual(record['revision'], 5)
         self.assertEqual([h['action'] for h in record['history']], ['created', 'rendered', 'approved', 'number_reserved', 'issued'])
         self.assertEqual(json.loads(fs[f'/document-studio/numbers/quote/{YEAR}/0001.json']['text'])['doc_id'], 'devis-test')
-        call = [c for c in out['calls'] if c['name'] == 'artifact--artifact_render_v1'][0]['full']
+        call = [c for c in out['calls'] if c['name'] == 'artifact_render_v1'][0]['full']
         self.assertEqual((call['mode'], call['context']['doc']['number'], call['context']['doc']['status']), ('final', number, 'issued'))
         write = [c for c in out['calls'] if c['name'] == 'write_file' and c['args']['path'].endswith('.pdf')][0]['args']
         self.assertEqual((write['encoding'], write['overwrite']), ('base64', True))
@@ -417,7 +430,7 @@ class LifecycleTest(unittest.TestCase):
         self.assertTrue(lost['error'].startswith('number_conflict'), lost)
         record = json.loads(lost['fs']['/document-studio/docs/devis-test/record.json']['text'])
         self.assertEqual((record['status'], record['number']), ('approved', None))
-        self.assertFalse([c for c in lost['calls'] if c['name'] == 'artifact--artifact_render_v1'])
+        self.assertFalse([c for c in lost['calls'] if c['name'] == 'artifact_render_v1'])
 
     def test_a_reserved_number_is_kept_when_the_render_fails(self):
         _, fs = create_quote(self, seeded())
@@ -446,7 +459,7 @@ class LifecycleTest(unittest.TestCase):
         _, fs = create_quote(self, seeded())
         bad = run_node('document-studio-render', 'render', {'doc_id': 'devis-test', 'data_patch': {'valid_until': 'demain'}}, fs)
         self.assertTrue(bad['error'].startswith('data_invalid'))
-        self.assertFalse([c for c in bad['calls'] if c['name'] == 'artifact--artifact_render_v1'])
+        self.assertFalse([c for c in bad['calls'] if c['name'] == 'artifact_render_v1'])
         good = run_node('document-studio-render', 'render', {'doc_id': 'devis-test', 'data_patch': {'valid_until': '2027-01-31'}}, fs)
         ok(self, good)
         record = json.loads(good['fs']['/document-studio/docs/devis-test/record.json']['text'])

@@ -2,7 +2,7 @@
 """Generate the document-studio Module resources (manifest, Workflows, MiniApp).
 
 No rendering engine lives in the Module: rendering goes through the MCP tool
-`artifact--artifact_render_v1`. The two reference templates (quote and
+`artifact_render_v1`. The two reference templates (quote and
 meeting-minutes) are embedded as text in the Workflows that render; they are
 the files of document-studio/examples/templates, pinned by contract/PIN.json.
 Code steps are plain JavaScript (code_execution). The code never contains a
@@ -19,7 +19,7 @@ MODULE = ROOT.parents[1] / 'document-studio'
 DEST = MODULE / 'agents/main'
 TEMPLATES_DIR = MODULE / 'examples/templates'
 VERSION = '0.1.0'
-RENDER_TOOL = 'artifact--artifact_render_v1'
+RENDER_TOOL = 'artifact_render_v1'
 STORAGE_TOOLS = ['read_file', 'write_file', 'list_files']
 RENDER_TOOLS = STORAGE_TOOLS + [RENDER_TOOL]
 I18N = json.loads((ROOT / 'contract/i18n.fr.json').read_text(encoding='utf-8'))
@@ -69,6 +69,10 @@ def js_embed(value):
     return 'JSON.parse(' + literal.replace('{', '\\u007b').replace('}', '\\u007d') + ')'
 
 
+def is_platform_file(rel):
+    return rel.startswith('fragments/') or rel in ('brand.typ', 'values.json')
+
+
 def load_templates(with_files):
     templates = {}
     for key, meta in TEMPLATE_META.items():
@@ -79,8 +83,12 @@ def load_templates(with_files):
                  'title': manifest['title'], 'summary': meta['summary'],
                  'draft_schema': meta['draft_schema'] or input_schema}
         if with_files:
+            # fragments/ (and brand.typ, values.json) are written by the renderer
+            # itself from its pinned contract: sending them is refused
+            # (reserved_file_name). The local copies serve template_check only.
             entry['files'] = {p.relative_to(directory).as_posix(): p.read_text(encoding='utf-8')
-                              for p in sorted(directory.rglob('*')) if p.is_file()}
+                              for p in sorted(directory.rglob('*'))
+                              if p.is_file() and not is_platform_file(p.relative_to(directory).as_posix())}
         templates[key] = entry
     return templates
 
@@ -123,6 +131,8 @@ function text(v, name, max, required) {
 function b64ToBytes(b64) { const bin = atob(b64); const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; }
 async function sha256Hex(bytes) { const d = await crypto.subtle.digest("SHA-256", bytes); return Array.from(new Uint8Array(d), (x) => x.toString(16).padStart(2, "0")).join(""); }
 function parseJsonValue(v) {
+  // llm_call with llm_response_format "text" yields {text, model, provider}.
+  if (v && typeof v === "object" && !Array.isArray(v) && typeof v.text === "string") v = v.text;
   if (typeof v !== "string") return v;
   const cleaned = v.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   try { return JSON.parse(cleaned); } catch (e) { fail("llm_output_invalid", "réponse non JSON"); }
@@ -350,7 +360,7 @@ async function renderDocument(rec, data, profile, mode, number, status, revision
   const tdata = templateData(rec.template_key, data);
   validateSchema(tpl.input_schema, tdata, "gabarit " + rec.template_key);
   const doc = {number: number || "BROUILLON", title: rec.title, date: today(), version: String(revision), status, locale: rec.locale};
-  const raw = await callTool("artifact--artifact_render_v1", {template: {manifest: tpl.manifest, files: tpl.files}, data: tdata, context: {company: profile.company, brand: profile.brand, doc, i18n: I18N}, output: "pdf", mode});
+  const raw = await callTool("artifact_render_v1", {template: {manifest: tpl.manifest, files: tpl.files}, data: tdata, context: {company: profile.company, brand: profile.brand, doc, i18n: I18N}, output: "pdf", mode});
   const res = unwrap(raw);
   if (isObject(res) && res.error) fail("render_failed", res.error + (res.message ? " : " + res.message : ""));
   if (!isObject(res) || res.status !== "ok" || !isObject(res.file)) fail("render_failed", "réponse inattendue du moteur de rendu");
@@ -478,8 +488,8 @@ def field(name, title, kind, required, **extra):
 
 def llm(action_id, prompt_ref, system, output_key, tokens):
     return {'id': action_id, 'type': 'llm_call', 'llm_prompt': prompt_ref, 'llm_system_prompt': system,
-            'llm_temperature': 0.2, 'llm_max_tokens': tokens, 'llm_response_format': 'json',
-            'llm_response_schema': {'type': 'object'}, 'output_key': output_key}
+            'llm_temperature': 0.2, 'llm_max_tokens': tokens, 'llm_response_format': 'text',
+            'output_key': output_key}
 
 
 SYSTEM = 'Tu es un assistant de rédaction de documents professionnels. Tu réponds uniquement par un objet JSON, sans texte autour.'
