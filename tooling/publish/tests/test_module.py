@@ -61,6 +61,9 @@ async function callTool(name, args) {
     if (opts.write_error && args.path.startsWith("/publish/")) throw new Error(opts.write_error);
     if (args.overwrite === false && store[args.path]) throw new Error("file exists: " + args.path);
     store[args.path] = {text: args.content};
+    if (opts.steal_dest && args.path.startsWith("/publish/log/") && JSON.parse(args.content).history.slice(-1)[0].action === "remove_requested") {
+      for (const p of Object.keys(store)) if (p.startsWith("/publish/dest/")) { const d = JSON.parse(store[p].text); d.owner = "page-9"; store[p] = {text: JSON.stringify(d)}; }
+    }
     return {ok: true};
   }
   if (name === "list_files") {
@@ -93,6 +96,7 @@ async function callTool(name, args) {
   if (name === "google_mail_send") {
     snapshot(name);
     if (opts.mail_error) throw new Error(JSON.stringify({error_code: opts.mail_error, connector_key: "google-mail"}));
+    if (opts.mail_enveloped) return {isError: true, content: [{type: "text", text: opts.mail_enveloped === true ? JSON.stringify({error_code: "not_connected", connector_key: "google-mail", connect_available: true}) : opts.mail_enveloped}]};
     if (opts.mail_throw) throw new Error(opts.mail_throw);
     if (opts.mail_empty) return {};
     if (opts.mail_no_id) return {status_code: 200, body: {}};
@@ -786,6 +790,34 @@ class Review4Test(unittest.TestCase):
         again = run_node('publish-email', 'publish', EMAIL, out['fs'])
         self.assertTrue(again['error'].startswith('publication_outcome_unknown'), again)
         self.assertEqual(external(again), [])
+
+
+class Review5Test(unittest.TestCase):
+    def test_the_owner_is_read_again_right_before_the_removal(self):
+        done = web()
+        out = run_node('publish-remove', 'remove', {'publication_id': 'page-1', **CONFIRMED}, done['fs'], steal_dest=True)
+        self.assertTrue(out['error'].startswith('destination_superseded'), out)
+        self.assertEqual(external(out), [])
+        rec = record(out, 'page-1')
+        self.assertEqual((rec['status'], rec['history'][-1]['action']), ('published', 'remove_refused'))
+
+    def test_an_enveloped_mcp_error_is_classified_by_its_code(self):
+        out = email(mail_enveloped=True)
+        self.assertTrue(out['error'].startswith('publication_failed'), out)
+        rec = record(out, 'mail-1')
+        self.assertEqual((rec['status'], rec['error']['code']), ('failed', 'not_connected'))
+        out = email(mail_enveloped='boom')
+        self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
+        out = email(mail_enveloped=json.dumps({'error_code': 'quota_exceeded'}))
+        self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
+
+    def test_the_destination_index_is_read_before_it_is_written(self):
+        for mode in ('error', 'isError', 'object'):
+            out = run_node('publish-web', 'publish', WEB, dict(FILES), ret_error={'tool': 'read_file', 'prefix': '/publish/dest/', 'mode': mode, 'msg': 'backend down'})
+            self.assertTrue(out['error'].startswith('storage_unavailable'), (mode, out))
+            self.assertEqual(external(out), [], mode)
+            self.assertEqual([k for k in out['fs'] if k.startswith('/publish/dest/')], [], mode)
+            self.assertTrue(any(c['name'] == 'write_file' for c in out['calls']) is True)
 
 
 class QueryTest(unittest.TestCase):

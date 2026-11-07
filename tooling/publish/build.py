@@ -381,6 +381,12 @@ function externalError(name, message, thrown) {
 async function callExternal(name, args) {
   let r;
   try { r = await callTool(name, args); } catch (e) { throw externalError(name, String(e && e.message), true); }
+  // MCP envelope: {isError, content: [{type: "text", text}]}, the text usually being JSON with the error code.
+  if (isObject(r) && Array.isArray(r.content)) {
+    const texts = r.content.filter((c) => isObject(c) && typeof c.text === "string").map((c) => c.text);
+    if (r.isError === true) throw externalError(name, texts.join(" ") || "isError", false);
+    for (const t of texts) { let parsed = null; try { parsed = JSON.parse(t); } catch (e) { parsed = null; } if (isObject(parsed) && (parsed.error || parsed.error_code)) throw externalError(name, t, false); }
+  }
   r = unwrap(r);
   if (isObject(r) && (r.isError === true || (typeof r.error === "string" && r.error) || (typeof r.error_code === "string" && r.error_code))) throw externalError(name, JSON.stringify({error: r.error || r.error_code, message: r.message}), false);
   if (!isObject(r)) throw externalError(name, "réponse inattendue", true);
@@ -539,6 +545,12 @@ const rec = begun.rec;
 const destKey = await destinationKey(target + "\n" + remotePath);
 // The destination is reserved for this publication BEFORE the upload (and read back): from now on the previous owner cannot remove it,
 // whatever the outcome of the upload.
+// The index is read first: only "not found" lets it be created; any other Storage error stops everything (no write, no upload).
+try { await readDestOrNull("web", destKey); } catch (e) {
+  rec.status = "failed"; rec.error = {code: "storage_unavailable", message: clip(String(e && e.message), 200)}; rec.history.push({at: nowIso(), action: "failed", note: "storage_unavailable"});
+  try { await commit(rec); } catch (c) { /* the original error is the one to report */ }
+  throw e;
+}
 try { await writeDest("web", destKey, rec.publication_id, src.sha256, "pending_owner"); } catch (e) { await markFailed(rec, {code: "destination_index_failed", detail: "réservation de la destination non confirmée : aucun appel externe (" + clip(String(e && e.message), 100) + ")"}); }
 let res;
 try { res = await callExternal("ssh_upload_v1", {target, path: remotePath, file: {content_base64: src.b64}, overwrite}); } catch (e) { await markFailed(rec, e); }
@@ -661,15 +673,26 @@ else {
   if (!isObject(rec.remote) || typeof rec.remote.post_id !== "string" || !rec.remote.post_id) fail("record_invalid", id + " : post_id absent");
   tool = "social_post_delete_v1"; args = {post_id: rec.remote.post_id};
 }
+async function assertOwner() {
+  const dest = await readDestOrNull("web", await destinationKey(args.target + "\n" + args.path));
+  if (!dest) fail("destination_index_missing", id + " : aucun propriétaire connu pour cette destination ; rien n'est retiré");
+  if (dest.owner !== id || dest.state === "pending_owner") fail("destination_superseded", id + " n'est plus propriétaire de sa destination (propriétaire actuel : " + dest.owner + ") ; rien n'est retiré");
+}
 if (rec.channel === "web") {
   // Only the current owner of the destination removes it: a newer publication may have replaced the file. The server gives
   // no remote SHA-256 (ssh_list_v1 lists path, size, mode, date), so the index of destinations is the check.
-  const dest = await readDestOrNull("web", await destinationKey(args.target + "\n" + args.path));
-  if (!dest) fail("destination_index_missing", id + " : aucun propriétaire connu pour cette destination ; rien n'est retiré");
-  if (dest.owner !== id) fail("destination_superseded", id + " n'est plus propriétaire de sa destination (propriétaire actuel : " + dest.owner + ") ; rien n'est retiré");
+  await assertOwner();
 }
 rec.history.push({at: nowIso(), action: "remove_requested", note: tool});
 await commit(rec);
+if (rec.channel === "web") {
+  // Last check, right before the call: the owner is read again. A window remains (no conditional write in Storage).
+  try { await assertOwner(); } catch (e) {
+    rec.history.push({at: nowIso(), action: "remove_refused", note: clip(String(e && e.message), 60)});
+    try { await commit(rec); } catch (c) { /* the refusal is reported anyway */ }
+    throw e;
+  }
+}
 let res;
 try {
   res = tool === "ssh_remove_v1" ? await callExternal("ssh_remove_v1", args) : await callExternal("social_post_delete_v1", args);

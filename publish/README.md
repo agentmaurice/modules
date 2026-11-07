@@ -152,4 +152,8 @@ simulated tools, on synthetic data. They do not prove the behavior on a One.
   and the write is small, not null, until Storage offers conditional writes.
 - A server that does not confirm the SHA-256 leaves the file in place and the
   journal `failed`: retry with `overwrite`, or clean the server by hand.
+- The owner of a web destination is read again right before `ssh_remove_v1`,
+  but a window remains between that read and the removal, and between the
+  reservation and the upload, until Storage offers conditional writes (the same
+  limit as the document numbering of `document-studio`).
 - Social media come from Storage images only. No `human_action/v1`.
