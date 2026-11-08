@@ -374,6 +374,9 @@ async function peek(channel, given, input, resend, legacy) {
     let same = true;
     for (const [k, v] of Object.entries(legacy.lite)) if (canonical(t[k]) !== canonical(v)) same = false;
     if (src.kind !== legacy.source.kind || (legacy.source.kind === "storage" && src.path !== legacy.source.path)) same = false;
+    // Every option recorded in the old journal (overwrite...) against the received one, normalised per parameter.
+    const recOptions = isObject(rec.options) ? rec.options : {}, gotOptions = legacy.options || {};
+    for (const k of new Set([...Object.keys(recOptions), ...Object.keys(gotOptions)])) if (canonical(recOptions[k]) !== canonical(gotOptions[k])) same = false;
     if (legacy.sha256 && typeof src.sha256 === "string" && src.sha256 !== legacy.sha256) same = false;
     if (legacy.inline && src.kind === "text" && src.sha256 !== legacy.inline) same = false;
     if (legacy.media && canonical(Array.isArray(t.media) ? t.media.map((m) => (isObject(m) ? m.path : null)) : []) !== canonical(legacy.media)) same = false;
@@ -725,7 +728,7 @@ const target = sshTargetOf(input.target);
 const remotePath = remotePathOf(input.remote_path);
 const overwrite = confirmed(input.overwrite);
 const path = storagePathOf(input.source_path, "source_path");
-const early = await peek("web", given, input, confirmed(input.resend_after_unknown), {lite: {ssh_target: target, path: remotePath}, source: {kind: "storage", path}, sha256: shaLower(input.source_sha256)});
+const early = await peek("web", given, input, confirmed(input.resend_after_unknown), {lite: {ssh_target: target, path: remotePath}, source: {kind: "storage", path}, options: {overwrite}, sha256: shaLower(input.source_sha256)});
 if (early) return early;
 const src = await readSource(path, input.source_sha256);
 const begun = await begin("web", given, {source: {kind: "storage", path, sha256: src.sha256, bytes: src.bytes}, target: {ssh_target: target, path: remotePath}, options: {overwrite}, input}, {resend: confirmed(input.resend_after_unknown), attempt: input.attempt});

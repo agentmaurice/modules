@@ -451,6 +451,17 @@ class WebTest(unittest.TestCase):
         out = run_node('publish-email', 'publish', {**EMAIL, 'body': None, 'source_path': '/docs/page.html'}, fs)
         self.assertTrue(out['error'].startswith('idempotency_conflict'), out)
 
+    def test_a_journal_older_than_0_1_1_compares_the_recorded_options(self):
+        done = web()
+        key = '/publish/log/page-1.json'
+        fs = dict(done['fs'])
+        rec = json.loads(fs[key]['text']); del rec['input_sha256']; fs[key] = {'text': json.dumps(rec)}
+        self.assertEqual(rec['options'], {'overwrite': False})
+        out = run_node('publish-web', 'publish', {**WEB, 'overwrite': True}, fs)
+        self.assertTrue(out['error'].startswith('idempotency_conflict'), out)
+        self.assertEqual(external(out), [])
+        self.assertIs(ok(self, run_node('publish-web', 'publish', {**WEB, 'overwrite': 'non'}, fs))['already_published'], True)
+
     def test_a_decoded_journal_with_unsafe_keys_is_refused(self):
         for key in ('__proto__', 'constructor', 'prototype'):
             base = '{"schema":"publish.record/v1","publication_id":"mail-1","status":"published","channel":"email","revision":1,"attempts":1,"history":[],"target":{},"source":{},"request_sha256":"x","' + key + '":{}}'
