@@ -117,6 +117,7 @@ async function rawTool(name, args) {
 }
 async function callTool(name, args) {
   const r = await rawTool(name, args);
+  if (opts.read_meta_text && name === "read_file" && args.path.startsWith("/docs/")) return {structuredContent: {content: "SGk=", encoding: "base64"}, meta: {text: '{"' + opts.read_meta_text + '":{}}'}};
   if (opts.read_meta && name === "read_file" && args.path.startsWith("/docs/")) return {content: "SGk=", encoding: "base64", meta: {content: [{type: "text", text: '{"constructor":{}}'}]}};
   if (opts.read_parts && name === "read_file" && args.path.startsWith("/docs/")) return {content: [{type: "text", text: '{"content":"SGk=","encoding":"base64"}'}, {type: "text", text: '{"' + opts.read_parts + '":{}}'}]};
   if (opts.read_nested && name === "read_file" && args.path.startsWith("/docs/")) return {content: [{type: "text", text: '{"content":"SGk=","encoding":"base64","size":{"constructor":{}}}'}]};
@@ -407,6 +408,20 @@ class WebTest(unittest.TestCase):
         self.assertTrue(out['error'].startswith('idempotency_conflict'), out)
         # the confirmation is not part of the request
         self.assertIs(ok(self, run_node('publish-web', 'publish', {**WEB, 'confirmation_manuelle': True}, done['fs']))['already_published'], True)
+
+    def test_dropped_metadata_of_a_read_file_envelope_is_inspected(self):
+        for key in ('__proto__', 'constructor', 'prototype'):
+            out = run_node('publish-plan', 'prepare', {'source_path': '/docs/post.md'}, dict(FILES), read_meta_text=key)
+            self.assertTrue(out.get('error', '').startswith('data_invalid'), (key, out))
+
+    def test_fingerprint_normalisation_is_per_parameter(self):
+        for first, second in (('oui', 'true'), ('A' * 64, 'a' * 64)):
+            done = email(ctx={'body': first})
+            out = run_node('publish-email', 'publish', {**EMAIL, 'body': second}, done['fs'])
+            self.assertTrue(out['error'].startswith('idempotency_conflict'), (first, out))
+        # declared parameters are still normalised
+        done = web(ctx={'overwrite': 'oui'})
+        self.assertIs(ok(self, run_node('publish-web', 'publish', {**WEB, 'overwrite': True}, done['fs']))['already_published'], True)
 
     def test_unsafe_keys_beyond_the_depth_limit_are_refused_not_accepted(self):
         out = email(mail_deep=True)

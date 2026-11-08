@@ -81,6 +81,33 @@ function guardReadAnswer(r) {
   rejectUnsafeKeys(r, "réponse de l'outil read_file");
   for (const k of Object.keys(r)) if (k !== "content" || typeof r[k] !== "string") rejectUnsafeAnswer(r[k], "réponse de l'outil read_file");
 }
+// read_file, raw envelope: everything gets the full guard except the strings that carry the file data: `content` of the answer
+// (root or structuredContent), or `content` of the decoded JSON of the single text part when mcpUnwrap treats it as an answer.
+const READ_KEYS = ["content", "encoding", "path", "size", "success"];
+function guardReadData(o) {
+  rejectUnsafeKeys(o, "réponse de l'outil read_file");
+  for (const k of Object.keys(o)) if (k !== "content" || typeof o[k] !== "string") rejectUnsafeAnswer(o[k], "réponse de l'outil read_file");
+}
+function guardReadEnvelope(r) {
+  if (!isObject(r)) return;
+  rejectUnsafeKeys(r, "réponse de l'outil read_file");
+  for (const k of Object.keys(r)) {
+    const v = r[k];
+    if (k === "content" && typeof v === "string") continue;
+    if (k === "structuredContent" && isObject(v)) { guardReadData(v); continue; }
+    if (k === "content" && Array.isArray(v)) {
+      for (const part of v) {
+        if (isObject(part) && part.type === "text" && typeof part.text === "string") {
+          let parsed; try { parsed = JSON.parse(part.text); } catch (e) { parsed = undefined; }
+          if (isObject(parsed) && typeof parsed.content === "string" && Object.keys(parsed).every((x) => READ_KEYS.includes(x))) guardReadData(parsed);
+          for (const [pk, pv] of Object.entries(part)) if (pk !== "text") rejectUnsafeAnswer(pv, "réponse de l'outil read_file");
+        } else rejectUnsafeAnswer(part, "réponse de l'outil read_file");
+      }
+      continue;
+    }
+    rejectUnsafeAnswer(v, "réponse de l'outil read_file");
+  }
+}
 function idOf(v) { if (typeof v !== "string" || !ID_RE.test(v)) fail("publication_id_invalid", "attendu : minuscules, chiffres et tirets, 48 caractères au plus"); return v; }
 function optionalId(v) { return v === undefined || v === null || v === "" ? null : idOf(v); }
 function text(v, name, max, required) {
@@ -223,7 +250,7 @@ async function storageCall(name, args) {
   let r;
   try { r = await callTool(name, args); } catch (e) { storageError(errorInfo(String(e && e.message), e), args.path); }
   // read_file returns a file: its text is data, not a tool answer. The other Storage tools answer in JSON.
-  if (name !== "read_file") rejectUnsafeAnswer(r, "réponse de l'outil " + name); else if (isObject(r)) rejectUnsafeKeys(r, "réponse de l'outil " + name);
+  if (name !== "read_file") rejectUnsafeAnswer(r, "réponse de l'outil " + name); else guardReadEnvelope(r);
   const message = structuredError(r, name !== "read_file");
   if (message !== null) storageError(message, args.path);
   r = mcpUnwrap(r, name === "read_file");
@@ -305,14 +332,20 @@ async function loadRecordOrNull(id) {
 // already_published, removed -> already_removed, requested / outcome_unknown -> refused. The cheap parts of the request (target,
 // recipients, channels) and an optional source_sha256 are compared so that another request under the same id is still a conflict.
 // ONE canonical request fingerprint for begin and peek: every input parameter of the Workflow except the ones listed here
-// (an exclusion list, so that a future parameter enters the fingerprint by default). Booleans are normalised (true, "true", "oui").
+// (an exclusion list, so that a future parameter enters the fingerprint by default). Normalisation is per declared parameter only (`overwrite` booleans, `source_sha256` case).
 const FINGERPRINT_EXCLUDED = ["publication_id", "confirmation_manuelle", "resend_after_unknown", "attempt"];
+// Normalisation is per parameter, never global: only declared booleans, only declared digest parameters. Everything else is hashed as is.
+const FINGERPRINT_BOOLEANS = ["overwrite"];
+const FINGERPRINT_DIGESTS = ["source_sha256"];
 async function inputFingerprint(channel, input) {
   const norm = {};
   for (const k of Object.keys(input).sort()) {
     if (FINGERPRINT_EXCLUDED.includes(k)) continue;
     const v = input[k];
-    norm[k] = v === true || v === "true" || v === "oui" ? true : v === false || v === "false" || v === "non" ? false : typeof v === "string" && /^[0-9a-fA-F]{64}$/.test(v) ? v.toLowerCase() : v;
+    if (FINGERPRINT_BOOLEANS.includes(k) && (v === true || v === "true" || v === "oui")) norm[k] = true;
+    else if (FINGERPRINT_BOOLEANS.includes(k) && (v === false || v === "false" || v === "non")) norm[k] = false;
+    else if (FINGERPRINT_DIGESTS.includes(k) && typeof v === "string") norm[k] = v.toLowerCase();
+    else norm[k] = v;
   }
   return fingerprint({channel, input: norm});
 }

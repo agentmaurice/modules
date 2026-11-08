@@ -806,7 +806,7 @@
       "subpath": "publish",
       "manifest": "publish/module.yaml",
       "manifest_sha256": "b2a6d897fdf80d34393fc4c713750edb04d9d4c9a38b8f28eda3bde66d87a1c3",
-      "tree_sha256": "d623e9220ff226b36ff8e2ac08a94240fe861b17892f049348a161d60753ada8",
+      "tree_sha256": "8069d205322cc0ea5c07e32ee6239e91e0aa001c7d7fa6aea9997b6f27925677",
       "description": {
         "en": "Publish: send a Storage file to a web server, an e-mail message or social channels, only after a manual confirmation and to a destination the caller names, with a journal of every publication and removal of files and posts.",
         "fr": "Publication : diffuser un fichier Storage sur un serveur web, un message par e-mail ou des canaux sociaux, uniquement après une confirmation manuelle et vers une destination nommée par l'appelant, avec un journal de chaque diffusion et le retrait des fichiers et des posts."
