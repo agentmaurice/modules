@@ -117,6 +117,7 @@ async function rawTool(name, args) {
 }
 async function callTool(name, args) {
   const r = await rawTool(name, args);
+  if (opts.unsafe_nested && name === "ssh_upload_v1") return {structuredContent: {...r, content: [{type: "text", text: '{"' + opts.unsafe_nested + '": {}}'}]}};
   if (opts.unsafe_answer && name === "ssh_upload_v1") return JSON.parse('{"status": "ok", "bytes": 1, "' + opts.unsafe_answer + '": {"a": 1}}');
   if (opts.status_error && ["ssh_upload_v1", "google_mail_send", "social_post_create_v1"].includes(name)) return {status: "error", message: "upstream timeout"};
   if (opts.structured_error && ["ssh_upload_v1", "google_mail_send", "social_post_create_v1", "social_post_get_v1"].includes(name)) return {content: [{type: "text", text: "ok"}], structuredContent: {...r, error: {code: "remote_boom"}}};
@@ -344,6 +345,32 @@ class WebTest(unittest.TestCase):
             self.assertTrue(changed['error'].startswith('idempotency_conflict'), (wf, changed))
             self.assertEqual(external(changed), [], wf)
             self.assertIs(ok(self, run_node(wf, 'publish', ctx, done['fs']))['already_published'], True, wf)
+
+    def test_a_changed_source_or_media_under_a_published_id_is_a_conflict(self):
+        fs = {**FILES, '/docs/b.png': {'b64': base64.b64encode(b'\x89PNG other').decode()}}
+        # e-mail recorded with a Storage source, replayed with another path or an inline body
+        mail = {**EMAIL, 'body': None, 'source_path': '/docs/post.md'}
+        done = email(ctx=mail, fs=dict(fs))
+        for change in ({'body': 'Un autre message', 'source_path': None}, {'source_path': '/docs/page.html', 'body': None}):
+            out = run_node('publish-email', 'publish', {**mail, **change}, done['fs'])
+            self.assertTrue(out['error'].startswith('idempotency_conflict'), (change, out))
+            self.assertEqual(external(out), [])
+        self.assertIs(ok(self, run_node('publish-email', 'publish', mail, done['fs']))['already_published'], True)
+        # social with media: another image is another request
+        post = {**SOCIAL, 'mode': 'now', 'media_paths': ['/docs/logo.png']}
+        done = social(ctx=post, fs=dict(fs))
+        out = run_node('publish-social', 'publish', {**post, 'media_paths': ['/docs/b.png']}, done['fs'])
+        self.assertTrue(out['error'].startswith('idempotency_conflict'), out)
+        self.assertEqual(external(out), [])
+        out = run_node('publish-social', 'publish', {**post, 'media_paths': None}, done['fs'])
+        self.assertTrue(out['error'].startswith('idempotency_conflict'), out)
+        self.assertIs(ok(self, run_node('publish-social', 'publish', post, done['fs']))['already_published'], True)
+
+    def test_unsafe_keys_in_a_nested_mcp_envelope_are_refused(self):
+        for key in ('__proto__', 'constructor', 'prototype'):
+            out = run_node('publish-web', 'publish', WEB, dict(FILES), unsafe_nested=key)
+            self.assertTrue(out['error'].startswith('publication_outcome_unknown'), (key, out))
+            self.assertEqual(record(out, 'page-1')['status'], 'outcome_unknown', key)
 
     def test_gmail_error_in_the_body_wins_over_status_and_id(self):
         out = email(mail_body_error='quota_exceeded')

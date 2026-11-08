@@ -105,7 +105,7 @@ messages and prompts are French.
   the journal alone, before any read of the Storage source (the cheap parts of
   the request and an optional `source_sha256` are still compared:
   `idempotency_conflict`, which carries the recorded request fingerprint and
-  the received one; an inline `body` / `content` that differs is compared too).
+  the received one; the whole request is compared on what is known without reading Storage: inline text, Storage path, optional `source_sha256`, target and `media_paths`).
   A derived id comes from the source fingerprint, so
   its replay needs the source: pass a `publication_id` for a source-free replay.
 - Real shapes observed on a One: Storage and the sidecars return bare objects
@@ -118,7 +118,7 @@ messages and prompts are French.
   absent file answers `{status: "ok", removed: false}`, recorded as removed.
 - Tool answers get the same guard as incoming data: a `__proto__`,
   `constructor` or `prototype` key at any depth (also in a JSON text part) is
-  refused (`data_invalid` for Storage; for an external tool, `outcome_unknown`,
+  refused, JSON text parts being decoded wherever an MCP envelope carries them (`data_invalid` for Storage; for an external tool, `outcome_unknown`,
   since the call has gone out).
 - E-mail: an `error` in the connector `body` wins over a 2xx status and a
   message id (a pre-send code gives `failed`, anything else `outcome_unknown`).
