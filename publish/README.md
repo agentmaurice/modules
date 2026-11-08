@@ -120,8 +120,10 @@ messages and prompts are French.
   `constructor` or `prototype` key at any depth (also in a JSON text part) is
   refused, JSON text parts being decoded at any depth, after every decoding (a structure too deep to inspect, or an MCP envelope with several text parts, is refused) (`data_invalid` for Storage; for an external tool, `outcome_unknown`,
   since the call has gone out).
-- E-mail: an `error` in the connector `body` wins over a 2xx status and a
-  message id (a pre-send code gives `failed`, anything else `outcome_unknown`).
+- E-mail: every signal of the answer is read before deciding. `failed` only
+  when all of them say "before sending" (a known pre-send code, no message id,
+  no 2xx status). An `error` in the body, an id, a 2xx status or contradictory
+  signals give `outcome_unknown`.
 - `isError: true` always wins in a tool result, even next to a
   `structuredContent` or a text saying ok. The code is read from the content;
   without any code the outcome is `outcome_unknown`.

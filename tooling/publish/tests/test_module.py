@@ -105,6 +105,8 @@ async function rawTool(name, args) {
     if (opts.mail_enveloped) return {isError: true, content: [{type: "text", text: opts.mail_enveloped === true ? JSON.stringify({error_code: "not_connected", connector_key: "google-mail", connect_available: true}) : opts.mail_enveloped}]};
     if (opts.mail_throw) throw new Error(opts.mail_throw);
     if (opts.mail_empty) return {};
+    if (opts.mail_contradiction) return {status_code: 200, body: {id: "msg-c", error_code: "not_connected", error: "not_connected"}};
+    if (opts.mail_consistent_presend) return {status_code: 401, body: {error_code: "not_connected", error: {code: "not_connected"}}};
     if (opts.mail_body_error) return {status_code: 200, body: {id: "msg-e", threadId: "t", error: opts.mail_body_error}};
     if (opts.mail_proto) return {status_code: 200, body: JSON.parse('{"id": "msg-p", "__proto__": {"x": 1}}')};
     if (opts.mail_no_id) return {status_code: 200, body: {}};
@@ -477,9 +479,15 @@ class WebTest(unittest.TestCase):
         out = email(mail_body_error='quota_exceeded')
         self.assertTrue(out['error'].startswith('publication_outcome_unknown'), out)
         self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
+        # a pre-send code next to a message id and a 2xx status: the signals contradict each other, the send may have gone out
         out = email(mail_body_error={'code': 'not_connected', 'message': 'x'})
-        self.assertEqual(record(out, 'mail-1')['status'], 'failed')
-        self.assertEqual(record(out, 'mail-1')['error']['code'], 'not_connected')
+        self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
+        # exact case: error_code, error and id together
+        out = email(mail_contradiction=True)
+        self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
+        # every signal agrees on "before sending": failed
+        out = email(mail_consistent_presend=True)
+        self.assertEqual((record(out, 'mail-1')['status'], record(out, 'mail-1')['error']['code']), ('failed', 'not_connected'))
 
     def test_unsafe_keys_in_tool_answers_are_refused(self):
         out = email(mail_proto=True)

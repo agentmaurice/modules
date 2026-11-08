@@ -806,10 +806,18 @@ try { res = await callExternal("google_mail_send", {to: to.join(", "), subject, 
 let answer = res.body;
 if (typeof answer === "string") { try { answer = parseSafe(answer, "réponse du connecteur"); } catch (e) { if (isUnsafeError(e)) throw e; answer = null; } }
 if (isObject(answer)) rejectUnsafeKeys(answer, "réponse du connecteur");
-if (isObject(answer) && typeof answer.error_code === "string" && answer.error_code) { const c = clip(answer.error_code, 60).replace(/[^a-z0-9_]/g, "_"); await markFailed(rec, {code: c, unknown: !PRESEND.includes(c), detail: "erreur du connecteur"}); }
-// An `error` in the body wins over everything, even a 2xx status and a message id.
-if (isObject(answer) && answer.error !== undefined && answer.error !== null && answer.error !== "" && answer.error !== false) { const raw = isObject(answer.error) ? answer.error.code : answer.error; const c = typeof raw === "string" && raw ? clip(raw, 60).toLowerCase().replace(/[^a-z0-9_]/g, "_") : "connector_error"; await markFailed(rec, {code: c, unknown: !PRESEND.includes(c), detail: "erreur dans la réponse du connecteur"}); }
-if (Number.isInteger(res.status_code) && res.status_code >= 400 && res.status_code < 500) await markFailed(rec, {code: "email_rejected", detail: "statut " + res.status_code});
+// ALL the signals are read before deciding. `failed` (nothing left) only when every signal says "before sending": a known pre-send code,
+// no message id, no 2xx status. An id, a 2xx status, an error outside the pre-send list, or signals that contradict each other: outcome_unknown.
+const isOk2xx = Number.isInteger(res.status_code) && res.status_code >= 200 && res.status_code < 300;
+const hasId = isObject(answer) && typeof answer.id === "string" && !!answer.id;
+const codeOf = (raw) => (typeof raw === "string" && raw ? clip(raw, 60).toLowerCase().replace(/[^a-z0-9_]/g, "_") : null);
+const hasErrorField = isObject(answer) && answer.error !== undefined && answer.error !== null && answer.error !== "" && answer.error !== false;
+const codes = isObject(answer) ? [codeOf(answer.error_code), hasErrorField ? (isObject(answer.error) ? codeOf(answer.error.code) : codeOf(answer.error)) : null].filter((c) => c !== null) : [];
+if (codes.length || hasErrorField) {
+  const clean = codes.length > 0 && codes.every((c) => PRESEND.includes(c)) && !hasId && !isOk2xx && !(hasErrorField && !codes.length);
+  await markFailed(rec, clean ? {code: codes[0], detail: "erreur du connecteur"} : {code: codes[0] || "connector_error", unknown: true, detail: "erreur dans la réponse du connecteur, signaux non concordants avec un envoi exclu"});
+}
+if (Number.isInteger(res.status_code) && res.status_code >= 400 && res.status_code < 500) await markFailed(rec, hasId ? {unknown: true, detail: "statut " + res.status_code + " avec un identifiant de message : l'envoi n'est pas exclu"} : {code: "email_rejected", detail: "statut " + res.status_code});
 if (Number.isInteger(res.status_code) && (res.status_code < 200 || res.status_code >= 300)) await markFailed(rec, {unknown: true, detail: "statut " + res.status_code + " : l'envoi n'est pas exclu"});
 if (!Number.isInteger(res.status_code) || !isObject(answer) || typeof answer.id !== "string" || !answer.id) await markFailed(rec, {unknown: true, detail: "réponse du connecteur sans statut 2xx ou sans identifiant de message : l'envoi n'est ni prouvé ni exclu"});
 let ids;

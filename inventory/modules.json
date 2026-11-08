@@ -2459,7 +2459,7 @@
         ],
         "sha256": {
           "publish/module.yaml": "b2a6d897fdf80d34393fc4c713750edb04d9d4c9a38b8f28eda3bde66d87a1c3",
-          "publish/agents/main/workflows/publish-email.json": "665a0941d6bd7f7b218d83ea66b98f6a63b97b10d0d3f5a5cf853d97d074c9a0",
+          "publish/agents/main/workflows/publish-email.json": "93d77adb009dcc0a1a86cff8c9fec7e80ba5c282d92a5282e85c82260fabf373",
           "publish/agents/main/workflows/publish-list.json": "4b5aa649508979a0e4173277899f2a46732c03f673e10f203da78a5e8e873f7f",
           "publish/agents/main/workflows/publish-plan.json": "42ab1fd3626d1eda20436ed71ea3f78accd713b677ee758a60e0124d6dd55006",
           "publish/agents/main/workflows/publish-read.json": "85901bcaf781e65d8b083400639889391c7a9de3e62ff2075630ae063020d493",
@@ -2480,7 +2480,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "8f9637b0b40723b19e935be7025945e0dbe6237a7f76bd4ea05e505ad272be44"
+              "code_sha256": "024c153bde68dca47cc900ba547c66d6a555f946dfce383d16b9d4505dedbaa2"
             }
           ]
         },
