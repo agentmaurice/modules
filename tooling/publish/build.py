@@ -575,11 +575,26 @@ async function callExternal(name, args, opts) {
     let u;
     try { u = unwrap(mcpUnwrap(r, false)); } catch (e) { throw Object.assign(externalError(name, "réponse refusée : enveloppe inexploitable", false), {code: "response_invalid", unknown: true, detail: clip(String(e && e.message), 200)}); }
     try { rejectUnsafeAnswer(u, "réponse de l'outil " + name); } catch (e) { throw Object.assign(externalError(name, "réponse refusée : clé interdite", false), {code: "response_invalid", unknown: true, detail: clip(String(e && e.message), 200)}); }
+    if (isObject(r) && typeof r.error_code === "string" && r.error_code) push(r.error_code);
     const finalFound = structuredError(u, true);
     if (finalFound !== null) push(finalFound.code);
     if (isObject(u) && typeof u.error_code === "string" && u.error_code) push(u.error_code);
     if (!isObject(u) && !signals.length) throw externalError(name, "réponse inattendue", true);
-    return {response: isObject(u) ? u : {}, signals};
+    // Positive signals are collected on EVERY layer of the answer (root, structuredContent, JSON text parts, data / result / body, the unwrapped
+    // answer) before anything is unwrapped: any positive signal, wherever it sits, forbids `failed`.
+    const layers = [];
+    const addLayer = (v, d) => {
+      if (typeof v === "string" && /^\s*[\[{]/.test(v)) { try { v = JSON.parse(v); } catch (e) { return; } }
+      if (!isObject(v) || d > 3) return;
+      layers.push(v);
+      for (const k of ["structuredContent", "data", "result", "body"]) if (v[k] !== undefined) addLayer(v[k], d + 1);
+      if (Array.isArray(v.content)) for (const c of v.content) if (isObject(c) && typeof c.text === "string") addLayer(c.text, d + 1);
+    };
+    addLayer(r, 0); addLayer(u, 0);
+    const positive = layers.some((l) => (name === "google_mail_send" && ((Number.isInteger(l.status_code) && l.status_code >= 200 && l.status_code < 300) || (typeof l.id === "string" && l.id !== "")))
+      || (name === "social_post_create_v1" && ((typeof l.post_id === "string" && l.post_id !== "") || l.status === "ok"))
+      || (name === "ssh_upload_v1" && (l.status === "ok" || typeof l.sha256 === "string")));
+    return {response: isObject(u) ? u : {}, signals, positive};
   }
   // isError always wins, even with a structuredContent or a text that says ok. The code is read from the content when there is
   // one; without any code the outcome is unknown (the call may have gone through).
@@ -780,7 +795,7 @@ try { await writeDest("web", destKey, rec.publication_id, src.sha256, "pending_o
 let res;
 const SSH_REFUSED = ["tool_unavailable", "file_exists", "publish_not_enabled", "invalid_arguments", "file_too_large", "atomic_replace_unavailable"];
 let sendError = null;
-try { const raw = await callExternal("ssh_upload_v1", {target, path: remotePath, file: {content_base64: src.b64}, overwrite}, {raw: true}); res = raw.response; sendError = singleDecision(raw.signals, SSH_REFUSED, res.status === "ok" && typeof res.sha256 === "string" && res.sha256.toLowerCase() === src.sha256 && (res.bytes === undefined || res.bytes === src.bytes)); } catch (e) { sendError = e; }
+try { const raw = await callExternal("ssh_upload_v1", {target, path: remotePath, file: {content_base64: src.b64}, overwrite}, {raw: true}); res = raw.response; sendError = singleDecision(raw.signals, SSH_REFUSED, raw.positive || (res.status === "ok" && typeof res.sha256 === "string" && res.sha256.toLowerCase() === src.sha256 && (res.bytes === undefined || res.bytes === src.bytes))); } catch (e) { sendError = e; }
 if (sendError) {
   const e = sendError;
   // A definitive refusal wrote nothing: the reservation is cancelled and the previous owner gets the destination back (read back).
@@ -837,8 +852,8 @@ const rec = begun.rec;
 let res;
 // Only a code known to happen BEFORE the sending proves that nothing was sent; any other error leaves the outcome unknown.
 const PRESEND = ["not_connected", "authorization_required", "identity_unproven", "tool_unavailable"];
-let rootSignals;
-try { const raw = await callExternal("google_mail_send", {to: to.join(", "), subject, body}, {raw: true}); res = raw.response; rootSignals = raw.signals; } catch (e) { if (!PRESEND.includes(e && e.code)) e.unknown = true; await markFailed(rec, e); }
+let rootSignals, rootPositive = false;
+try { const raw = await callExternal("google_mail_send", {to: to.join(", "), subject, body}, {raw: true}); res = raw.response; rootSignals = raw.signals; rootPositive = raw.positive; } catch (e) { if (!PRESEND.includes(e && e.code)) e.unknown = true; await markFailed(rec, e); }
 // Published only on proof: a 2xx status and the Gmail message id. The body may arrive as JSON text.
 let answer = res.body;
 if (typeof answer === "string") { try { answer = parseSafe(answer, "réponse du connecteur"); } catch (e) { if (isUnsafeError(e)) throw e; answer = null; } }
@@ -854,7 +869,7 @@ const signals = rootSignals.map((x) => ({code: codeOf(x.code)}));
 if (isObject(answer) && codeOf(answer.error_code)) signals.push({code: codeOf(answer.error_code)});
 if (hasErrorField) signals.push({code: isObject(answer.error) ? codeOf(answer.error.code) : codeOf(answer.error)});
 if (signals.length) {
-  const clean = signals.every((x) => x.code !== null && PRESEND.includes(x.code)) && !hasId && !isOk2xx;
+  const clean = signals.every((x) => x.code !== null && PRESEND.includes(x.code)) && !hasId && !isOk2xx && !rootPositive;
   const first = signals.map((x) => x.code).find((c) => c !== null);
   await markFailed(rec, clean ? {code: first, detail: "erreur du connecteur"} : {code: first || "connector_error", unknown: true, detail: "erreur dans la réponse du connecteur, signaux non concordants avec un envoi exclu"});
 }
@@ -917,7 +932,7 @@ if (media.length) args.media = media;
 let res;
 // Only the codes documented as a refusal before any write allow failed; any other error (no code, status error, free text) is an unknown outcome.
 const REFUSED = ["tool_unavailable", "invalid_arguments", "invalid_request", "validation_failed", "not_configured", "rate_limited", "channel_not_found", "content_too_long", "invalid_schedule", "invalid_media", "media_too_large"];
-try { const raw = await callExternal("social_post_create_v1", args, {raw: true}); res = raw.response; const bad = singleDecision(raw.signals, REFUSED, res.status === "ok" && typeof res.post_id === "string" && !!res.post_id); if (bad) throw bad; } catch (e) { if (!REFUSED.includes(e && e.code)) e.unknown = true; await markFailed(rec, e); }
+try { const raw = await callExternal("social_post_create_v1", args, {raw: true}); res = raw.response; const bad = singleDecision(raw.signals, REFUSED, raw.positive || (res.status === "ok" && typeof res.post_id === "string" && !!res.post_id)); if (bad) throw bad; } catch (e) { if (!REFUSED.includes(e && e.code)) e.unknown = true; await markFailed(rec, e); }
 if (res.status !== "ok" || typeof res.post_id !== "string" || !res.post_id) await markFailed(rec, {code: "remote_response_invalid", detail: "post_id absent de la réponse du service social ; relancer avec le même publication_id est sans risque (clé d'idempotence)"});
 let remote;
 try { remote = {post_id: remoteIdOf(res.post_id, true), state: str(res.state, 40), group: remoteIdOf(res.group, false), channels: remoteChannels(res.channels)}; } catch (e) { await markFailed(rec, e); }

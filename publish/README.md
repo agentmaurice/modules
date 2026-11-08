@@ -124,7 +124,7 @@ messages and prompts are French.
   when all of them say "before sending" (a known pre-send code, no message id,
   no 2xx status). An `error` in the body, an id, a 2xx status or contradictory
   signals give `outcome_unknown`. A root error (or `isError`) of the answer is one
-  more signal, never a refusal taken before the comparison. The same single decision applies to `ssh_upload_v1` (success = status and sha256 matching) and `social_post_create_v1` (success = status ok and post_id), each with its own pre-send codes.
+  more signal, never a refusal taken before the comparison. The same single decision applies to `ssh_upload_v1` (success = status and sha256 matching) and `social_post_create_v1` (success = status ok and post_id), each with its own pre-send codes. The signals are collected on every layer of the answer (root, `structuredContent`, JSON text parts, `data` / `result` / `body`) before unwrapping: a positive signal anywhere forbids `failed`.
 - `isError: true` always wins in a tool result, even next to a
   `structuredContent` or a text saying ok. The code is read from the content;
   without any code the outcome is `outcome_unknown`.

@@ -105,6 +105,8 @@ async function rawTool(name, args) {
     if (opts.mail_enveloped) return {isError: true, content: [{type: "text", text: opts.mail_enveloped === true ? JSON.stringify({error_code: "not_connected", connector_key: "google-mail", connect_available: true}) : opts.mail_enveloped}]};
     if (opts.mail_throw) throw new Error(opts.mail_throw);
     if (opts.mail_empty) return {};
+    if (opts.mail_sc_positive) return {error: "not_connected", structuredContent: {error: "not_connected"}, content: [{type: "text", text: JSON.stringify({status_code: 200, body: {id: "msg-x"}})}]};
+    if (opts.mail_sc_positive_root_refusal) return {structuredContent: {status_code: 200, body: {id: "msg-y"}}, error_code: "not_connected"};
     if (opts.mail_root_error_with_id) return {error: "not_connected", status_code: 200, body: {id: "msg-r"}};
     if (opts.mail_root_error_alone) return {error: "not_connected"};
     if (opts.mail_contradiction) return {status_code: 200, body: {id: "msg-c", error_code: "not_connected", error: "not_connected"}};
@@ -128,6 +130,7 @@ async function callTool(name, args) {
   if (opts.mail_deep && name === "google_mail_send") return {status_code: 200, body: {id: "msg-1"}, meta: {a: {b: {c: {d: {e: {f: {g: {h: {i: {j: {k: {l: {m: {text: '{"prototype":{}}'}}}}}}}}}}}}}}};
   if (opts.unsafe_nested && name === "ssh_upload_v1") return {structuredContent: {...r, content: [{type: "text", text: '{"' + opts.unsafe_nested + '": {}}'}]}};
   if (opts.unsafe_answer && name === "ssh_upload_v1") return JSON.parse('{"status": "ok", "bytes": 1, "' + opts.unsafe_answer + '": {"a": 1}}');
+  if (opts.send_layers && ["ssh_upload_v1", "social_post_create_v1"].includes(name)) return {error: opts.send_layers[0], structuredContent: {...opts.send_layers[1]}};
   if (opts.send_root_error && ["ssh_upload_v1", "social_post_create_v1"].includes(name)) { const c = name === "ssh_upload_v1" ? "file_exists" : "rate_limited"; return opts.send_root_error === "alone" ? {error: c} : {...r, error: c}; }
   if (opts.status_error && ["ssh_upload_v1", "google_mail_send", "social_post_create_v1"].includes(name)) return {status: "error", message: "upstream timeout"};
   if (opts.structured_error && ["ssh_upload_v1", "google_mail_send", "social_post_create_v1", "social_post_get_v1"].includes(name)) return {content: [{type: "text", text: "ok"}], structuredContent: {...r, error: {code: "remote_boom"}}};
@@ -497,6 +500,17 @@ class WebTest(unittest.TestCase):
         self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
         out = email(mail_root_error_alone=True)
         self.assertEqual((record(out, 'mail-1')['status'], record(out, 'mail-1')['error']['code']), ('failed', 'not_connected'))
+
+    def test_positive_signals_on_any_layer_forbid_failed(self):
+        # refusal at the root and in structuredContent, success only in a JSON text part
+        out = email(mail_sc_positive=True)
+        self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
+        # symmetric: success in structuredContent, refusal at the root
+        out = email(mail_sc_positive_root_refusal=True)
+        self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
+        for runner, pid, tool_err, good in ((web, 'page-1', 'file_exists', {'status': 'ok'}), (social, 'post-a', 'rate_limited', {'post_id': 'p1'})):
+            out = runner(send_layers=(tool_err, good))
+            self.assertEqual(record(out, pid)['status'], 'outcome_unknown', pid)
 
     def test_a_root_error_is_one_more_signal_for_ssh_and_social(self):
         for runner, pid, code in ((web, 'page-1', 'file_exists'), (social, 'post-a', 'rate_limited')):
