@@ -400,12 +400,6 @@ class WebTest(unittest.TestCase):
             first = runner()
             out = run_node(wf, 'publish', {**ctx, 'source_sha256': 'a' * 64}, first['fs'])
             self.assertTrue(out['error'].startswith('idempotency_conflict'), (wf, out))
-        # an older journal without the fingerprint is a conflict, not a false already_published
-        old = dict(done['fs'])
-        key = '/publish/log/page-1.json'
-        rec = json.loads(old[key]['text']); del rec['input_sha256']; old[key] = {'text': json.dumps(rec)}
-        out = run_node('publish-web', 'publish', WEB, old)
-        self.assertTrue(out['error'].startswith('idempotency_conflict'), out)
         # the confirmation is not part of the request
         self.assertIs(ok(self, run_node('publish-web', 'publish', {**WEB, 'confirmation_manuelle': True}, done['fs']))['already_published'], True)
 
@@ -422,6 +416,25 @@ class WebTest(unittest.TestCase):
         # declared parameters are still normalised
         done = web(ctx={'overwrite': 'oui'})
         self.assertIs(ok(self, run_node('publish-web', 'publish', {**WEB, 'overwrite': True}, done['fs']))['already_published'], True)
+
+    def test_a_journal_older_than_0_1_1_keeps_the_0_1_0_detection(self):
+        def legacy(done, pid):
+            fs = dict(done['fs'])
+            key = f'/publish/log/{pid}.json'
+            rec = json.loads(fs[key]['text']); del rec['input_sha256']; fs[key] = {'text': json.dumps(rec)}
+            return fs
+        for runner, wf, ctx, pid, changes in (
+                (web, 'publish-web', WEB, 'page-1', ({'remote_path': 'news/other.html'}, {'source_sha256': 'a' * 64})),
+                (email, 'publish-email', EMAIL, 'mail-1', ({'subject': 'Autre'}, {'body': 'Autre texte'})),
+                (social, 'publish-social', SOCIAL, 'post-a', ({'channels': ['c9']}, {'content': 'Autre texte'}))):
+            fs = legacy(runner(), pid)
+            same = run_node(wf, 'publish', ctx, fs)
+            self.assertIs(ok(self, same)['already_published'], True, wf)
+            self.assertEqual(external(same), [], wf)
+            for change in changes:
+                out = run_node(wf, 'publish', {**ctx, **change}, fs)
+                self.assertTrue(out['error'].startswith('idempotency_conflict'), (wf, change, out))
+                self.assertEqual(external(out), [], wf)
 
     def test_unsafe_keys_beyond_the_depth_limit_are_refused_not_accepted(self):
         out = email(mail_deep=True)

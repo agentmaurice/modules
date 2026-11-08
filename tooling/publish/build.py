@@ -351,13 +351,26 @@ async function inputFingerprint(channel, input) {
 }
 // A replay with an explicit id is decided on the journal ALONE: the complete input fingerprint is compared without reading Storage
 // (only the byte check of the Storage source is absent on replay). A journal without this fingerprint (older) is a conflict: fail safe.
-async function peek(channel, given, input, resend) {
+function shaLower(v) { return typeof v === "string" && v ? v.toLowerCase() : null; }
+async function peek(channel, given, input, resend, legacy) {
   if (!given) return null;
   const rec = await loadRecordOrNull(given);
   if (!rec) return null;
   const received = await inputFingerprint(channel, input);
-  // A failed publication sent nothing: the retry decides in begin, where a changed option (overwrite, after an integrity failure) is allowed.
-  if (rec.channel !== channel || (rec.status !== "failed" && rec.input_sha256 !== received)) fail("idempotency_conflict", given + " existe avec une autre demande : changez publication_id (empreinte de la demande enregistrée " + (rec.input_sha256 || "absente (journal ancien)") + ", reçue " + received + ")");
+  const conflict = (stored) => fail("idempotency_conflict", given + " existe avec une autre demande : changez publication_id (empreinte de la demande enregistrée " + stored + ", reçue " + received + ")");
+  if (rec.channel !== channel) conflict(rec.input_sha256 || "absente (journal ancien)");
+  if (rec.input_sha256 === undefined) {
+    // A journal written before 0.1.1 has no input fingerprint: it keeps the 0.1.0 detection (target fields, source_sha256, inline text hash,
+    // and the media paths), without reading Storage.
+    const t = isObject(rec.target) ? rec.target : {};
+    const src = isObject(rec.source) ? rec.source : {};
+    let same = true;
+    for (const [k, v] of Object.entries(legacy.lite)) if (canonical(t[k]) !== canonical(v)) same = false;
+    if (legacy.sha256 && typeof src.sha256 === "string" && src.sha256 !== legacy.sha256) same = false;
+    if (legacy.inline && src.kind === "text" && src.sha256 !== legacy.inline) same = false;
+    if (legacy.media && canonical(Array.isArray(t.media) ? t.media.map((m) => (isObject(m) ? m.path : null)) : []) !== canonical(legacy.media)) same = false;
+    if (!same) conflict("absente (journal ancien, comparaison 0.1.0)");
+  } else if (rec.status !== "failed" && rec.input_sha256 !== received) conflict(rec.input_sha256); // a failed publication sent nothing: the retry decides in begin
   if (rec.status === "published") return {...summarize(rec), already_published: true};
   if (rec.status === "removed") return {...summarize(rec), already_removed: true};
   if ((rec.status === "requested" || rec.status === "outcome_unknown") && !resend) fail("publication_outcome_unknown", given + " : la diffusion est en cours ou son issue est inconnue (statut " + rec.status + ") ; vérifiez la destination, puis utilisez un nouveau publication_id ou resend_after_unknown = oui");
@@ -462,7 +475,7 @@ async function begin(channel, given, request, opts, precheck) {
   const existing = await loadRecordOrNull(id);
   const at = nowIso();
   if (existing) {
-    if (existing.channel !== channel || existing.request_sha256 !== sha || (existing.input_sha256 !== inputSha && existing.status !== "failed")) fail("idempotency_conflict", id + " existe avec une autre demande : changez publication_id (empreinte enregistrée " + (existing.input_sha256 || "absente (journal ancien)") + ", reçue " + inputSha + " ; source enregistrée " + existing.request_sha256 + ", reçue " + sha + ")");
+    if (existing.channel !== channel || existing.request_sha256 !== sha || (existing.input_sha256 !== undefined && existing.input_sha256 !== inputSha && existing.status !== "failed")) fail("idempotency_conflict", id + " existe avec une autre demande : changez publication_id (empreinte enregistrée " + (existing.input_sha256 || "absente (journal ancien)") + ", reçue " + inputSha + " ; source enregistrée " + existing.request_sha256 + ", reçue " + sha + ")");
     if (existing.status === "published") return {rec: existing, done: {...summarize(existing), already_published: true}};
     if (existing.status === "removed") return {rec: existing, done: {...summarize(existing), already_removed: true}};
     if ((existing.status === "requested" || existing.status === "outcome_unknown") && !resend) fail("publication_outcome_unknown", id + " : la diffusion est en cours ou son issue est inconnue (statut " + existing.status + ") ; vérifiez la destination, puis utilisez un nouveau publication_id ou resend_after_unknown = oui");
@@ -704,7 +717,7 @@ const target = sshTargetOf(input.target);
 const remotePath = remotePathOf(input.remote_path);
 const overwrite = confirmed(input.overwrite);
 const path = storagePathOf(input.source_path, "source_path");
-const early = await peek("web", given, input, confirmed(input.resend_after_unknown));
+const early = await peek("web", given, input, confirmed(input.resend_after_unknown), {lite: {ssh_target: target, path: remotePath}, sha256: shaLower(input.source_sha256)});
 if (early) return early;
 const src = await readSource(path, input.source_sha256);
 const begun = await begin("web", given, {source: {kind: "storage", path, sha256: src.sha256, bytes: src.bytes}, target: {ssh_target: target, path: remotePath}, options: {overwrite}, input}, {resend: confirmed(input.resend_after_unknown), attempt: input.attempt});
@@ -757,7 +770,7 @@ if (/[\r\n]/.test(subject)) fail("subject_invalid", "pas de saut de ligne");
 const hasBody = input.body !== undefined && input.body !== null && input.body !== "";
 const hasPath = input.source_path !== undefined && input.source_path !== null && input.source_path !== "";
 if (hasBody === hasPath) fail("body_required", "exactement un corps : body ou source_path");
-const early = await peek("email", given, input, confirmed(input.resend_after_unknown));
+const early = await peek("email", given, input, confirmed(input.resend_after_unknown), {lite: {to, subject}, sha256: shaLower(input.source_sha256), inline: hasBody ? await sha256Hex(new TextEncoder().encode(text(input.body, "body", 20000, true))) : null});
 if (early) return early;
 let body, source;
 if (hasPath) {
@@ -809,7 +822,7 @@ if (mode === "schedule") {
 const hasContent = input.content !== undefined && input.content !== null && input.content !== "";
 const hasPath = input.source_path !== undefined && input.source_path !== null && input.source_path !== "";
 if (hasContent === hasPath) fail("content_required", "exactement un contenu : content ou source_path");
-const early = await peek("social", given, input, confirmed(input.resend_after_unknown));
+const early = await peek("social", given, input, confirmed(input.resend_after_unknown), {lite: {channels, mode, schedule_at: scheduleAt}, sha256: shaLower(input.source_sha256), inline: hasContent ? await sha256Hex(new TextEncoder().encode(text(input.content, "content", 5000, true))) : null, media: input.media_paths === undefined || input.media_paths === null || input.media_paths === "" ? [] : listOf(input.media_paths, "media_paths", 1, 4, /^\/.{1,299}$/).map((p) => storagePathOf(p, "media_paths"))});
 if (early) return early;
 let content, source;
 if (hasPath) {
