@@ -198,12 +198,17 @@ function structuredError(r, textual, depth) {
 // For read_file, whose content is a file, only the clear envelope is opened (text parts, or structuredContent).
 function mcpUnwrap(r, isRead) {
   if (!isObject(r)) return r;
+  // No part is ever dropped silently: more than one text part is refused, and the parts not retained go through the full guard.
+  if (Array.isArray(r.content)) {
+    if (r.content.filter((c) => isObject(c) && typeof c.text === "string").length > 1) fail("data_invalid", "enveloppe MCP avec plusieurs parties texte");
+    if (isObject(r.structuredContent)) rejectUnsafeAnswer(r.content, "partie ignorée de la réponse");
+  }
   if (isObject(r.structuredContent)) return r.structuredContent;
   if (Array.isArray(r.content) && r.content.length && isObject(r.content[0]) && r.content[0].type === "text" && typeof r.content[0].text === "string") {
     const t = r.content[0].text;
     let parsed;
     try { parsed = JSON.parse(t); } catch (e) { parsed = undefined; }
-    if (isRead) return isObject(parsed) && typeof parsed.content === "string" && Object.keys(parsed).every((k) => ["content", "encoding", "path", "size", "success"].includes(k)) ? parsed : {content: t};
+    if (isRead) { if (isObject(parsed)) rejectUnsafeKeys(parsed, "réponse de l'outil read_file"); return isObject(parsed) && typeof parsed.content === "string" && Object.keys(parsed).every((k) => ["content", "encoding", "path", "size", "success"].includes(k)) ? parsed : {content: t}; }
     if (isObject(parsed) || Array.isArray(parsed)) return parsed;
   }
   return r;
@@ -494,7 +499,7 @@ async function callExternal(name, args) {
     const texts = r.content.filter((c) => isObject(c) && typeof c.text === "string").map((c) => c.text);
     for (const t of texts) { let parsed = null; try { parsed = JSON.parse(t); } catch (e) { parsed = null; } if (isObject(parsed) && (parsed.error || parsed.error_code)) throw externalError(name, t, false); }
   }
-  r = mcpUnwrap(r, false);
+  try { r = mcpUnwrap(r, false); } catch (e) { throw Object.assign(externalError(name, "réponse refusée : enveloppe inexploitable", false), {code: "response_invalid", unknown: true, detail: clip(String(e && e.message), 200)}); }
   r = unwrap(r);
   try { rejectUnsafeAnswer(r, "réponse de l'outil " + name); } catch (e) { throw Object.assign(externalError(name, "réponse refusée : clé interdite", false), {code: "response_invalid", unknown: true, detail: clip(String(e && e.message), 200)}); }
   // The same detection on the final, unwrapped result, whatever path led to it (structuredContent, JSON text, data).

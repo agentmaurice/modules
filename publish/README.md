@@ -118,7 +118,7 @@ messages and prompts are French.
   absent file answers `{status: "ok", removed: false}`, recorded as removed.
 - Tool answers get the same guard as incoming data: a `__proto__`,
   `constructor` or `prototype` key at any depth (also in a JSON text part) is
-  refused, JSON text parts being decoded at any depth, after every decoding (a structure too deep to inspect is refused) (`data_invalid` for Storage; for an external tool, `outcome_unknown`,
+  refused, JSON text parts being decoded at any depth, after every decoding (a structure too deep to inspect, or an MCP envelope with several text parts, is refused) (`data_invalid` for Storage; for an external tool, `outcome_unknown`,
   since the call has gone out).
 - E-mail: an `error` in the connector `body` wins over a 2xx status and a
   message id (a pre-send code gives `failed`, anything else `outcome_unknown`).

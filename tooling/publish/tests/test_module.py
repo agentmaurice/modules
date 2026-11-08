@@ -117,6 +117,7 @@ async function rawTool(name, args) {
 }
 async function callTool(name, args) {
   const r = await rawTool(name, args);
+  if (opts.read_parts && name === "read_file" && args.path.startsWith("/docs/")) return {content: [{type: "text", text: '{"content":"SGk=","encoding":"base64"}'}, {type: "text", text: '{"' + opts.read_parts + '":{}}'}]};
   if (opts.read_nested && name === "read_file" && args.path.startsWith("/docs/")) return {content: [{type: "text", text: '{"content":"SGk=","encoding":"base64","size":{"constructor":{}}}'}]};
   if (opts.mail_deep && name === "google_mail_send") return {status_code: 200, body: {id: "msg-1"}, meta: {a: {b: {c: {d: {e: {f: {g: {h: {i: {j: {k: {l: {m: {text: '{"prototype":{}}'}}}}}}}}}}}}}}};
   if (opts.unsafe_nested && name === "ssh_upload_v1") return {structuredContent: {...r, content: [{type: "text", text: '{"' + opts.unsafe_nested + '": {}}'}]}};
@@ -377,6 +378,11 @@ class WebTest(unittest.TestCase):
     def test_unsafe_keys_in_a_decoded_read_file_envelope_are_refused(self):
         out = run_node('publish-plan', 'prepare', {'source_path': '/docs/post.md'}, dict(FILES), read_nested=True)
         self.assertTrue(out.get('error', '').startswith('data_invalid'), out)
+
+    def test_secondary_text_parts_of_a_read_file_envelope_are_refused(self):
+        for key in ('__proto__', 'constructor', 'prototype'):
+            out = run_node('publish-plan', 'prepare', {'source_path': '/docs/post.md'}, dict(FILES), read_parts=key)
+            self.assertTrue(out.get('error', '').startswith('data_invalid'), (key, out))
 
     def test_unsafe_keys_beyond_the_depth_limit_are_refused_not_accepted(self):
         out = email(mail_deep=True)
