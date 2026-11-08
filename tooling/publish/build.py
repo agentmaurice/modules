@@ -48,6 +48,9 @@ function own(o, k) { return Object.prototype.hasOwnProperty.call(o, k); }
 function redact(s) { return String(s).replace(/[A-Za-z0-9+\/=]{120,}/g, "[…]"); }
 function clip(s, n) { s = String(s); return s.length > n ? s.slice(0, n) : s; }
 // External data (model answer, caller input, tool answers) never carries these keys, at any depth.
+// The only decoding path outside the guard itself: parse, then refuse unsafe keys right away. A refusal is never swallowed by a caller's catch.
+function isUnsafeError(e) { return String(e && e.message).startsWith("data_invalid"); }
+function parseSafe(t, label) { const v = JSON.parse(t); rejectUnsafeKeys(v, label); return v; }
 function rejectUnsafeKeys(v, label) {
   if (Array.isArray(v)) { v.forEach((x) => rejectUnsafeKeys(x, label)); return; }
   if (!isObject(v)) return;
@@ -178,7 +181,7 @@ function isMissing(info) {
 function errorInfo(message, ...sources) {
   const info = {message: String(message), code: null, status: null};
   let parsed = null;
-  if (/^\s*\{/.test(info.message)) { try { parsed = JSON.parse(info.message); } catch (e) { parsed = null; } }
+  if (/^\s*\{/.test(info.message)) { try { parsed = parseSafe(info.message, "message d'erreur"); } catch (e) { if (isUnsafeError(e)) throw e; parsed = null; } }
   for (const src of [...sources, parsed]) {
     if (!isObject(src)) continue;
     const inner = isObject(src.error) ? src.error : null;
@@ -212,7 +215,8 @@ function structuredError(r, textual, depth) {
   if (depth > 3) return null;
   if (typeof r === "string") {
     if (!textual || !/^\s*\{/.test(r)) return null;
-    try { return structuredError(JSON.parse(r), textual, depth + 1); } catch (e) { return null; }
+    let v; try { v = parseSafe(r, "réponse de l'outil"); } catch (e) { if (isUnsafeError(e)) throw e; return null; }
+    return structuredError(v, textual, depth + 1);
   }
   if (!isObject(r)) return null;
   if (r.isError === true) {
@@ -241,6 +245,8 @@ function mcpUnwrap(r, isRead) {
     const t = r.content[0].text;
     let parsed;
     try { parsed = JSON.parse(t); } catch (e) { parsed = undefined; }
+    // The text of a read_file part may be the file itself (data): only an answer-shaped JSON is guarded, in guardReadEnvelope and after unwrapping.
+    if (!isRead) rejectUnsafeKeys(parsed, "réponse de l'outil");
     if (isRead) { if (isObject(parsed)) rejectUnsafeKeys(parsed, "réponse de l'outil read_file"); return isObject(parsed) && typeof parsed.content === "string" && Object.keys(parsed).every((k) => ["content", "encoding", "path", "size", "success"].includes(k)) ? parsed : {content: t}; }
     if (isObject(parsed) || Array.isArray(parsed)) return parsed;
   }
@@ -268,7 +274,8 @@ async function readText(path, extra) {
 }
 async function readJson(path) {
   const raw = await readText(path);
-  try { return JSON.parse(raw); } catch (e) { fail("json_corrupt", path); }
+  let v; try { v = parseSafe(raw, "journal " + path); } catch (e) { if (isUnsafeError(e)) throw e; fail("json_corrupt", path); }
+  return v;
 }
 // Reads a Storage file in base64 and fingerprints it. The bytes sent later are exactly the bytes hashed here.
 async function readSource(path, expectedSha) {
@@ -366,6 +373,7 @@ async function peek(channel, given, input, resend, legacy) {
     const src = isObject(rec.source) ? rec.source : {};
     let same = true;
     for (const [k, v] of Object.entries(legacy.lite)) if (canonical(t[k]) !== canonical(v)) same = false;
+    if (src.kind !== legacy.source.kind || (legacy.source.kind === "storage" && src.path !== legacy.source.path)) same = false;
     if (legacy.sha256 && typeof src.sha256 === "string" && src.sha256 !== legacy.sha256) same = false;
     if (legacy.inline && src.kind === "text" && src.sha256 !== legacy.inline) same = false;
     if (legacy.media && canonical(Array.isArray(t.media) ? t.media.map((m) => (isObject(m) ? m.path : null)) : []) !== canonical(legacy.media)) same = false;
@@ -559,7 +567,7 @@ async function callExternal(name, args) {
   // MCP envelope: {content: [{type: "text", text}]}, the text usually being JSON.
   if (isObject(r) && Array.isArray(r.content)) {
     const texts = r.content.filter((c) => isObject(c) && typeof c.text === "string").map((c) => c.text);
-    for (const t of texts) { let parsed = null; try { parsed = JSON.parse(t); } catch (e) { parsed = null; } if (isObject(parsed) && (parsed.error || parsed.error_code)) throw externalError(name, t, false); }
+    for (const t of texts) { let parsed = null; try { parsed = parseSafe(t, "réponse de l'outil"); } catch (e) { if (isUnsafeError(e)) throw e; parsed = null; } if (isObject(parsed) && (parsed.error || parsed.error_code)) throw externalError(name, t, false); }
   }
   try { r = mcpUnwrap(r, false); } catch (e) { throw Object.assign(externalError(name, "réponse refusée : enveloppe inexploitable", false), {code: "response_invalid", unknown: true, detail: clip(String(e && e.message), 200)}); }
   r = unwrap(r);
@@ -717,7 +725,7 @@ const target = sshTargetOf(input.target);
 const remotePath = remotePathOf(input.remote_path);
 const overwrite = confirmed(input.overwrite);
 const path = storagePathOf(input.source_path, "source_path");
-const early = await peek("web", given, input, confirmed(input.resend_after_unknown), {lite: {ssh_target: target, path: remotePath}, sha256: shaLower(input.source_sha256)});
+const early = await peek("web", given, input, confirmed(input.resend_after_unknown), {lite: {ssh_target: target, path: remotePath}, source: {kind: "storage", path}, sha256: shaLower(input.source_sha256)});
 if (early) return early;
 const src = await readSource(path, input.source_sha256);
 const begun = await begin("web", given, {source: {kind: "storage", path, sha256: src.sha256, bytes: src.bytes}, target: {ssh_target: target, path: remotePath}, options: {overwrite}, input}, {resend: confirmed(input.resend_after_unknown), attempt: input.attempt});
@@ -770,7 +778,7 @@ if (/[\r\n]/.test(subject)) fail("subject_invalid", "pas de saut de ligne");
 const hasBody = input.body !== undefined && input.body !== null && input.body !== "";
 const hasPath = input.source_path !== undefined && input.source_path !== null && input.source_path !== "";
 if (hasBody === hasPath) fail("body_required", "exactement un corps : body ou source_path");
-const early = await peek("email", given, input, confirmed(input.resend_after_unknown), {lite: {to, subject}, sha256: shaLower(input.source_sha256), inline: hasBody ? await sha256Hex(new TextEncoder().encode(text(input.body, "body", 20000, true))) : null});
+const early = await peek("email", given, input, confirmed(input.resend_after_unknown), {lite: {to, subject}, source: hasBody ? {kind: "text"} : {kind: "storage", path: storagePathOf(input.source_path, "source_path")}, sha256: shaLower(input.source_sha256), inline: hasBody ? await sha256Hex(new TextEncoder().encode(text(input.body, "body", 20000, true))) : null});
 if (early) return early;
 let body, source;
 if (hasPath) {
@@ -793,7 +801,7 @@ const PRESEND = ["not_connected", "authorization_required", "identity_unproven",
 try { res = await callExternal("google_mail_send", {to: to.join(", "), subject, body}); } catch (e) { if (!PRESEND.includes(e && e.code)) e.unknown = true; await markFailed(rec, e); }
 // Published only on proof: a 2xx status and the Gmail message id. The body may arrive as JSON text.
 let answer = res.body;
-if (typeof answer === "string") { try { answer = JSON.parse(answer); } catch (e) { answer = null; } }
+if (typeof answer === "string") { try { answer = parseSafe(answer, "réponse du connecteur"); } catch (e) { if (isUnsafeError(e)) throw e; answer = null; } }
 if (isObject(answer)) rejectUnsafeKeys(answer, "réponse du connecteur");
 if (isObject(answer) && typeof answer.error_code === "string" && answer.error_code) { const c = clip(answer.error_code, 60).replace(/[^a-z0-9_]/g, "_"); await markFailed(rec, {code: c, unknown: !PRESEND.includes(c), detail: "erreur du connecteur"}); }
 // An `error` in the body wins over everything, even a 2xx status and a message id.
@@ -822,7 +830,7 @@ if (mode === "schedule") {
 const hasContent = input.content !== undefined && input.content !== null && input.content !== "";
 const hasPath = input.source_path !== undefined && input.source_path !== null && input.source_path !== "";
 if (hasContent === hasPath) fail("content_required", "exactement un contenu : content ou source_path");
-const early = await peek("social", given, input, confirmed(input.resend_after_unknown), {lite: {channels, mode, schedule_at: scheduleAt}, sha256: shaLower(input.source_sha256), inline: hasContent ? await sha256Hex(new TextEncoder().encode(text(input.content, "content", 5000, true))) : null, media: input.media_paths === undefined || input.media_paths === null || input.media_paths === "" ? [] : listOf(input.media_paths, "media_paths", 1, 4, /^\/.{1,299}$/).map((p) => storagePathOf(p, "media_paths"))});
+const early = await peek("social", given, input, confirmed(input.resend_after_unknown), {lite: {channels, mode, schedule_at: scheduleAt}, source: hasContent ? {kind: "text"} : {kind: "storage", path: storagePathOf(input.source_path, "source_path")}, sha256: shaLower(input.source_sha256), inline: hasContent ? await sha256Hex(new TextEncoder().encode(text(input.content, "content", 5000, true))) : null, media: input.media_paths === undefined || input.media_paths === null || input.media_paths === "" ? [] : listOf(input.media_paths, "media_paths", 1, 4, /^\/.{1,299}$/).map((p) => storagePathOf(p, "media_paths"))});
 if (early) return early;
 let content, source;
 if (hasPath) {

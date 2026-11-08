@@ -436,6 +436,27 @@ class WebTest(unittest.TestCase):
                 self.assertTrue(out['error'].startswith('idempotency_conflict'), (wf, change, out))
                 self.assertEqual(external(out), [], wf)
 
+    def test_a_journal_older_than_0_1_1_detects_a_changed_source_kind_or_path(self):
+        done = email(ctx={'body': 'Ancien'})
+        key = '/publish/log/mail-1.json'
+        fs = dict(done['fs'])
+        rec = json.loads(fs[key]['text']); del rec['input_sha256']; fs[key] = {'text': json.dumps(rec)}
+        out = run_node('publish-email', 'publish', {**EMAIL, 'body': None, 'source_path': '/docs/post.md'}, fs)
+        self.assertTrue(out['error'].startswith('idempotency_conflict'), out)
+        self.assertEqual(external(out), [])
+        # a Storage source moved to another path
+        done = email(ctx={'body': None, 'source_path': '/docs/post.md'})
+        fs = dict(done['fs'])
+        rec = json.loads(fs[key]['text']); del rec['input_sha256']; fs[key] = {'text': json.dumps(rec)}
+        out = run_node('publish-email', 'publish', {**EMAIL, 'body': None, 'source_path': '/docs/page.html'}, fs)
+        self.assertTrue(out['error'].startswith('idempotency_conflict'), out)
+
+    def test_a_decoded_journal_with_unsafe_keys_is_refused(self):
+        for key in ('__proto__', 'constructor', 'prototype'):
+            base = '{"schema":"publish.record/v1","publication_id":"mail-1","status":"published","channel":"email","revision":1,"attempts":1,"history":[],"target":{},"source":{},"request_sha256":"x","' + key + '":{}}'
+            out = run_node('publish-read', 'read', {'publication_id': 'mail-1'}, {'/publish/log/mail-1.json': {'text': base}})
+            self.assertTrue(out.get('error', '').startswith('data_invalid'), (key, out))
+
     def test_unsafe_keys_beyond_the_depth_limit_are_refused_not_accepted(self):
         out = email(mail_deep=True)
         self.assertTrue(out['error'].startswith('publication_outcome_unknown'), out)
