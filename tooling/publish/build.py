@@ -553,11 +553,32 @@ function externalError(name, message, thrown) {
   return err;
 }
 // Tools are called by their bare name. A tool error (thrown or returned) becomes an error with a stable code.
-async function callExternal(name, args) {
+// With opts.raw (a sending tool whose outcome is decided from ALL the signals by the caller), a returned error is never thrown: the full
+// response comes back with the error signals ([{code}], code null when the error carries none). Thrown calls and unsafe answers still throw.
+async function callExternal(name, args, opts) {
   let r;
   try { r = await callTool(name, args); } catch (e) { throw externalError(name, String(e && e.message), true); }
   // The same guard as for incoming data. The call has gone out: an unsafe answer proves nothing about the outcome.
   try { rejectUnsafeAnswer(r, "réponse de l'outil " + name); } catch (e) { throw Object.assign(externalError(name, "réponse refusée : clé interdite", false), {code: "response_invalid", unknown: true, detail: clip(String(e && e.message), 200)}); }
+  if (opts && opts.raw) {
+    const signals = [];
+    const push = (code) => signals.push({code: typeof code === "string" && code && code !== "external_error" ? code : null});
+    if (isObject(r) && r.isError === true) {
+      const parts = (Array.isArray(r.content) ? r.content.filter((c) => isObject(c) && typeof c.text === "string").map((c) => c.text) : []).concat(isObject(r.structuredContent) ? [JSON.stringify(r.structuredContent)] : [], typeof r.message === "string" ? [r.message] : [], isObject(r.error) || typeof r.error === "string" ? [JSON.stringify({error: isObject(r.error) ? r.error.code : r.error})] : []);
+      push(externalError(name, parts.join(" ") || "isError", true).code);
+    }
+    const found = structuredError(r, true);
+    if (found !== null) push(found.code);
+    if (isObject(r) && Array.isArray(r.content)) for (const c of r.content) if (isObject(c) && typeof c.text === "string") { let parsed = null; try { parsed = parseSafe(c.text, "réponse de l'outil"); } catch (e) { if (isUnsafeError(e)) throw e; } if (isObject(parsed) && (parsed.error || parsed.error_code)) push(typeof parsed.error_code === "string" ? parsed.error_code : isObject(parsed.error) ? parsed.error.code : parsed.error); }
+    let u;
+    try { u = unwrap(mcpUnwrap(r, false)); } catch (e) { throw Object.assign(externalError(name, "réponse refusée : enveloppe inexploitable", false), {code: "response_invalid", unknown: true, detail: clip(String(e && e.message), 200)}); }
+    try { rejectUnsafeAnswer(u, "réponse de l'outil " + name); } catch (e) { throw Object.assign(externalError(name, "réponse refusée : clé interdite", false), {code: "response_invalid", unknown: true, detail: clip(String(e && e.message), 200)}); }
+    const finalFound = structuredError(u, true);
+    if (finalFound !== null) push(finalFound.code);
+    if (isObject(u) && typeof u.error_code === "string" && u.error_code) push(u.error_code);
+    if (!isObject(u) && !signals.length) throw externalError(name, "réponse inattendue", true);
+    return {response: isObject(u) ? u : {}, signals};
+  }
   // isError always wins, even with a structuredContent or a text that says ok. The code is read from the content when there is
   // one; without any code the outcome is unknown (the call may have gone through).
   if (isObject(r) && r.isError === true) {
@@ -801,7 +822,8 @@ const rec = begun.rec;
 let res;
 // Only a code known to happen BEFORE the sending proves that nothing was sent; any other error leaves the outcome unknown.
 const PRESEND = ["not_connected", "authorization_required", "identity_unproven", "tool_unavailable"];
-try { res = await callExternal("google_mail_send", {to: to.join(", "), subject, body}); } catch (e) { if (!PRESEND.includes(e && e.code)) e.unknown = true; await markFailed(rec, e); }
+let rootSignals;
+try { const raw = await callExternal("google_mail_send", {to: to.join(", "), subject, body}, {raw: true}); res = raw.response; rootSignals = raw.signals; } catch (e) { if (!PRESEND.includes(e && e.code)) e.unknown = true; await markFailed(rec, e); }
 // Published only on proof: a 2xx status and the Gmail message id. The body may arrive as JSON text.
 let answer = res.body;
 if (typeof answer === "string") { try { answer = parseSafe(answer, "réponse du connecteur"); } catch (e) { if (isUnsafeError(e)) throw e; answer = null; } }
@@ -812,10 +834,14 @@ const isOk2xx = Number.isInteger(res.status_code) && res.status_code >= 200 && r
 const hasId = isObject(answer) && typeof answer.id === "string" && !!answer.id;
 const codeOf = (raw) => (typeof raw === "string" && raw ? clip(raw, 60).toLowerCase().replace(/[^a-z0-9_]/g, "_") : null);
 const hasErrorField = isObject(answer) && answer.error !== undefined && answer.error !== null && answer.error !== "" && answer.error !== false;
-const codes = isObject(answer) ? [codeOf(answer.error_code), hasErrorField ? (isObject(answer.error) ? codeOf(answer.error.code) : codeOf(answer.error)) : null].filter((c) => c !== null) : [];
-if (codes.length || hasErrorField) {
-  const clean = codes.length > 0 && codes.every((c) => PRESEND.includes(c)) && !hasId && !isOk2xx && !(hasErrorField && !codes.length);
-  await markFailed(rec, clean ? {code: codes[0], detail: "erreur du connecteur"} : {code: codes[0] || "connector_error", unknown: true, detail: "erreur dans la réponse du connecteur, signaux non concordants avec un envoi exclu"});
+// The signals: the error of the answer (root or isError, from callExternal), `error_code` and `error` of the body.
+const signals = rootSignals.map((x) => ({code: codeOf(x.code)}));
+if (isObject(answer) && codeOf(answer.error_code)) signals.push({code: codeOf(answer.error_code)});
+if (hasErrorField) signals.push({code: isObject(answer.error) ? codeOf(answer.error.code) : codeOf(answer.error)});
+if (signals.length) {
+  const clean = signals.every((x) => x.code !== null && PRESEND.includes(x.code)) && !hasId && !isOk2xx;
+  const first = signals.map((x) => x.code).find((c) => c !== null);
+  await markFailed(rec, clean ? {code: first, detail: "erreur du connecteur"} : {code: first || "connector_error", unknown: true, detail: "erreur dans la réponse du connecteur, signaux non concordants avec un envoi exclu"});
 }
 if (Number.isInteger(res.status_code) && res.status_code >= 400 && res.status_code < 500) await markFailed(rec, hasId ? {unknown: true, detail: "statut " + res.status_code + " avec un identifiant de message : l'envoi n'est pas exclu"} : {code: "email_rejected", detail: "statut " + res.status_code});
 if (Number.isInteger(res.status_code) && (res.status_code < 200 || res.status_code >= 300)) await markFailed(rec, {unknown: true, detail: "statut " + res.status_code + " : l'envoi n'est pas exclu"});

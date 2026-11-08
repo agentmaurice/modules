@@ -105,6 +105,8 @@ async function rawTool(name, args) {
     if (opts.mail_enveloped) return {isError: true, content: [{type: "text", text: opts.mail_enveloped === true ? JSON.stringify({error_code: "not_connected", connector_key: "google-mail", connect_available: true}) : opts.mail_enveloped}]};
     if (opts.mail_throw) throw new Error(opts.mail_throw);
     if (opts.mail_empty) return {};
+    if (opts.mail_root_error_with_id) return {error: "not_connected", status_code: 200, body: {id: "msg-r"}};
+    if (opts.mail_root_error_alone) return {error: "not_connected"};
     if (opts.mail_contradiction) return {status_code: 200, body: {id: "msg-c", error_code: "not_connected", error: "not_connected"}};
     if (opts.mail_consistent_presend) return {status_code: 401, body: {error_code: "not_connected", error: {code: "not_connected"}}};
     if (opts.mail_body_error) return {status_code: 200, body: {id: "msg-e", threadId: "t", error: opts.mail_body_error}};
@@ -487,6 +489,12 @@ class WebTest(unittest.TestCase):
         self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
         # every signal agrees on "before sending": failed
         out = email(mail_consistent_presend=True)
+        self.assertEqual((record(out, 'mail-1')['status'], record(out, 'mail-1')['error']['code']), ('failed', 'not_connected'))
+
+    def test_a_root_error_is_one_more_signal_for_a_sending_tool(self):
+        out = email(mail_root_error_with_id=True)
+        self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
+        out = email(mail_root_error_alone=True)
         self.assertEqual((record(out, 'mail-1')['status'], record(out, 'mail-1')['error']['code']), ('failed', 'not_connected'))
 
     def test_unsafe_keys_in_tool_answers_are_refused(self):
@@ -1099,6 +1107,10 @@ class Review8Test(unittest.TestCase):
             self.assertEqual(record(out, pid)['status'], 'outcome_unknown', pid)
             out = runner(iserror_env='code')
             rec = record(out, pid)
+            if pid == 'mail-1':
+                # the structured content of this envelope carries a 2xx status and a message id: the signals contradict each other
+                self.assertEqual(rec['status'], 'outcome_unknown', pid)
+                continue
             self.assertEqual(rec['error']['code'], code, pid)
             self.assertNotEqual(rec['status'], 'published', pid)
 
