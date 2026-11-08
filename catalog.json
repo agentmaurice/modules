@@ -802,11 +802,11 @@
     {
       "key": "publish",
       "name": "Publish",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "subpath": "publish",
       "manifest": "publish/module.yaml",
-      "manifest_sha256": "fc2148296aac5d338e5cd381e997bcc8c65dbcf0265ec4bc2916b4192f4e7dd1",
-      "tree_sha256": "a1ba8b1364e41cc6db0eb7baa263cbe1e2481ac89d4e374fd2b187f3218ea862",
+      "manifest_sha256": "b2a6d897fdf80d34393fc4c713750edb04d9d4c9a38b8f28eda3bde66d87a1c3",
+      "tree_sha256": "2375a5f012e7067806cd1a9936953f90d07f8aac6ffb3e9406e679c736964d99",
       "description": {
         "en": "Publish: send a Storage file to a web server, an e-mail message or social channels, only after a manual confirmation and to a destination the caller names, with a journal of every publication and removal of files and posts.",
         "fr": "Publication : diffuser un fichier Storage sur un serveur web, un message par e-mail ou des canaux sociaux, uniquement après une confirmation manuelle et vers une destination nommée par l'appelant, avec un journal de chaque diffusion et le retrait des fichiers et des posts."

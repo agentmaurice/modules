@@ -16,7 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 MODULE = ROOT.parents[1] / 'publish'
 DEST = MODULE / 'agents/main'
-VERSION = '0.1.0'
+VERSION = '0.1.1'
 
 
 def dump(path, data):
@@ -48,6 +48,9 @@ function own(o, k) { return Object.prototype.hasOwnProperty.call(o, k); }
 function redact(s) { return String(s).replace(/[A-Za-z0-9+\/=]{120,}/g, "[…]"); }
 function clip(s, n) { s = String(s); return s.length > n ? s.slice(0, n) : s; }
 // External data (model answer, caller input, tool answers) never carries these keys, at any depth.
+// The only decoding path outside the guard itself: parse, then refuse unsafe keys right away. A refusal is never swallowed by a caller's catch.
+function isUnsafeError(e) { return String(e && e.message).startsWith("data_invalid"); }
+function parseSafe(t, label) { const v = JSON.parse(t); rejectUnsafeKeys(v, label); return v; }
 function rejectUnsafeKeys(v, label) {
   if (Array.isArray(v)) { v.forEach((x) => rejectUnsafeKeys(x, label)); return; }
   if (!isObject(v)) return;
@@ -57,6 +60,55 @@ function rejectUnsafeKeys(v, label) {
   for (const k of Object.keys(v)) {
     if (k === "__proto__" || k === "constructor" || k === "prototype") fail("data_invalid", label + " : clé interdite " + k);
     rejectUnsafeKeys(v[k], label);
+  }
+}
+// Tool answers get the same guard as incoming data: the object itself, and the JSON text parts of an MCP content array.
+function rejectUnsafeAnswer(r, label, depth) {
+  depth = depth || 0;
+  // Beyond the limit nothing is inspected: a JSON text or a structure there is refused (fail safe), never accepted.
+  if (depth > 12) { if (typeof r === "string" ? /^\s*[\[{]/.test(r) : (r !== null && typeof r === "object")) fail("data_invalid", label + " : profondeur excessive"); return; }
+  if (typeof r === "string") {
+    if (!/^\s*[\[{]/.test(r)) return;
+    let parsed; try { parsed = JSON.parse(r); } catch (e) { return; }
+    rejectUnsafeAnswer(parsed, label, depth + 1);
+    return;
+  }
+  rejectUnsafeKeys(r, label);
+  // Every string of the answer that is JSON text is decoded, wherever an MCP envelope can carry one (content, structuredContent.content, data...).
+  if (Array.isArray(r)) r.forEach((x) => rejectUnsafeAnswer(x, label, depth + 1));
+  else if (isObject(r)) for (const k of Object.keys(r)) rejectUnsafeAnswer(r[k], label, depth + 1);
+}
+// read_file: the file text (the value of the single field `content`) is data; everything else of the decoded answer gets the full guard.
+function guardReadAnswer(r) {
+  if (!isObject(r)) return;
+  rejectUnsafeKeys(r, "réponse de l'outil read_file");
+  for (const k of Object.keys(r)) if (k !== "content" || typeof r[k] !== "string") rejectUnsafeAnswer(r[k], "réponse de l'outil read_file");
+}
+// read_file, raw envelope: everything gets the full guard except the strings that carry the file data: `content` of the answer
+// (root or structuredContent), or `content` of the decoded JSON of the single text part when mcpUnwrap treats it as an answer.
+const READ_KEYS = ["content", "encoding", "path", "size", "success"];
+function guardReadData(o) {
+  rejectUnsafeKeys(o, "réponse de l'outil read_file");
+  for (const k of Object.keys(o)) if (k !== "content" || typeof o[k] !== "string") rejectUnsafeAnswer(o[k], "réponse de l'outil read_file");
+}
+function guardReadEnvelope(r) {
+  if (!isObject(r)) return;
+  rejectUnsafeKeys(r, "réponse de l'outil read_file");
+  for (const k of Object.keys(r)) {
+    const v = r[k];
+    if (k === "content" && typeof v === "string") continue;
+    if (k === "structuredContent" && isObject(v)) { guardReadData(v); continue; }
+    if (k === "content" && Array.isArray(v)) {
+      for (const part of v) {
+        if (isObject(part) && part.type === "text" && typeof part.text === "string") {
+          let parsed; try { parsed = JSON.parse(part.text); } catch (e) { parsed = undefined; }
+          if (isObject(parsed) && typeof parsed.content === "string" && Object.keys(parsed).every((x) => READ_KEYS.includes(x))) guardReadData(parsed);
+          for (const [pk, pv] of Object.entries(part)) if (pk !== "text") rejectUnsafeAnswer(pv, "réponse de l'outil read_file");
+        } else rejectUnsafeAnswer(part, "réponse de l'outil read_file");
+      }
+      continue;
+    }
+    rejectUnsafeAnswer(v, "réponse de l'outil read_file");
   }
 }
 function idOf(v) { if (typeof v !== "string" || !ID_RE.test(v)) fail("publication_id_invalid", "attendu : minuscules, chiffres et tirets, 48 caractères au plus"); return v; }
@@ -73,6 +125,8 @@ async function fingerprint(v) { return sha256Hex(new TextEncoder().encode(canoni
 function b64ToBytes(b64) { const bin = atob(b64); const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; }
 async function sha256Hex(bytes) { const d = await crypto.subtle.digest("SHA-256", bytes); return Array.from(new Uint8Array(d), (x) => x.toString(16).padStart(2, "0")).join(""); }
 function parseJsonValue(v) {
+  // The full guard on the whole value, before any extraction: the envelope, every JSON text at any depth.
+  rejectUnsafeAnswer(v, "réponse du modèle");
   // llm_call with llm_response_format "text" yields {text, model, provider}.
   if (v && typeof v === "object" && !Array.isArray(v) && typeof v.text === "string") v = v.text;
   if (typeof v !== "string") { rejectUnsafeKeys(v, "réponse du modèle"); return v; }
@@ -129,7 +183,7 @@ function isMissing(info) {
 function errorInfo(message, ...sources) {
   const info = {message: String(message), code: null, status: null};
   let parsed = null;
-  if (/^\s*\{/.test(info.message)) { try { parsed = JSON.parse(info.message); } catch (e) { parsed = null; } }
+  if (/^\s*\{/.test(info.message)) { try { parsed = parseSafe(info.message, "message d'erreur"); } catch (e) { if (isUnsafeError(e)) throw e; parsed = null; } }
   for (const src of [...sources, parsed]) {
     if (!isObject(src)) continue;
     const inner = isObject(src.error) ? src.error : null;
@@ -163,7 +217,8 @@ function structuredError(r, textual, depth) {
   if (depth > 3) return null;
   if (typeof r === "string") {
     if (!textual || !/^\s*\{/.test(r)) return null;
-    try { return structuredError(JSON.parse(r), textual, depth + 1); } catch (e) { return null; }
+    let v; try { v = parseSafe(r, "réponse de l'outil"); } catch (e) { if (isUnsafeError(e)) throw e; return null; }
+    return structuredError(v, textual, depth + 1);
   }
   if (!isObject(r)) return null;
   if (r.isError === true) {
@@ -182,12 +237,19 @@ function structuredError(r, textual, depth) {
 // For read_file, whose content is a file, only the clear envelope is opened (text parts, or structuredContent).
 function mcpUnwrap(r, isRead) {
   if (!isObject(r)) return r;
+  // No part is ever dropped silently: more than one text part is refused, and the parts not retained go through the full guard.
+  if (Array.isArray(r.content)) {
+    if (r.content.filter((c) => isObject(c) && typeof c.text === "string").length > 1) fail("data_invalid", "enveloppe MCP avec plusieurs parties texte");
+    if (isObject(r.structuredContent)) rejectUnsafeAnswer(r.content, "partie ignorée de la réponse");
+  }
   if (isObject(r.structuredContent)) return r.structuredContent;
   if (Array.isArray(r.content) && r.content.length && isObject(r.content[0]) && r.content[0].type === "text" && typeof r.content[0].text === "string") {
     const t = r.content[0].text;
     let parsed;
     try { parsed = JSON.parse(t); } catch (e) { parsed = undefined; }
-    if (isRead) return isObject(parsed) && typeof parsed.content === "string" && Object.keys(parsed).every((k) => ["content", "encoding", "path", "size", "success"].includes(k)) ? parsed : {content: t};
+    // The text of a read_file part may be the file itself (data): only an answer-shaped JSON is guarded, in guardReadEnvelope and after unwrapping.
+    if (!isRead) rejectUnsafeKeys(parsed, "réponse de l'outil");
+    if (isRead) { if (isObject(parsed)) rejectUnsafeKeys(parsed, "réponse de l'outil read_file"); return isObject(parsed) && typeof parsed.content === "string" && Object.keys(parsed).every((k) => ["content", "encoding", "path", "size", "success"].includes(k)) ? parsed : {content: t}; }
     if (isObject(parsed) || Array.isArray(parsed)) return parsed;
   }
   return r;
@@ -195,9 +257,13 @@ function mcpUnwrap(r, isRead) {
 async function storageCall(name, args) {
   let r;
   try { r = await callTool(name, args); } catch (e) { storageError(errorInfo(String(e && e.message), e), args.path); }
+  // read_file returns a file: its text is data, not a tool answer. The other Storage tools answer in JSON.
+  if (name !== "read_file") rejectUnsafeAnswer(r, "réponse de l'outil " + name); else guardReadEnvelope(r);
   const message = structuredError(r, name !== "read_file");
   if (message !== null) storageError(message, args.path);
   r = mcpUnwrap(r, name === "read_file");
+  // After every decoding: the whole answer for a JSON tool, the keys (not the file text) for read_file.
+  if (name !== "read_file") rejectUnsafeAnswer(r, "réponse de l'outil " + name); else guardReadAnswer(r);
   const inner = structuredError(r, name !== "read_file");
   if (inner !== null) storageError(inner, args.path);
   return unwrap(r);
@@ -210,7 +276,8 @@ async function readText(path, extra) {
 }
 async function readJson(path) {
   const raw = await readText(path);
-  try { return JSON.parse(raw); } catch (e) { fail("json_corrupt", path); }
+  let v; try { v = parseSafe(raw, "journal " + path); } catch (e) { if (isUnsafeError(e)) throw e; fail("json_corrupt", path); }
+  return v;
 }
 // Reads a Storage file in base64 and fingerprints it. The bytes sent later are exactly the bytes hashed here.
 async function readSource(path, expectedSha) {
@@ -273,14 +340,50 @@ async function loadRecordOrNull(id) {
 // With an explicit publication_id, a replay is decided on the journal ALONE, before any read of the Storage source: published ->
 // already_published, removed -> already_removed, requested / outcome_unknown -> refused. The cheap parts of the request (target,
 // recipients, channels) and an optional source_sha256 are compared so that another request under the same id is still a conflict.
-async function peek(channel, given, lite, expectedSha, resend) {
+// ONE canonical request fingerprint for begin and peek: every input parameter of the Workflow except the ones listed here
+// (an exclusion list, so that a future parameter enters the fingerprint by default). Normalisation is per declared parameter only (`overwrite` booleans, `source_sha256` case).
+const FINGERPRINT_EXCLUDED = ["publication_id", "confirmation_manuelle", "resend_after_unknown", "attempt"];
+// Normalisation is per parameter, never global: only declared booleans, only declared digest parameters. Everything else is hashed as is.
+const FINGERPRINT_BOOLEANS = ["overwrite"];
+const FINGERPRINT_DIGESTS = ["source_sha256"];
+async function inputFingerprint(channel, input) {
+  const norm = {};
+  for (const k of Object.keys(input).sort()) {
+    if (FINGERPRINT_EXCLUDED.includes(k)) continue;
+    const v = input[k];
+    if (FINGERPRINT_BOOLEANS.includes(k) && (v === true || v === "true" || v === "oui")) norm[k] = true;
+    else if (FINGERPRINT_BOOLEANS.includes(k) && (v === false || v === "false" || v === "non")) norm[k] = false;
+    else if (FINGERPRINT_DIGESTS.includes(k) && typeof v === "string") norm[k] = v.toLowerCase();
+    else norm[k] = v;
+  }
+  return fingerprint({channel, input: norm});
+}
+// A replay with an explicit id is decided on the journal ALONE: the complete input fingerprint is compared without reading Storage
+// (only the byte check of the Storage source is absent on replay). A journal without this fingerprint (older) is a conflict: fail safe.
+function shaLower(v) { return typeof v === "string" && v ? v.toLowerCase() : null; }
+async function peek(channel, given, input, resend, legacy) {
   if (!given) return null;
   const rec = await loadRecordOrNull(given);
   if (!rec) return null;
-  const conflict = () => fail("publication_conflict", given + " existe avec une autre demande : changez publication_id");
-  if (rec.channel !== channel) conflict();
-  for (const [k, v] of Object.entries(lite)) if (canonical(rec.target[k]) !== canonical(v)) conflict();
-  if (typeof expectedSha === "string" && expectedSha && isObject(rec.source) && typeof rec.source.sha256 === "string" && rec.source.sha256 !== expectedSha.toLowerCase()) conflict();
+  const received = await inputFingerprint(channel, input);
+  const conflict = (stored) => fail("idempotency_conflict", given + " existe avec une autre demande : changez publication_id (empreinte de la demande enregistrée " + stored + ", reçue " + received + ")");
+  if (rec.channel !== channel) conflict(rec.input_sha256 || "absente (journal ancien)");
+  if (rec.input_sha256 === undefined) {
+    // A journal written before 0.1.1 has no input fingerprint: it keeps the 0.1.0 detection (target fields, source_sha256, inline text hash,
+    // and the media paths), without reading Storage.
+    const t = isObject(rec.target) ? rec.target : {};
+    const src = isObject(rec.source) ? rec.source : {};
+    let same = true;
+    for (const [k, v] of Object.entries(legacy.lite)) if (canonical(t[k]) !== canonical(v)) same = false;
+    if (src.kind !== legacy.source.kind || (legacy.source.kind === "storage" && src.path !== legacy.source.path)) same = false;
+    // Every option recorded in the old journal (overwrite...) against the received one, normalised per parameter.
+    const recOptions = isObject(rec.options) ? rec.options : {}, gotOptions = legacy.options || {};
+    for (const k of new Set([...Object.keys(recOptions), ...Object.keys(gotOptions)])) if (canonical(recOptions[k]) !== canonical(gotOptions[k])) same = false;
+    if (legacy.sha256 && typeof src.sha256 === "string" && src.sha256 !== legacy.sha256) same = false;
+    if (legacy.inline && src.kind === "text" && src.sha256 !== legacy.inline) same = false;
+    if (legacy.media && canonical(Array.isArray(t.media) ? t.media.map((m) => (isObject(m) ? m.path : null)) : []) !== canonical(legacy.media)) same = false;
+    if (!same) conflict("absente (journal ancien, comparaison 0.1.0)");
+  } else if (rec.status !== "failed" && rec.input_sha256 !== received) conflict(rec.input_sha256); // a failed publication sent nothing: the retry decides in begin
   if (rec.status === "published") return {...summarize(rec), already_published: true};
   if (rec.status === "removed") return {...summarize(rec), already_removed: true};
   if ((rec.status === "requested" || rec.status === "outcome_unknown") && !resend) fail("publication_outcome_unknown", given + " : la diffusion est en cours ou son issue est inconnue (statut " + rec.status + ") ; vérifiez la destination, puis utilisez un nouveau publication_id ou resend_after_unknown = oui");
@@ -380,11 +483,12 @@ async function begin(channel, given, request, opts, precheck) {
   const resend = !!(opts && opts.resend);
   const attempt = attemptOf(opts && opts.attempt, given);
   const sha = await fingerprint({channel, source: request.source, target: request.target});
+  const inputSha = await inputFingerprint(channel, request.input);
   const id = given || channel + "-" + sha.slice(0, 12) + (attempt > 1 ? "-a" + attempt : "");
   const existing = await loadRecordOrNull(id);
   const at = nowIso();
   if (existing) {
-    if (existing.channel !== channel || existing.request_sha256 !== sha) fail("publication_conflict", id + " existe avec une autre demande : changez publication_id");
+    if (existing.channel !== channel || existing.request_sha256 !== sha || (existing.input_sha256 !== undefined && existing.input_sha256 !== inputSha && existing.status !== "failed")) fail("idempotency_conflict", id + " existe avec une autre demande : changez publication_id (empreinte enregistrée " + (existing.input_sha256 || "absente (journal ancien)") + ", reçue " + inputSha + " ; source enregistrée " + existing.request_sha256 + ", reçue " + sha + ")");
     if (existing.status === "published") return {rec: existing, done: {...summarize(existing), already_published: true}};
     if (existing.status === "removed") return {rec: existing, done: {...summarize(existing), already_removed: true}};
     if ((existing.status === "requested" || existing.status === "outcome_unknown") && !resend) fail("publication_outcome_unknown", id + " : la diffusion est en cours ou son issue est inconnue (statut " + existing.status + ") ; vérifiez la destination, puis utilisez un nouveau publication_id ou resend_after_unknown = oui");
@@ -396,12 +500,13 @@ async function begin(channel, given, request, opts, precheck) {
     existing.remote = null;
     existing.history.push({at, action: forced ? "resend_after_unknown" : "requested", note: "tentative " + existing.attempts + (forced ? " ; renvoi demandé malgré une issue inconnue" : "")});
     existing.options = request.options || {};
+    existing.input_sha256 = inputSha;
     await commit(existing);
     await verifyRequested(existing);
     return {rec: existing, done: null};
   }
   if (precheck) precheck();
-  const rec = {schema: "publish.record/v1", publication_id: id, channel, status: "requested", revision: 1, options: request.options || {}, request_sha256: sha, created_at: at, updated_at: at, attempts: 1, source: request.source, target: request.target, remote: null, error: null, history: [{at, action: "requested", note: "demande enregistrée avant l'appel externe"}]};
+  const rec = {schema: "publish.record/v1", publication_id: id, channel, status: "requested", revision: 1, options: request.options || {}, request_sha256: sha, input_sha256: inputSha, created_at: at, updated_at: at, attempts: 1, source: request.source, target: request.target, remote: null, error: null, history: [{at, action: "requested", note: "demande enregistrée avant l'appel externe"}]};
   try { await writeJson(recordPath(id), rec, false); } catch (e) {
     const m = String(e && e.message);
     if (/already exists|file exists/i.test(m)) fail("concurrent_update", "le journal " + id + " vient d'être créé par un autre acteur");
@@ -450,9 +555,47 @@ function externalError(name, message, thrown) {
   return err;
 }
 // Tools are called by their bare name. A tool error (thrown or returned) becomes an error with a stable code.
-async function callExternal(name, args) {
+// With opts.raw (a sending tool whose outcome is decided from ALL the signals by the caller), a returned error is never thrown: the full
+// response comes back with the error signals ([{code}], code null when the error carries none). Thrown calls and unsafe answers still throw.
+async function callExternal(name, args, opts) {
   let r;
   try { r = await callTool(name, args); } catch (e) { throw externalError(name, String(e && e.message), true); }
+  // The same guard as for incoming data. The call has gone out: an unsafe answer proves nothing about the outcome.
+  try { rejectUnsafeAnswer(r, "réponse de l'outil " + name); } catch (e) { throw Object.assign(externalError(name, "réponse refusée : clé interdite", false), {code: "response_invalid", unknown: true, detail: clip(String(e && e.message), 200)}); }
+  if (opts && opts.raw) {
+    const signals = [];
+    const push = (code) => signals.push({code: typeof code === "string" && code && code !== "external_error" ? code : null});
+    if (isObject(r) && r.isError === true) {
+      const parts = (Array.isArray(r.content) ? r.content.filter((c) => isObject(c) && typeof c.text === "string").map((c) => c.text) : []).concat(isObject(r.structuredContent) ? [JSON.stringify(r.structuredContent)] : [], typeof r.message === "string" ? [r.message] : [], isObject(r.error) || typeof r.error === "string" ? [JSON.stringify({error: isObject(r.error) ? r.error.code : r.error})] : []);
+      push(externalError(name, parts.join(" ") || "isError", true).code);
+    }
+    const found = structuredError(r, true);
+    if (found !== null) push(found.code);
+    if (isObject(r) && Array.isArray(r.content)) for (const c of r.content) if (isObject(c) && typeof c.text === "string") { let parsed = null; try { parsed = parseSafe(c.text, "réponse de l'outil"); } catch (e) { if (isUnsafeError(e)) throw e; } if (isObject(parsed) && (parsed.error || parsed.error_code)) push(typeof parsed.error_code === "string" ? parsed.error_code : isObject(parsed.error) ? parsed.error.code : parsed.error); }
+    let u;
+    try { u = unwrap(mcpUnwrap(r, false)); } catch (e) { throw Object.assign(externalError(name, "réponse refusée : enveloppe inexploitable", false), {code: "response_invalid", unknown: true, detail: clip(String(e && e.message), 200)}); }
+    try { rejectUnsafeAnswer(u, "réponse de l'outil " + name); } catch (e) { throw Object.assign(externalError(name, "réponse refusée : clé interdite", false), {code: "response_invalid", unknown: true, detail: clip(String(e && e.message), 200)}); }
+    if (isObject(r) && typeof r.error_code === "string" && r.error_code) push(r.error_code);
+    const finalFound = structuredError(u, true);
+    if (finalFound !== null) push(finalFound.code);
+    if (isObject(u) && typeof u.error_code === "string" && u.error_code) push(u.error_code);
+    if (!isObject(u) && !signals.length) throw externalError(name, "réponse inattendue", true);
+    // Positive signals are collected on EVERY layer of the answer (root, structuredContent, JSON text parts, data / result / body, the unwrapped
+    // answer) before anything is unwrapped: any positive signal, wherever it sits, forbids `failed`.
+    const layers = [];
+    const addLayer = (v, d) => {
+      if (typeof v === "string" && /^\s*[\[{]/.test(v)) { try { v = JSON.parse(v); } catch (e) { return; } }
+      if (!isObject(v) || d > 3) return;
+      layers.push(v);
+      for (const k of ["structuredContent", "data", "result", "body"]) if (v[k] !== undefined) addLayer(v[k], d + 1);
+      if (Array.isArray(v.content)) for (const c of v.content) if (isObject(c) && typeof c.text === "string") addLayer(c.text, d + 1);
+    };
+    addLayer(r, 0); addLayer(u, 0);
+    const positive = layers.some((l) => (name === "google_mail_send" && ((Number.isInteger(l.status_code) && l.status_code >= 200 && l.status_code < 300) || (typeof l.id === "string" && l.id !== "")))
+      || (name === "social_post_create_v1" && ((typeof l.post_id === "string" && l.post_id !== "") || l.status === "ok"))
+      || (name === "ssh_upload_v1" && (l.status === "ok" || typeof l.sha256 === "string")));
+    return {response: isObject(u) ? u : {}, signals, positive};
+  }
   // isError always wins, even with a structuredContent or a text that says ok. The code is read from the content when there is
   // one; without any code the outcome is unknown (the call may have gone through).
   if (isObject(r) && r.isError === true) {
@@ -465,16 +608,26 @@ async function callExternal(name, args) {
   // MCP envelope: {content: [{type: "text", text}]}, the text usually being JSON.
   if (isObject(r) && Array.isArray(r.content)) {
     const texts = r.content.filter((c) => isObject(c) && typeof c.text === "string").map((c) => c.text);
-    for (const t of texts) { let parsed = null; try { parsed = JSON.parse(t); } catch (e) { parsed = null; } if (isObject(parsed) && (parsed.error || parsed.error_code)) throw externalError(name, t, false); }
+    for (const t of texts) { let parsed = null; try { parsed = parseSafe(t, "réponse de l'outil"); } catch (e) { if (isUnsafeError(e)) throw e; parsed = null; } if (isObject(parsed) && (parsed.error || parsed.error_code)) throw externalError(name, t, false); }
   }
-  r = mcpUnwrap(r, false);
+  try { r = mcpUnwrap(r, false); } catch (e) { throw Object.assign(externalError(name, "réponse refusée : enveloppe inexploitable", false), {code: "response_invalid", unknown: true, detail: clip(String(e && e.message), 200)}); }
   r = unwrap(r);
+  try { rejectUnsafeAnswer(r, "réponse de l'outil " + name); } catch (e) { throw Object.assign(externalError(name, "réponse refusée : clé interdite", false), {code: "response_invalid", unknown: true, detail: clip(String(e && e.message), 200)}); }
   // The same detection on the final, unwrapped result, whatever path led to it (structuredContent, JSON text, data).
   const final = structuredError(r, true);
   if (final !== null) throw externalError(name, JSON.stringify({error: final.code, message: final.message}), false);
   if (isObject(r) && (r.isError === true || (typeof r.error === "string" && r.error) || (typeof r.error_code === "string" && r.error_code))) throw externalError(name, JSON.stringify({error: r.error || r.error_code, message: r.message}), false);
   if (!isObject(r)) throw externalError(name, "réponse inattendue", true);
   return r;
+}
+// The one decision of a sending tool from ALL the signals (callExternal raw): null when there is no error signal; otherwise an error that
+// is definitive (a refusal before sending) only if every signal carries a pre-send code of the tool and nothing says it succeeded.
+function singleDecision(signals, presend, succeeded) {
+  if (!signals.length) return null;
+  const codes = signals.map((x) => (typeof x.code === "string" && x.code ? x.code : null));
+  const clean = codes.every((c) => c !== null && presend.includes(c)) && !succeeded;
+  const code = codes.find((c) => c !== null) || "external_error";
+  return Object.assign(new Error(code + ": réponse d'erreur"), {code, unknown: !clean, detail: clean ? "refus avant envoi" : "signaux non concordants avec un envoi exclu"});
 }
 // A remote identifier is never truncated: 1 to 1024 characters or remote_id_invalid.
 function remoteIdOf(v, required) {
@@ -622,10 +775,10 @@ const target = sshTargetOf(input.target);
 const remotePath = remotePathOf(input.remote_path);
 const overwrite = confirmed(input.overwrite);
 const path = storagePathOf(input.source_path, "source_path");
-const early = await peek("web", given, {ssh_target: target, path: remotePath}, input.source_sha256, confirmed(input.resend_after_unknown));
+const early = await peek("web", given, input, confirmed(input.resend_after_unknown), {lite: {ssh_target: target, path: remotePath}, source: {kind: "storage", path}, options: {overwrite}, sha256: shaLower(input.source_sha256)});
 if (early) return early;
 const src = await readSource(path, input.source_sha256);
-const begun = await begin("web", given, {source: {kind: "storage", path, sha256: src.sha256, bytes: src.bytes}, target: {ssh_target: target, path: remotePath}, options: {overwrite}}, {resend: confirmed(input.resend_after_unknown), attempt: input.attempt});
+const begun = await begin("web", given, {source: {kind: "storage", path, sha256: src.sha256, bytes: src.bytes}, target: {ssh_target: target, path: remotePath}, options: {overwrite}, input}, {resend: confirmed(input.resend_after_unknown), attempt: input.attempt});
 if (begun.done) return begun.done;
 const rec = begun.rec;
 const destKey = await destinationKey(target + "\n" + remotePath);
@@ -640,9 +793,13 @@ try { prior = await readDestOrNull("web", destKey); } catch (e) {
 }
 try { await writeDest("web", destKey, rec.publication_id, src.sha256, "pending_owner", rec.attempts); } catch (e) { await markFailed(rec, {code: "destination_index_failed", detail: "réservation de la destination non confirmée : aucun appel externe (" + clip(String(e && e.message), 100) + ")"}); }
 let res;
-try { res = await callExternal("ssh_upload_v1", {target, path: remotePath, file: {content_base64: src.b64}, overwrite}); } catch (e) {
+const SSH_REFUSED = ["tool_unavailable", "file_exists", "publish_not_enabled", "invalid_arguments", "file_too_large", "atomic_replace_unavailable"];
+let sendError = null;
+try { const raw = await callExternal("ssh_upload_v1", {target, path: remotePath, file: {content_base64: src.b64}, overwrite}, {raw: true}); res = raw.response; sendError = singleDecision(raw.signals, SSH_REFUSED, raw.positive || (res.status === "ok" && typeof res.sha256 === "string" && res.sha256.toLowerCase() === src.sha256 && (res.bytes === undefined || res.bytes === src.bytes))); } catch (e) { sendError = e; }
+if (sendError) {
+  const e = sendError;
   // A definitive refusal wrote nothing: the reservation is cancelled and the previous owner gets the destination back (read back).
-  const refused = ["tool_unavailable", "file_exists", "publish_not_enabled", "invalid_arguments", "file_too_large", "atomic_replace_unavailable"].includes(e && e.code);
+  const refused = SSH_REFUSED.includes(e && e.code) && !e.unknown;
   if (!refused) e.unknown = true;
   if (prior && refused && !e.unknown) {
     try { await restoreDest("web", destKey, prior, rec.publication_id, rec.attempts); } catch (r) { e.detail = clip((e.detail || "") + " ; restauration de l'index non confirmée : " + clip(String(r && r.message), 80), 300); }
@@ -675,7 +832,7 @@ if (/[\r\n]/.test(subject)) fail("subject_invalid", "pas de saut de ligne");
 const hasBody = input.body !== undefined && input.body !== null && input.body !== "";
 const hasPath = input.source_path !== undefined && input.source_path !== null && input.source_path !== "";
 if (hasBody === hasPath) fail("body_required", "exactement un corps : body ou source_path");
-const early = await peek("email", given, {to, subject}, input.source_sha256, confirmed(input.resend_after_unknown));
+const early = await peek("email", given, input, confirmed(input.resend_after_unknown), {lite: {to, subject}, source: hasBody ? {kind: "text"} : {kind: "storage", path: storagePathOf(input.source_path, "source_path")}, sha256: shaLower(input.source_sha256), inline: hasBody ? await sha256Hex(new TextEncoder().encode(text(input.body, "body", 20000, true))) : null});
 if (early) return early;
 let body, source;
 if (hasPath) {
@@ -689,19 +846,34 @@ if (hasPath) {
   source = {kind: "text", sha256: await sha256Hex(data), bytes: data.length};
 }
 if (!body.trim() || body.length > 20000) fail("body_invalid", "1 à 20000 caractères");
-const begun = await begin("email", given, {source, target: {tool: "google_mail_send", to, subject}}, {resend: confirmed(input.resend_after_unknown), attempt: input.attempt});
+const begun = await begin("email", given, {source, input, target: {tool: "google_mail_send", to, subject}}, {resend: confirmed(input.resend_after_unknown), attempt: input.attempt});
 if (begun.done) return begun.done;
 const rec = begun.rec;
 let res;
 // Only a code known to happen BEFORE the sending proves that nothing was sent; any other error leaves the outcome unknown.
 const PRESEND = ["not_connected", "authorization_required", "identity_unproven", "tool_unavailable"];
-try { res = await callExternal("google_mail_send", {to: to.join(", "), subject, body}); } catch (e) { if (!PRESEND.includes(e && e.code)) e.unknown = true; await markFailed(rec, e); }
+let rootSignals, rootPositive = false;
+try { const raw = await callExternal("google_mail_send", {to: to.join(", "), subject, body}, {raw: true}); res = raw.response; rootSignals = raw.signals; rootPositive = raw.positive; } catch (e) { if (!PRESEND.includes(e && e.code)) e.unknown = true; await markFailed(rec, e); }
 // Published only on proof: a 2xx status and the Gmail message id. The body may arrive as JSON text.
 let answer = res.body;
-if (typeof answer === "string") { try { answer = JSON.parse(answer); } catch (e) { answer = null; } }
+if (typeof answer === "string") { try { answer = parseSafe(answer, "réponse du connecteur"); } catch (e) { if (isUnsafeError(e)) throw e; answer = null; } }
 if (isObject(answer)) rejectUnsafeKeys(answer, "réponse du connecteur");
-if (isObject(answer) && typeof answer.error_code === "string" && answer.error_code) { const c = clip(answer.error_code, 60).replace(/[^a-z0-9_]/g, "_"); await markFailed(rec, {code: c, unknown: !PRESEND.includes(c), detail: "erreur du connecteur"}); }
-if (Number.isInteger(res.status_code) && res.status_code >= 400 && res.status_code < 500) await markFailed(rec, {code: "email_rejected", detail: "statut " + res.status_code});
+// ALL the signals are read before deciding. `failed` (nothing left) only when every signal says "before sending": a known pre-send code,
+// no message id, no 2xx status. An id, a 2xx status, an error outside the pre-send list, or signals that contradict each other: outcome_unknown.
+const isOk2xx = Number.isInteger(res.status_code) && res.status_code >= 200 && res.status_code < 300;
+const hasId = isObject(answer) && typeof answer.id === "string" && !!answer.id;
+const codeOf = (raw) => (typeof raw === "string" && raw ? clip(raw, 60).toLowerCase().replace(/[^a-z0-9_]/g, "_") : null);
+const hasErrorField = isObject(answer) && answer.error !== undefined && answer.error !== null && answer.error !== "" && answer.error !== false;
+// The signals: the error of the answer (root or isError, from callExternal), `error_code` and `error` of the body.
+const signals = rootSignals.map((x) => ({code: codeOf(x.code)}));
+if (isObject(answer) && codeOf(answer.error_code)) signals.push({code: codeOf(answer.error_code)});
+if (hasErrorField) signals.push({code: isObject(answer.error) ? codeOf(answer.error.code) : codeOf(answer.error)});
+if (signals.length) {
+  const clean = signals.every((x) => x.code !== null && PRESEND.includes(x.code)) && !hasId && !isOk2xx && !rootPositive;
+  const first = signals.map((x) => x.code).find((c) => c !== null);
+  await markFailed(rec, clean ? {code: first, detail: "erreur du connecteur"} : {code: first || "connector_error", unknown: true, detail: "erreur dans la réponse du connecteur, signaux non concordants avec un envoi exclu"});
+}
+if (Number.isInteger(res.status_code) && res.status_code >= 400 && res.status_code < 500) await markFailed(rec, hasId ? {unknown: true, detail: "statut " + res.status_code + " avec un identifiant de message : l'envoi n'est pas exclu"} : {code: "email_rejected", detail: "statut " + res.status_code});
 if (Number.isInteger(res.status_code) && (res.status_code < 200 || res.status_code >= 300)) await markFailed(rec, {unknown: true, detail: "statut " + res.status_code + " : l'envoi n'est pas exclu"});
 if (!Number.isInteger(res.status_code) || !isObject(answer) || typeof answer.id !== "string" || !answer.id) await markFailed(rec, {unknown: true, detail: "réponse du connecteur sans statut 2xx ou sans identifiant de message : l'envoi n'est ni prouvé ni exclu"});
 let ids;
@@ -725,7 +897,7 @@ if (mode === "schedule") {
 const hasContent = input.content !== undefined && input.content !== null && input.content !== "";
 const hasPath = input.source_path !== undefined && input.source_path !== null && input.source_path !== "";
 if (hasContent === hasPath) fail("content_required", "exactement un contenu : content ou source_path");
-const early = await peek("social", given, {channels, mode, schedule_at: scheduleAt}, input.source_sha256, confirmed(input.resend_after_unknown));
+const early = await peek("social", given, input, confirmed(input.resend_after_unknown), {lite: {channels, mode, schedule_at: scheduleAt}, source: hasContent ? {kind: "text"} : {kind: "storage", path: storagePathOf(input.source_path, "source_path")}, sha256: shaLower(input.source_sha256), inline: hasContent ? await sha256Hex(new TextEncoder().encode(text(input.content, "content", 5000, true))) : null, media: input.media_paths === undefined || input.media_paths === null || input.media_paths === "" ? [] : listOf(input.media_paths, "media_paths", 1, 4, /^\/.{1,299}$/).map((p) => storagePathOf(p, "media_paths"))});
 if (early) return early;
 let content, source;
 if (hasPath) {
@@ -751,7 +923,7 @@ if (input.media_paths !== undefined && input.media_paths !== null && input.media
     mediaRefs.push({path, sha256: m.sha256, bytes: m.bytes});
   }
 }
-const begun = await begin("social", given, {source, target: {channels, mode, schedule_at: scheduleAt, media: mediaRefs}}, {resend: confirmed(input.resend_after_unknown), attempt: input.attempt}, () => { if (scheduleAt && Date.parse(scheduleAt) <= clock().getTime()) fail("schedule_at_invalid", "la date doit être dans le futur"); });
+const begun = await begin("social", given, {source, input, target: {channels, mode, schedule_at: scheduleAt, media: mediaRefs}}, {resend: confirmed(input.resend_after_unknown), attempt: input.attempt}, () => { if (scheduleAt && Date.parse(scheduleAt) <= clock().getTime()) fail("schedule_at_invalid", "la date doit être dans le futur"); });
 if (begun.done) return begun.done;
 const rec = begun.rec;
 const args = {channels, content, mode, idempotency_key: rec.publication_id};
@@ -760,7 +932,7 @@ if (media.length) args.media = media;
 let res;
 // Only the codes documented as a refusal before any write allow failed; any other error (no code, status error, free text) is an unknown outcome.
 const REFUSED = ["tool_unavailable", "invalid_arguments", "invalid_request", "validation_failed", "not_configured", "rate_limited", "channel_not_found", "content_too_long", "invalid_schedule", "invalid_media", "media_too_large"];
-try { res = await callExternal("social_post_create_v1", args); } catch (e) { if (!REFUSED.includes(e && e.code)) e.unknown = true; await markFailed(rec, e); }
+try { const raw = await callExternal("social_post_create_v1", args, {raw: true}); res = raw.response; const bad = singleDecision(raw.signals, REFUSED, raw.positive || (res.status === "ok" && typeof res.post_id === "string" && !!res.post_id)); if (bad) throw bad; } catch (e) { if (!REFUSED.includes(e && e.code)) e.unknown = true; await markFailed(rec, e); }
 if (res.status !== "ok" || typeof res.post_id !== "string" || !res.post_id) await markFailed(rec, {code: "remote_response_invalid", detail: "post_id absent de la réponse du service social ; relancer avec le même publication_id est sans risque (clé d'idempotence)"});
 let remote;
 try { remote = {post_id: remoteIdOf(res.post_id, true), state: str(res.state, 40), group: remoteIdOf(res.group, false), channels: remoteChannels(res.channels)}; } catch (e) { await markFailed(rec, e); }

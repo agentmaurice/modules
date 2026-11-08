@@ -105,6 +105,14 @@ async function rawTool(name, args) {
     if (opts.mail_enveloped) return {isError: true, content: [{type: "text", text: opts.mail_enveloped === true ? JSON.stringify({error_code: "not_connected", connector_key: "google-mail", connect_available: true}) : opts.mail_enveloped}]};
     if (opts.mail_throw) throw new Error(opts.mail_throw);
     if (opts.mail_empty) return {};
+    if (opts.mail_sc_positive) return {error: "not_connected", structuredContent: {error: "not_connected"}, content: [{type: "text", text: JSON.stringify({status_code: 200, body: {id: "msg-x"}})}]};
+    if (opts.mail_sc_positive_root_refusal) return {structuredContent: {status_code: 200, body: {id: "msg-y"}}, error_code: "not_connected"};
+    if (opts.mail_root_error_with_id) return {error: "not_connected", status_code: 200, body: {id: "msg-r"}};
+    if (opts.mail_root_error_alone) return {error: "not_connected"};
+    if (opts.mail_contradiction) return {status_code: 200, body: {id: "msg-c", error_code: "not_connected", error: "not_connected"}};
+    if (opts.mail_consistent_presend) return {status_code: 401, body: {error_code: "not_connected", error: {code: "not_connected"}}};
+    if (opts.mail_body_error) return {status_code: 200, body: {id: "msg-e", threadId: "t", error: opts.mail_body_error}};
+    if (opts.mail_proto) return {status_code: 200, body: JSON.parse('{"id": "msg-p", "__proto__": {"x": 1}}')};
     if (opts.mail_no_id) return {status_code: 200, body: {}};
     if (opts.mail_body_string) return {status_code: 200, body: JSON.stringify({id: "msg-s", threadId: "t"})};
     if (opts.mail_returned_error) return {error_code: "authorization_required", authorization_id: "a1"};
@@ -115,6 +123,15 @@ async function rawTool(name, args) {
 }
 async function callTool(name, args) {
   const r = await rawTool(name, args);
+  if (opts.read_meta_text && name === "read_file" && args.path.startsWith("/docs/")) return {structuredContent: {content: "SGk=", encoding: "base64"}, meta: {text: '{"' + opts.read_meta_text + '":{}}'}};
+  if (opts.read_meta && name === "read_file" && args.path.startsWith("/docs/")) return {content: "SGk=", encoding: "base64", meta: {content: [{type: "text", text: '{"constructor":{}}'}]}};
+  if (opts.read_parts && name === "read_file" && args.path.startsWith("/docs/")) return {content: [{type: "text", text: '{"content":"SGk=","encoding":"base64"}'}, {type: "text", text: '{"' + opts.read_parts + '":{}}'}]};
+  if (opts.read_nested && name === "read_file" && args.path.startsWith("/docs/")) return {content: [{type: "text", text: '{"content":"SGk=","encoding":"base64","size":{"constructor":{}}}'}]};
+  if (opts.mail_deep && name === "google_mail_send") return {status_code: 200, body: {id: "msg-1"}, meta: {a: {b: {c: {d: {e: {f: {g: {h: {i: {j: {k: {l: {m: {text: '{"prototype":{}}'}}}}}}}}}}}}}}};
+  if (opts.unsafe_nested && name === "ssh_upload_v1") return {structuredContent: {...r, content: [{type: "text", text: '{"' + opts.unsafe_nested + '": {}}'}]}};
+  if (opts.unsafe_answer && name === "ssh_upload_v1") return JSON.parse('{"status": "ok", "bytes": 1, "' + opts.unsafe_answer + '": {"a": 1}}');
+  if (opts.send_layers && ["ssh_upload_v1", "social_post_create_v1"].includes(name)) return {error: opts.send_layers[0], structuredContent: {...opts.send_layers[1]}};
+  if (opts.send_root_error && ["ssh_upload_v1", "social_post_create_v1"].includes(name)) { const c = name === "ssh_upload_v1" ? "file_exists" : "rate_limited"; return opts.send_root_error === "alone" ? {error: c} : {...r, error: c}; }
   if (opts.status_error && ["ssh_upload_v1", "google_mail_send", "social_post_create_v1"].includes(name)) return {status: "error", message: "upstream timeout"};
   if (opts.structured_error && ["ssh_upload_v1", "google_mail_send", "social_post_create_v1", "social_post_get_v1"].includes(name)) return {content: [{type: "text", text: "ok"}], structuredContent: {...r, error: {code: "remote_boom"}}};
   if (opts.ok_with_error && ["ssh_upload_v1", "ssh_remove_v1", "social_post_create_v1", "social_post_get_v1", "social_post_delete_v1"].includes(name) && r && typeof r === "object") return {...r, error: {code: "remote_boom"}};
@@ -322,8 +339,195 @@ class WebTest(unittest.TestCase):
     def test_same_id_with_another_request_is_a_conflict(self):
         first = ok(self, web()) and web()
         out = run_node('publish-web', 'publish', {**WEB, 'remote_path': 'news/other.html'}, first['fs'])
-        self.assertTrue(out['error'].startswith('publication_conflict'), out)
+        self.assertTrue(out['error'].startswith('idempotency_conflict'), out)
         self.assertEqual(external(out), [])
+
+    def test_modified_request_under_a_published_id_is_an_idempotency_conflict(self):
+        first = ok(self, web()) and web()
+        for ctx in ({'remote_path': 'news/other.html'}, {'source_sha256': 'a' * 64}):
+            out = run_node('publish-web', 'publish', {**WEB, **ctx}, first['fs'])
+            self.assertTrue(out['error'].startswith('idempotency_conflict'), out)
+            self.assertIn(record(first, 'page-1')['input_sha256'], out['error'])
+            self.assertEqual((external(out), writes(out)), ([], []))
+        # same request, replayed: still already_published
+        self.assertIs(ok(self, run_node('publish-web', 'publish', WEB, first['fs']))['already_published'], True)
+        # a changed inline body under the same id (e-mail, social) is a conflict, the same one a replay
+        for runner, wf, ctx, field in ((email, 'publish-email', EMAIL, 'body'), (social, 'publish-social', SOCIAL, 'content')):
+            done = runner()
+            changed = run_node(wf, 'publish', {**ctx, field: 'Autre texte'}, done['fs'])
+            self.assertTrue(changed['error'].startswith('idempotency_conflict'), (wf, changed))
+            self.assertEqual(external(changed), [], wf)
+            self.assertIs(ok(self, run_node(wf, 'publish', ctx, done['fs']))['already_published'], True, wf)
+
+    def test_a_changed_source_or_media_under_a_published_id_is_a_conflict(self):
+        fs = {**FILES, '/docs/b.png': {'b64': base64.b64encode(b'\x89PNG other').decode()}}
+        # e-mail recorded with a Storage source, replayed with another path or an inline body
+        mail = {**EMAIL, 'body': None, 'source_path': '/docs/post.md'}
+        done = email(ctx=mail, fs=dict(fs))
+        for change in ({'body': 'Un autre message', 'source_path': None}, {'source_path': '/docs/page.html', 'body': None}):
+            out = run_node('publish-email', 'publish', {**mail, **change}, done['fs'])
+            self.assertTrue(out['error'].startswith('idempotency_conflict'), (change, out))
+            self.assertEqual(external(out), [])
+        self.assertIs(ok(self, run_node('publish-email', 'publish', mail, done['fs']))['already_published'], True)
+        # social with media: another image is another request
+        post = {**SOCIAL, 'mode': 'now', 'media_paths': ['/docs/logo.png']}
+        done = social(ctx=post, fs=dict(fs))
+        out = run_node('publish-social', 'publish', {**post, 'media_paths': ['/docs/b.png']}, done['fs'])
+        self.assertTrue(out['error'].startswith('idempotency_conflict'), out)
+        self.assertEqual(external(out), [])
+        out = run_node('publish-social', 'publish', {**post, 'media_paths': None}, done['fs'])
+        self.assertTrue(out['error'].startswith('idempotency_conflict'), out)
+        self.assertIs(ok(self, run_node('publish-social', 'publish', post, done['fs']))['already_published'], True)
+
+    def test_unsafe_keys_in_a_nested_mcp_envelope_are_refused(self):
+        for key in ('__proto__', 'constructor', 'prototype'):
+            out = run_node('publish-web', 'publish', WEB, dict(FILES), unsafe_nested=key)
+            self.assertTrue(out['error'].startswith('publication_outcome_unknown'), (key, out))
+            self.assertEqual(record(out, 'page-1')['status'], 'outcome_unknown', key)
+
+    def test_unsafe_keys_in_a_decoded_read_file_envelope_are_refused(self):
+        out = run_node('publish-plan', 'prepare', {'source_path': '/docs/post.md'}, dict(FILES), read_nested=True)
+        self.assertTrue(out.get('error', '').startswith('data_invalid'), out)
+
+    def test_secondary_text_parts_of_a_read_file_envelope_are_refused(self):
+        for key in ('__proto__', 'constructor', 'prototype'):
+            out = run_node('publish-plan', 'prepare', {'source_path': '/docs/post.md'}, dict(FILES), read_parts=key)
+            self.assertTrue(out.get('error', '').startswith('data_invalid'), (key, out))
+
+    def test_nested_json_parts_of_a_read_file_answer_are_refused(self):
+        out = run_node('publish-plan', 'prepare', {'source_path': '/docs/post.md'}, dict(FILES), read_meta=True)
+        self.assertTrue(out.get('error', '').startswith('data_invalid'), out)
+
+    def test_every_input_parameter_enters_the_replay_fingerprint(self):
+        done = web()
+        for ctx in ({'overwrite': True}, {'source_sha256': 'a' * 64}):
+            out = run_node('publish-web', 'publish', {**WEB, **ctx}, done['fs'])
+            self.assertTrue(out['error'].startswith('idempotency_conflict'), (ctx, out))
+            self.assertEqual(external(out), [])
+        for runner, wf, ctx in ((email, 'publish-email', EMAIL), (social, 'publish-social', SOCIAL)):
+            first = runner()
+            out = run_node(wf, 'publish', {**ctx, 'source_sha256': 'a' * 64}, first['fs'])
+            self.assertTrue(out['error'].startswith('idempotency_conflict'), (wf, out))
+        # the confirmation is not part of the request
+        self.assertIs(ok(self, run_node('publish-web', 'publish', {**WEB, 'confirmation_manuelle': True}, done['fs']))['already_published'], True)
+
+    def test_dropped_metadata_of_a_read_file_envelope_is_inspected(self):
+        for key in ('__proto__', 'constructor', 'prototype'):
+            out = run_node('publish-plan', 'prepare', {'source_path': '/docs/post.md'}, dict(FILES), read_meta_text=key)
+            self.assertTrue(out.get('error', '').startswith('data_invalid'), (key, out))
+
+    def test_fingerprint_normalisation_is_per_parameter(self):
+        for first, second in (('oui', 'true'), ('A' * 64, 'a' * 64)):
+            done = email(ctx={'body': first})
+            out = run_node('publish-email', 'publish', {**EMAIL, 'body': second}, done['fs'])
+            self.assertTrue(out['error'].startswith('idempotency_conflict'), (first, out))
+        # declared parameters are still normalised
+        done = web(ctx={'overwrite': 'oui'})
+        self.assertIs(ok(self, run_node('publish-web', 'publish', {**WEB, 'overwrite': True}, done['fs']))['already_published'], True)
+
+    def test_a_journal_older_than_0_1_1_keeps_the_0_1_0_detection(self):
+        def legacy(done, pid):
+            fs = dict(done['fs'])
+            key = f'/publish/log/{pid}.json'
+            rec = json.loads(fs[key]['text']); del rec['input_sha256']; fs[key] = {'text': json.dumps(rec)}
+            return fs
+        for runner, wf, ctx, pid, changes in (
+                (web, 'publish-web', WEB, 'page-1', ({'remote_path': 'news/other.html'}, {'source_sha256': 'a' * 64})),
+                (email, 'publish-email', EMAIL, 'mail-1', ({'subject': 'Autre'}, {'body': 'Autre texte'})),
+                (social, 'publish-social', SOCIAL, 'post-a', ({'channels': ['c9']}, {'content': 'Autre texte'}))):
+            fs = legacy(runner(), pid)
+            same = run_node(wf, 'publish', ctx, fs)
+            self.assertIs(ok(self, same)['already_published'], True, wf)
+            self.assertEqual(external(same), [], wf)
+            for change in changes:
+                out = run_node(wf, 'publish', {**ctx, **change}, fs)
+                self.assertTrue(out['error'].startswith('idempotency_conflict'), (wf, change, out))
+                self.assertEqual(external(out), [], wf)
+
+    def test_a_journal_older_than_0_1_1_detects_a_changed_source_kind_or_path(self):
+        done = email(ctx={'body': 'Ancien'})
+        key = '/publish/log/mail-1.json'
+        fs = dict(done['fs'])
+        rec = json.loads(fs[key]['text']); del rec['input_sha256']; fs[key] = {'text': json.dumps(rec)}
+        out = run_node('publish-email', 'publish', {**EMAIL, 'body': None, 'source_path': '/docs/post.md'}, fs)
+        self.assertTrue(out['error'].startswith('idempotency_conflict'), out)
+        self.assertEqual(external(out), [])
+        # a Storage source moved to another path
+        done = email(ctx={'body': None, 'source_path': '/docs/post.md'})
+        fs = dict(done['fs'])
+        rec = json.loads(fs[key]['text']); del rec['input_sha256']; fs[key] = {'text': json.dumps(rec)}
+        out = run_node('publish-email', 'publish', {**EMAIL, 'body': None, 'source_path': '/docs/page.html'}, fs)
+        self.assertTrue(out['error'].startswith('idempotency_conflict'), out)
+
+    def test_a_journal_older_than_0_1_1_compares_the_recorded_options(self):
+        done = web()
+        key = '/publish/log/page-1.json'
+        fs = dict(done['fs'])
+        rec = json.loads(fs[key]['text']); del rec['input_sha256']; fs[key] = {'text': json.dumps(rec)}
+        self.assertEqual(rec['options'], {'overwrite': False})
+        out = run_node('publish-web', 'publish', {**WEB, 'overwrite': True}, fs)
+        self.assertTrue(out['error'].startswith('idempotency_conflict'), out)
+        self.assertEqual(external(out), [])
+        self.assertIs(ok(self, run_node('publish-web', 'publish', {**WEB, 'overwrite': 'non'}, fs))['already_published'], True)
+
+    def test_a_decoded_journal_with_unsafe_keys_is_refused(self):
+        for key in ('__proto__', 'constructor', 'prototype'):
+            base = '{"schema":"publish.record/v1","publication_id":"mail-1","status":"published","channel":"email","revision":1,"attempts":1,"history":[],"target":{},"source":{},"request_sha256":"x","' + key + '":{}}'
+            out = run_node('publish-read', 'read', {'publication_id': 'mail-1'}, {'/publish/log/mail-1.json': {'text': base}})
+            self.assertTrue(out.get('error', '').startswith('data_invalid'), (key, out))
+
+    def test_unsafe_keys_beyond_the_depth_limit_are_refused_not_accepted(self):
+        out = email(mail_deep=True)
+        self.assertTrue(out['error'].startswith('publication_outcome_unknown'), out)
+        self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
+
+    def test_gmail_error_in_the_body_wins_over_status_and_id(self):
+        out = email(mail_body_error='quota_exceeded')
+        self.assertTrue(out['error'].startswith('publication_outcome_unknown'), out)
+        self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
+        # a pre-send code next to a message id and a 2xx status: the signals contradict each other, the send may have gone out
+        out = email(mail_body_error={'code': 'not_connected', 'message': 'x'})
+        self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
+        # exact case: error_code, error and id together
+        out = email(mail_contradiction=True)
+        self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
+        # every signal agrees on "before sending": failed
+        out = email(mail_consistent_presend=True)
+        self.assertEqual((record(out, 'mail-1')['status'], record(out, 'mail-1')['error']['code']), ('failed', 'not_connected'))
+
+    def test_a_root_error_is_one_more_signal_for_a_sending_tool(self):
+        out = email(mail_root_error_with_id=True)
+        self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
+        out = email(mail_root_error_alone=True)
+        self.assertEqual((record(out, 'mail-1')['status'], record(out, 'mail-1')['error']['code']), ('failed', 'not_connected'))
+
+    def test_positive_signals_on_any_layer_forbid_failed(self):
+        # refusal at the root and in structuredContent, success only in a JSON text part
+        out = email(mail_sc_positive=True)
+        self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
+        # symmetric: success in structuredContent, refusal at the root
+        out = email(mail_sc_positive_root_refusal=True)
+        self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
+        for runner, pid, tool_err, good in ((web, 'page-1', 'file_exists', {'status': 'ok'}), (social, 'post-a', 'rate_limited', {'post_id': 'p1'})):
+            out = runner(send_layers=(tool_err, good))
+            self.assertEqual(record(out, pid)['status'], 'outcome_unknown', pid)
+
+    def test_a_root_error_is_one_more_signal_for_ssh_and_social(self):
+        for runner, pid, code in ((web, 'page-1', 'file_exists'), (social, 'post-a', 'rate_limited')):
+            out = runner(send_root_error='with_success')
+            self.assertEqual(record(out, pid)['status'], 'outcome_unknown', pid)
+            out = runner(send_root_error='alone')
+            rec = record(out, pid)
+            self.assertEqual((rec['status'], rec['error']['code']), ('failed', code), pid)
+
+    def test_unsafe_keys_in_tool_answers_are_refused(self):
+        out = email(mail_proto=True)
+        self.assertTrue(out['error'].startswith('publication_outcome_unknown'), out)
+        self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
+        for key in ('__proto__', 'constructor', 'prototype'):
+            out = run_node('publish-web', 'publish', WEB, dict(FILES), unsafe_answer=key)
+            self.assertIn('error', out, key)
+            self.assertNotIn('result', out, key)
 
     def test_upload_error_is_journaled_failed_then_retried(self):
         out = web(upload_error='publish_not_enabled')
@@ -920,13 +1124,14 @@ class Review8Test(unittest.TestCase):
         self.assertEqual(record(out, 'page-1')['status'], 'outcome_unknown')
 
     def test_is_error_always_wins_on_the_three_channels(self):
-        for runner, pid, code in ((web, 'page-1', 'file_exists'), (email, 'mail-1', 'not_connected'), (social, 'post-a', 'rate_limited')):
+        for runner, pid in ((web, 'page-1'), (email, 'mail-1'), (social, 'post-a')):
             out = runner(iserror_env='nocode')
             self.assertIn('error', out, pid)
             self.assertEqual(record(out, pid)['status'], 'outcome_unknown', pid)
             out = runner(iserror_env='code')
             rec = record(out, pid)
-            self.assertEqual(rec['error']['code'], code, pid)
+            # the structured content of this envelope carries a success (2xx, id, matching sha256): the signals contradict each other
+            self.assertEqual(rec['status'], 'outcome_unknown', pid)
             self.assertNotEqual(rec['status'], 'published', pid)
 
 
@@ -995,7 +1200,7 @@ class Review11Test(unittest.TestCase):
             self.assertFalse(any(c['name'] == 'read_file' and c['args']['path'].startswith('/docs/') for c in again['calls']), pid)
             self.assertEqual((external(again), writes(again)), ([], []), pid)
             conflict = run_node(wf, 'publish', {**ctx, 'source_sha256': 'a' * 64}, fs)
-            self.assertTrue(conflict['error'].startswith('publication_conflict'), (pid, conflict))
+            self.assertTrue(conflict['error'].startswith('idempotency_conflict'), (pid, conflict))
             rm = run_node('publish-remove', 'remove', {'publication_id': pid, **CONFIRMED}, done['fs']) if pid != 'mail-1' else None
             if rm:
                 fs2 = {k: v for k, v in rm['fs'].items() if k != src}
@@ -1097,6 +1302,14 @@ class PlanTest(unittest.TestCase):
     def normalize(self, answer):
         prep = {'source': {'kind': 'storage', 'path': '/docs/note.pdf', 'extension': 'pdf', 'bytes': 3, 'sha256': 'a' * 64, 'textual': False}}
         return run_node('publish-plan', 'normalize', {'prep': prep, 'plan_draft': answer}, {})
+
+    def test_the_model_envelope_is_guarded_before_extraction(self):
+        draft = json.dumps({'channel': 'web'})
+        for key in ('__proto__', 'constructor', 'prototype'):
+            out = self.normalize({'text': draft, 'model': 'm', 'meta': {key: {}}})
+            self.assertTrue(out.get('error', '').startswith('data_invalid'), (key, out))
+            out = self.normalize({'text': draft, 'model': 'm', 'meta': {'note': json.dumps({key: {}})}})
+            self.assertTrue(out.get('error', '').startswith('data_invalid'), (key, out))
 
     def test_normalize_is_strict(self):
         out = self.normalize({'text': json.dumps({'channel': 'email', 'reasons': ['court'], 'email_subject': 'Hello', 'post_text': 'x', 'warnings': [], 'server': 'evil.example.invalid'}), 'model': 'm'})

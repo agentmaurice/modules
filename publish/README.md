@@ -104,7 +104,9 @@ messages and prompts are French.
   the refusal of a `requested` / `outcome_unknown` publication are decided on
   the journal alone, before any read of the Storage source (the cheap parts of
   the request and an optional `source_sha256` are still compared:
-  `publication_conflict`). A derived id comes from the source fingerprint, so
+  `idempotency_conflict`, which carries the recorded request fingerprint and
+  the received one; one canonical fingerprint of every input parameter except `publication_id`, `confirmation_manuelle`, `resend_after_unknown` and `attempt` (exclusion list) is compared (only `overwrite` booleans and `source_sha256` case are normalised; texts are hashed as is), shared with the first run; only the byte check of the Storage source is absent on replay. Publications recorded before 0.1.1 have no such fingerprint: they keep the 0.1.0 detection (target fields, recorded options such as `overwrite`, source kind and Storage path, `source_sha256`, inline text hash, media paths; `request_sha256` in `begin`), so an identical replay still answers `already_published` and a change that 0.1.0 could detect is an `idempotency_conflict`. A `failed` publication may be retried with a changed option such as `overwrite`).
+  A derived id comes from the source fingerprint, so
   its replay needs the source: pass a `publication_id` for a source-free replay.
 - Real shapes observed on a One: Storage and the sidecars return bare objects
   (`read_file`: `{content, encoding, path, size, success}`); sidecar errors are
@@ -114,6 +116,15 @@ messages and prompts are French.
   that is not registered (`tool <name> not registered`) fails before any
   sending: `failed` with the code `tool_unavailable`. `ssh_remove_v1` on an
   absent file answers `{status: "ok", removed: false}`, recorded as removed.
+- Tool answers get the same guard as incoming data: a `__proto__`,
+  `constructor` or `prototype` key at any depth (also in a JSON text part) is
+  refused, JSON text parts being decoded at any depth, after every decoding (a structure too deep to inspect, or an MCP envelope with several text parts, is refused) (`data_invalid` for Storage; for an external tool, `outcome_unknown`,
+  since the call has gone out).
+- E-mail: every signal of the answer is read before deciding. `failed` only
+  when all of them say "before sending" (a known pre-send code, no message id,
+  no 2xx status). An `error` in the body, an id, a 2xx status or contradictory
+  signals give `outcome_unknown`. A root error (or `isError`) of the answer is one
+  more signal, never a refusal taken before the comparison. The same single decision applies to `ssh_upload_v1` (success = status and sha256 matching) and `social_post_create_v1` (success = status ok and post_id), each with its own pre-send codes. The signals are collected on every layer of the answer (root, `structuredContent`, JSON text parts, `data` / `result` / `body`) before unwrapping: a positive signal anywhere forbids `failed`.
 - `isError: true` always wins in a tool result, even next to a
   `structuredContent` or a text saying ok. The code is read from the content;
   without any code the outcome is `outcome_unknown`.
@@ -137,7 +148,8 @@ messages and prompts are French.
   error is an error.
 - The `publication_id` is the caller's or derived. It is the
   `idempotency_key` of a social post. The same id with another request is
-  refused (`publication_conflict`).
+  refused (`idempotency_conflict`, with the recorded and the received request
+  fingerprints); the same request replayed stays `already_published`.
 - Every Storage tool result is checked by one helper: an exception or a
   returned `{isError: true}` / `{error: ...}` is an error. Only "not found"
   reads as absent; anything else is `storage_unavailable`.
