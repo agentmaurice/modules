@@ -125,6 +125,8 @@ async function fingerprint(v) { return sha256Hex(new TextEncoder().encode(canoni
 function b64ToBytes(b64) { const bin = atob(b64); const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; }
 async function sha256Hex(bytes) { const d = await crypto.subtle.digest("SHA-256", bytes); return Array.from(new Uint8Array(d), (x) => x.toString(16).padStart(2, "0")).join(""); }
 function parseJsonValue(v) {
+  // The full guard on the whole value, before any extraction: the envelope, every JSON text at any depth.
+  rejectUnsafeAnswer(v, "réponse du modèle");
   // llm_call with llm_response_format "text" yields {text, model, provider}.
   if (v && typeof v === "object" && !Array.isArray(v) && typeof v.text === "string") v = v.text;
   if (typeof v !== "string") { rejectUnsafeKeys(v, "réponse du modèle"); return v; }

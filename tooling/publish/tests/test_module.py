@@ -1289,6 +1289,14 @@ class PlanTest(unittest.TestCase):
         prep = {'source': {'kind': 'storage', 'path': '/docs/note.pdf', 'extension': 'pdf', 'bytes': 3, 'sha256': 'a' * 64, 'textual': False}}
         return run_node('publish-plan', 'normalize', {'prep': prep, 'plan_draft': answer}, {})
 
+    def test_the_model_envelope_is_guarded_before_extraction(self):
+        draft = json.dumps({'channel': 'web'})
+        for key in ('__proto__', 'constructor', 'prototype'):
+            out = self.normalize({'text': draft, 'model': 'm', 'meta': {key: {}}})
+            self.assertTrue(out.get('error', '').startswith('data_invalid'), (key, out))
+            out = self.normalize({'text': draft, 'model': 'm', 'meta': {'note': json.dumps({key: {}})}})
+            self.assertTrue(out.get('error', '').startswith('data_invalid'), (key, out))
+
     def test_normalize_is_strict(self):
         out = self.normalize({'text': json.dumps({'channel': 'email', 'reasons': ['court'], 'email_subject': 'Hello', 'post_text': 'x', 'warnings': [], 'server': 'evil.example.invalid'}), 'model': 'm'})
         res = ok(self, out)
