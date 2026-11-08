@@ -603,6 +603,15 @@ async function callExternal(name, args, opts) {
   if (!isObject(r)) throw externalError(name, "réponse inattendue", true);
   return r;
 }
+// The one decision of a sending tool from ALL the signals (callExternal raw): null when there is no error signal; otherwise an error that
+// is definitive (a refusal before sending) only if every signal carries a pre-send code of the tool and nothing says it succeeded.
+function singleDecision(signals, presend, succeeded) {
+  if (!signals.length) return null;
+  const codes = signals.map((x) => (typeof x.code === "string" && x.code ? x.code : null));
+  const clean = codes.every((c) => c !== null && presend.includes(c)) && !succeeded;
+  const code = codes.find((c) => c !== null) || "external_error";
+  return Object.assign(new Error(code + ": réponse d'erreur"), {code, unknown: !clean, detail: clean ? "refus avant envoi" : "signaux non concordants avec un envoi exclu"});
+}
 // A remote identifier is never truncated: 1 to 1024 characters or remote_id_invalid.
 function remoteIdOf(v, required) {
   if (v === undefined || v === null || v === "") { if (required) throw Object.assign(new Error("remote_id_invalid: identifiant distant absent"), {code: "remote_id_invalid", detail: "identifiant distant absent"}); return null; }
@@ -767,9 +776,13 @@ try { prior = await readDestOrNull("web", destKey); } catch (e) {
 }
 try { await writeDest("web", destKey, rec.publication_id, src.sha256, "pending_owner", rec.attempts); } catch (e) { await markFailed(rec, {code: "destination_index_failed", detail: "réservation de la destination non confirmée : aucun appel externe (" + clip(String(e && e.message), 100) + ")"}); }
 let res;
-try { res = await callExternal("ssh_upload_v1", {target, path: remotePath, file: {content_base64: src.b64}, overwrite}); } catch (e) {
+const SSH_REFUSED = ["tool_unavailable", "file_exists", "publish_not_enabled", "invalid_arguments", "file_too_large", "atomic_replace_unavailable"];
+let sendError = null;
+try { const raw = await callExternal("ssh_upload_v1", {target, path: remotePath, file: {content_base64: src.b64}, overwrite}, {raw: true}); res = raw.response; sendError = singleDecision(raw.signals, SSH_REFUSED, res.status === "ok" && typeof res.sha256 === "string" && res.sha256.toLowerCase() === src.sha256 && (res.bytes === undefined || res.bytes === src.bytes)); } catch (e) { sendError = e; }
+if (sendError) {
+  const e = sendError;
   // A definitive refusal wrote nothing: the reservation is cancelled and the previous owner gets the destination back (read back).
-  const refused = ["tool_unavailable", "file_exists", "publish_not_enabled", "invalid_arguments", "file_too_large", "atomic_replace_unavailable"].includes(e && e.code);
+  const refused = SSH_REFUSED.includes(e && e.code) && !e.unknown;
   if (!refused) e.unknown = true;
   if (prior && refused && !e.unknown) {
     try { await restoreDest("web", destKey, prior, rec.publication_id, rec.attempts); } catch (r) { e.detail = clip((e.detail || "") + " ; restauration de l'index non confirmée : " + clip(String(r && r.message), 80), 300); }
@@ -902,7 +915,7 @@ if (media.length) args.media = media;
 let res;
 // Only the codes documented as a refusal before any write allow failed; any other error (no code, status error, free text) is an unknown outcome.
 const REFUSED = ["tool_unavailable", "invalid_arguments", "invalid_request", "validation_failed", "not_configured", "rate_limited", "channel_not_found", "content_too_long", "invalid_schedule", "invalid_media", "media_too_large"];
-try { res = await callExternal("social_post_create_v1", args); } catch (e) { if (!REFUSED.includes(e && e.code)) e.unknown = true; await markFailed(rec, e); }
+try { const raw = await callExternal("social_post_create_v1", args, {raw: true}); res = raw.response; const bad = singleDecision(raw.signals, REFUSED, res.status === "ok" && typeof res.post_id === "string" && !!res.post_id); if (bad) throw bad; } catch (e) { if (!REFUSED.includes(e && e.code)) e.unknown = true; await markFailed(rec, e); }
 if (res.status !== "ok" || typeof res.post_id !== "string" || !res.post_id) await markFailed(rec, {code: "remote_response_invalid", detail: "post_id absent de la réponse du service social ; relancer avec le même publication_id est sans risque (clé d'idempotence)"});
 let remote;
 try { remote = {post_id: remoteIdOf(res.post_id, true), state: str(res.state, 40), group: remoteIdOf(res.group, false), channels: remoteChannels(res.channels)}; } catch (e) { await markFailed(rec, e); }

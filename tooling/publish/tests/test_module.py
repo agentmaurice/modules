@@ -128,6 +128,7 @@ async function callTool(name, args) {
   if (opts.mail_deep && name === "google_mail_send") return {status_code: 200, body: {id: "msg-1"}, meta: {a: {b: {c: {d: {e: {f: {g: {h: {i: {j: {k: {l: {m: {text: '{"prototype":{}}'}}}}}}}}}}}}}}};
   if (opts.unsafe_nested && name === "ssh_upload_v1") return {structuredContent: {...r, content: [{type: "text", text: '{"' + opts.unsafe_nested + '": {}}'}]}};
   if (opts.unsafe_answer && name === "ssh_upload_v1") return JSON.parse('{"status": "ok", "bytes": 1, "' + opts.unsafe_answer + '": {"a": 1}}');
+  if (opts.send_root_error && ["ssh_upload_v1", "social_post_create_v1"].includes(name)) { const c = name === "ssh_upload_v1" ? "file_exists" : "rate_limited"; return opts.send_root_error === "alone" ? {error: c} : {...r, error: c}; }
   if (opts.status_error && ["ssh_upload_v1", "google_mail_send", "social_post_create_v1"].includes(name)) return {status: "error", message: "upstream timeout"};
   if (opts.structured_error && ["ssh_upload_v1", "google_mail_send", "social_post_create_v1", "social_post_get_v1"].includes(name)) return {content: [{type: "text", text: "ok"}], structuredContent: {...r, error: {code: "remote_boom"}}};
   if (opts.ok_with_error && ["ssh_upload_v1", "ssh_remove_v1", "social_post_create_v1", "social_post_get_v1", "social_post_delete_v1"].includes(name) && r && typeof r === "object") return {...r, error: {code: "remote_boom"}};
@@ -496,6 +497,14 @@ class WebTest(unittest.TestCase):
         self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
         out = email(mail_root_error_alone=True)
         self.assertEqual((record(out, 'mail-1')['status'], record(out, 'mail-1')['error']['code']), ('failed', 'not_connected'))
+
+    def test_a_root_error_is_one_more_signal_for_ssh_and_social(self):
+        for runner, pid, code in ((web, 'page-1', 'file_exists'), (social, 'post-a', 'rate_limited')):
+            out = runner(send_root_error='with_success')
+            self.assertEqual(record(out, pid)['status'], 'outcome_unknown', pid)
+            out = runner(send_root_error='alone')
+            rec = record(out, pid)
+            self.assertEqual((rec['status'], rec['error']['code']), ('failed', code), pid)
 
     def test_unsafe_keys_in_tool_answers_are_refused(self):
         out = email(mail_proto=True)
@@ -1101,17 +1110,14 @@ class Review8Test(unittest.TestCase):
         self.assertEqual(record(out, 'page-1')['status'], 'outcome_unknown')
 
     def test_is_error_always_wins_on_the_three_channels(self):
-        for runner, pid, code in ((web, 'page-1', 'file_exists'), (email, 'mail-1', 'not_connected'), (social, 'post-a', 'rate_limited')):
+        for runner, pid in ((web, 'page-1'), (email, 'mail-1'), (social, 'post-a')):
             out = runner(iserror_env='nocode')
             self.assertIn('error', out, pid)
             self.assertEqual(record(out, pid)['status'], 'outcome_unknown', pid)
             out = runner(iserror_env='code')
             rec = record(out, pid)
-            if pid == 'mail-1':
-                # the structured content of this envelope carries a 2xx status and a message id: the signals contradict each other
-                self.assertEqual(rec['status'], 'outcome_unknown', pid)
-                continue
-            self.assertEqual(rec['error']['code'], code, pid)
+            # the structured content of this envelope carries a success (2xx, id, matching sha256): the signals contradict each other
+            self.assertEqual(rec['status'], 'outcome_unknown', pid)
             self.assertNotEqual(rec['status'], 'published', pid)
 
 
