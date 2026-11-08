@@ -62,7 +62,8 @@ function rejectUnsafeKeys(v, label) {
 // Tool answers get the same guard as incoming data: the object itself, and the JSON text parts of an MCP content array.
 function rejectUnsafeAnswer(r, label, depth) {
   depth = depth || 0;
-  if (depth > 4) return;
+  // Beyond the limit nothing is inspected: a JSON text or a structure there is refused (fail safe), never accepted.
+  if (depth > 12) { if (typeof r === "string" ? /^\s*[\[{]/.test(r) : (r !== null && typeof r === "object")) fail("data_invalid", label + " : profondeur excessive"); return; }
   if (typeof r === "string") {
     if (!/^\s*[\[{]/.test(r)) return;
     let parsed; try { parsed = JSON.parse(r); } catch (e) { return; }
@@ -215,7 +216,8 @@ async function storageCall(name, args) {
   const message = structuredError(r, name !== "read_file");
   if (message !== null) storageError(message, args.path);
   r = mcpUnwrap(r, name === "read_file");
-  if (name !== "read_file") rejectUnsafeAnswer(r, "réponse de l'outil " + name);
+  // After every decoding: the whole answer for a JSON tool, the keys (not the file text) for read_file.
+  if (name !== "read_file") rejectUnsafeAnswer(r, "réponse de l'outil " + name); else if (isObject(r)) rejectUnsafeKeys(r, "réponse de l'outil " + name);
   const inner = structuredError(r, name !== "read_file");
   if (inner !== null) storageError(inner, args.path);
   return unwrap(r);

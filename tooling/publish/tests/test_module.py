@@ -117,6 +117,8 @@ async function rawTool(name, args) {
 }
 async function callTool(name, args) {
   const r = await rawTool(name, args);
+  if (opts.read_nested && name === "read_file" && args.path.startsWith("/docs/")) return {content: [{type: "text", text: '{"content":"SGk=","encoding":"base64","size":{"constructor":{}}}'}]};
+  if (opts.mail_deep && name === "google_mail_send") return {status_code: 200, body: {id: "msg-1"}, meta: {a: {b: {c: {d: {e: {f: {g: {h: {i: {j: {k: {l: {m: {text: '{"prototype":{}}'}}}}}}}}}}}}}}};
   if (opts.unsafe_nested && name === "ssh_upload_v1") return {structuredContent: {...r, content: [{type: "text", text: '{"' + opts.unsafe_nested + '": {}}'}]}};
   if (opts.unsafe_answer && name === "ssh_upload_v1") return JSON.parse('{"status": "ok", "bytes": 1, "' + opts.unsafe_answer + '": {"a": 1}}');
   if (opts.status_error && ["ssh_upload_v1", "google_mail_send", "social_post_create_v1"].includes(name)) return {status: "error", message: "upstream timeout"};
@@ -371,6 +373,15 @@ class WebTest(unittest.TestCase):
             out = run_node('publish-web', 'publish', WEB, dict(FILES), unsafe_nested=key)
             self.assertTrue(out['error'].startswith('publication_outcome_unknown'), (key, out))
             self.assertEqual(record(out, 'page-1')['status'], 'outcome_unknown', key)
+
+    def test_unsafe_keys_in_a_decoded_read_file_envelope_are_refused(self):
+        out = run_node('publish-plan', 'prepare', {'source_path': '/docs/post.md'}, dict(FILES), read_nested=True)
+        self.assertTrue(out.get('error', '').startswith('data_invalid'), out)
+
+    def test_unsafe_keys_beyond_the_depth_limit_are_refused_not_accepted(self):
+        out = email(mail_deep=True)
+        self.assertTrue(out['error'].startswith('publication_outcome_unknown'), out)
+        self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
 
     def test_gmail_error_in_the_body_wins_over_status_and_id(self):
         out = email(mail_body_error='quota_exceeded')
