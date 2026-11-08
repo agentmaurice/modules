@@ -105,7 +105,7 @@ messages and prompts are French.
   the journal alone, before any read of the Storage source (the cheap parts of
   the request and an optional `source_sha256` are still compared:
   `idempotency_conflict`, which carries the recorded request fingerprint and
-  the received one; the whole request is compared on what is known without reading Storage: inline text, Storage path, optional `source_sha256`, target and `media_paths`).
+  the received one; one canonical fingerprint of every input parameter except `publication_id`, `confirmation_manuelle`, `resend_after_unknown` and `attempt` (exclusion list) is compared, shared with the first run; only the byte check of the Storage source is absent on replay. A journal without this fingerprint is a conflict. A `failed` publication may be retried with a changed option such as `overwrite`).
   A derived id comes from the source fingerprint, so
   its replay needs the source: pass a `publication_id` for a source-free replay.
 - Real shapes observed on a One: Storage and the sidecars return bare objects

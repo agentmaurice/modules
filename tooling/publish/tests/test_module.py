@@ -117,6 +117,7 @@ async function rawTool(name, args) {
 }
 async function callTool(name, args) {
   const r = await rawTool(name, args);
+  if (opts.read_meta && name === "read_file" && args.path.startsWith("/docs/")) return {content: "SGk=", encoding: "base64", meta: {content: [{type: "text", text: '{"constructor":{}}'}]}};
   if (opts.read_parts && name === "read_file" && args.path.startsWith("/docs/")) return {content: [{type: "text", text: '{"content":"SGk=","encoding":"base64"}'}, {type: "text", text: '{"' + opts.read_parts + '":{}}'}]};
   if (opts.read_nested && name === "read_file" && args.path.startsWith("/docs/")) return {content: [{type: "text", text: '{"content":"SGk=","encoding":"base64","size":{"constructor":{}}}'}]};
   if (opts.mail_deep && name === "google_mail_send") return {status_code: 200, body: {id: "msg-1"}, meta: {a: {b: {c: {d: {e: {f: {g: {h: {i: {j: {k: {l: {m: {text: '{"prototype":{}}'}}}}}}}}}}}}}}};
@@ -337,7 +338,7 @@ class WebTest(unittest.TestCase):
         for ctx in ({'remote_path': 'news/other.html'}, {'source_sha256': 'a' * 64}):
             out = run_node('publish-web', 'publish', {**WEB, **ctx}, first['fs'])
             self.assertTrue(out['error'].startswith('idempotency_conflict'), out)
-            self.assertIn(record(first, 'page-1')['request_sha256'], out['error'])
+            self.assertIn(record(first, 'page-1')['input_sha256'], out['error'])
             self.assertEqual((external(out), writes(out)), ([], []))
         # same request, replayed: still already_published
         self.assertIs(ok(self, run_node('publish-web', 'publish', WEB, first['fs']))['already_published'], True)
@@ -383,6 +384,29 @@ class WebTest(unittest.TestCase):
         for key in ('__proto__', 'constructor', 'prototype'):
             out = run_node('publish-plan', 'prepare', {'source_path': '/docs/post.md'}, dict(FILES), read_parts=key)
             self.assertTrue(out.get('error', '').startswith('data_invalid'), (key, out))
+
+    def test_nested_json_parts_of_a_read_file_answer_are_refused(self):
+        out = run_node('publish-plan', 'prepare', {'source_path': '/docs/post.md'}, dict(FILES), read_meta=True)
+        self.assertTrue(out.get('error', '').startswith('data_invalid'), out)
+
+    def test_every_input_parameter_enters_the_replay_fingerprint(self):
+        done = web()
+        for ctx in ({'overwrite': True}, {'source_sha256': 'a' * 64}):
+            out = run_node('publish-web', 'publish', {**WEB, **ctx}, done['fs'])
+            self.assertTrue(out['error'].startswith('idempotency_conflict'), (ctx, out))
+            self.assertEqual(external(out), [])
+        for runner, wf, ctx in ((email, 'publish-email', EMAIL), (social, 'publish-social', SOCIAL)):
+            first = runner()
+            out = run_node(wf, 'publish', {**ctx, 'source_sha256': 'a' * 64}, first['fs'])
+            self.assertTrue(out['error'].startswith('idempotency_conflict'), (wf, out))
+        # an older journal without the fingerprint is a conflict, not a false already_published
+        old = dict(done['fs'])
+        key = '/publish/log/page-1.json'
+        rec = json.loads(old[key]['text']); del rec['input_sha256']; old[key] = {'text': json.dumps(rec)}
+        out = run_node('publish-web', 'publish', WEB, old)
+        self.assertTrue(out['error'].startswith('idempotency_conflict'), out)
+        # the confirmation is not part of the request
+        self.assertIs(ok(self, run_node('publish-web', 'publish', {**WEB, 'confirmation_manuelle': True}, done['fs']))['already_published'], True)
 
     def test_unsafe_keys_beyond_the_depth_limit_are_refused_not_accepted(self):
         out = email(mail_deep=True)
