@@ -104,7 +104,9 @@ messages and prompts are French.
   the refusal of a `requested` / `outcome_unknown` publication are decided on
   the journal alone, before any read of the Storage source (the cheap parts of
   the request and an optional `source_sha256` are still compared:
-  `publication_conflict`). A derived id comes from the source fingerprint, so
+  `idempotency_conflict`, which carries the recorded request fingerprint and
+  the received one; an inline `body` / `content` that differs is compared too).
+  A derived id comes from the source fingerprint, so
   its replay needs the source: pass a `publication_id` for a source-free replay.
 - Real shapes observed on a One: Storage and the sidecars return bare objects
   (`read_file`: `{content, encoding, path, size, success}`); sidecar errors are
@@ -114,6 +116,12 @@ messages and prompts are French.
   that is not registered (`tool <name> not registered`) fails before any
   sending: `failed` with the code `tool_unavailable`. `ssh_remove_v1` on an
   absent file answers `{status: "ok", removed: false}`, recorded as removed.
+- Tool answers get the same guard as incoming data: a `__proto__`,
+  `constructor` or `prototype` key at any depth (also in a JSON text part) is
+  refused (`data_invalid` for Storage; for an external tool, `outcome_unknown`,
+  since the call has gone out).
+- E-mail: an `error` in the connector `body` wins over a 2xx status and a
+  message id (a pre-send code gives `failed`, anything else `outcome_unknown`).
 - `isError: true` always wins in a tool result, even next to a
   `structuredContent` or a text saying ok. The code is read from the content;
   without any code the outcome is `outcome_unknown`.
@@ -137,7 +145,8 @@ messages and prompts are French.
   error is an error.
 - The `publication_id` is the caller's or derived. It is the
   `idempotency_key` of a social post. The same id with another request is
-  refused (`publication_conflict`).
+  refused (`idempotency_conflict`, with the recorded and the received request
+  fingerprints); the same request replayed stays `already_published`.
 - Every Storage tool result is checked by one helper: an exception or a
   returned `{isError: true}` / `{error: ...}` is an error. Only "not found"
   reads as absent; anything else is `storage_unavailable`.

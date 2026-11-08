@@ -2432,7 +2432,7 @@
     },
     {
       "key": "publish",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "manifest": "publish/module.yaml",
       "workflows": 8,
       "miniapps": 1,
@@ -2458,15 +2458,15 @@
           "publish/agents/main/miniapps/publish-tracker.json"
         ],
         "sha256": {
-          "publish/module.yaml": "fc2148296aac5d338e5cd381e997bcc8c65dbcf0265ec4bc2916b4192f4e7dd1",
-          "publish/agents/main/workflows/publish-email.json": "e36764df33a8e061d4db75dc5418033606a3083cea9570ab52c426946910a300",
-          "publish/agents/main/workflows/publish-list.json": "a6f892c402761b4f983eb9ad6220921076a4b8ef2fde45cd7ba1596870eeab4e",
-          "publish/agents/main/workflows/publish-plan.json": "0635d9b9fd171e898de8ba9ac2a40740b5b5a1be686f3cc0d661c185a6a38c8c",
-          "publish/agents/main/workflows/publish-read.json": "94ffdff6ddefbbac21f5fbeb04cc7b5bdb260cd722752b3892aa5d97473ddafc",
-          "publish/agents/main/workflows/publish-remove.json": "230af38b4b5d5f2940b4cd211a7c8951195b1d8f50d59689f24a44684641c582",
-          "publish/agents/main/workflows/publish-social.json": "e7e0a2ac85ab011cd0b786c6538285865412b4474e00b769a823cad6257bdc67",
-          "publish/agents/main/workflows/publish-status.json": "10018d35195c1fec16a45412d37cf10fd449586be73b625624a62effaa0ecc30",
-          "publish/agents/main/workflows/publish-web.json": "b08f738cd2217c018c7f6ddb675703a12848b0f57a2ddf6af3362c2d5b72169f",
+          "publish/module.yaml": "b2a6d897fdf80d34393fc4c713750edb04d9d4c9a38b8f28eda3bde66d87a1c3",
+          "publish/agents/main/workflows/publish-email.json": "93ac731e3783ef4c41ccb804622215475dc05e38538a562f2c2d73e05f578399",
+          "publish/agents/main/workflows/publish-list.json": "3e9d1278e276dfbb0cafc161dfc4641ccfb1006bbf812a136edef41a11752345",
+          "publish/agents/main/workflows/publish-plan.json": "d00ecdcbbfc5e7eeb329b0acab719ed2ec1932ce377dce56a8e5946d8750ce79",
+          "publish/agents/main/workflows/publish-read.json": "25c5b77f35b0ffee4f2bf2b4ad04f3b60af299206cbada0d5bb7bd036bfa8043",
+          "publish/agents/main/workflows/publish-remove.json": "96a2caddb370750a51e82098cf4422b226c45171316f9834cb322c6be717fdca",
+          "publish/agents/main/workflows/publish-social.json": "c6f8143d2e3a3e8e454ad7c219f0445688ab345602cebf01a74f46a8a45aba0c",
+          "publish/agents/main/workflows/publish-status.json": "94fd9c30f7e98e7e7bc222d0142ae84305b99274db5862b7efe5d451306e8f09",
+          "publish/agents/main/workflows/publish-web.json": "5ae84ab996054c8346d0b4a578643cdacd11faba52476030035ed13d1a19ba2e",
           "publish/agents/main/miniapps/publish-tracker.json": "56b096773aa95998e438707300b9a771728a73570b7d9050667e8f5b5bbcaaf3"
         }
       },
@@ -2480,7 +2480,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "8cd8ab9cdff5432beeddc35146129455d7561cf7381369c6ffeaacce7a5e5828"
+              "code_sha256": "8dd3b1f4811c5675c43a0a6227329fada63f4b30a42cba6e13b3a809acf6598e"
             }
           ]
         },
@@ -2493,7 +2493,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "9a3f0bcc5debdffbb1110c03706947559ad2fecf04532f40a0b82eb980f8493a"
+              "code_sha256": "0c4536f846aa842b5ab900d058a5356f82713a6a88d5b3429f26b08582204bb7"
             }
           ]
         },
@@ -2506,7 +2506,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "84492fa85a759cf4af2cc96b16df89d3b81683390c3f4bb09af84b04a1d90d5d"
+              "code_sha256": "a8aa74e3165b7e172406cba62c6ef41d69d169183f13eabce3126701bdc4f4ac"
             },
             {
               "path": "/actions/1",
@@ -2519,7 +2519,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "0d720a804af91024645716928f15512c519ab9aca516aed16f9e2fd9c56c4864"
+              "code_sha256": "694020d12c3ec9a0e124f7a94c47687ca4fd86d168420f237b49dfb9440acd9e"
             }
           ]
         },
@@ -2532,7 +2532,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "68ac988c6b7cebeff351c47438f633582a9eb779ff7284ac6271d7f37aaf2658"
+              "code_sha256": "f5ece30539e74dc0a5fb45f879885060ab3f7d3a097e27209ff686d0684dc6fd"
             }
           ]
         },
@@ -2545,7 +2545,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "756ac49324ba97ebab6a8a4692765a3aba94c4c84c466fcec5ad9cacce267bd7"
+              "code_sha256": "9e345e8e206c0c9e3188992c69f4524cc0d37ede5388c3cb983e2802a4befb70"
             }
           ]
         },
@@ -2558,7 +2558,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "e2047a5bb1be1ffef81a75c7d18bcc9d772f5240e4fb9736d8496d5642735b3d"
+              "code_sha256": "85137afc5f34326192f4011d9d682dca7e0f9277915f429d6a0d3d5407b973b4"
             }
           ]
         },
@@ -2571,7 +2571,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "b6000dbed413b6e43054e8dba7f944153e649bc2507f6af1ec724ff4046d1113"
+              "code_sha256": "16be68bbc3db587465d550125281b6b63b1216c26f1e331b65506a78ffe3c91a"
             }
           ]
         },
@@ -2584,7 +2584,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "cf2efea6a39fdcaa096b665e314888321aee8190ca7befaabcdc1745c9ba5023"
+              "code_sha256": "49e0cf32d4a6ddf2a4c76fb1803b7ad7fa36826b28ad230fe5591857473e85d0"
             }
           ]
         }

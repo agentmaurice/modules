@@ -16,7 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 MODULE = ROOT.parents[1] / 'publish'
 DEST = MODULE / 'agents/main'
-VERSION = '0.1.0'
+VERSION = '0.1.1'
 
 
 def dump(path, data):
@@ -58,6 +58,18 @@ function rejectUnsafeKeys(v, label) {
     if (k === "__proto__" || k === "constructor" || k === "prototype") fail("data_invalid", label + " : clé interdite " + k);
     rejectUnsafeKeys(v[k], label);
   }
+}
+// Tool answers get the same guard as incoming data: the object itself, and the JSON text parts of an MCP content array.
+function rejectUnsafeAnswer(r, label) {
+  rejectUnsafeKeys(r, label);
+  if (isObject(r) && Array.isArray(r.content)) {
+    for (const part of r.content) {
+      if (!isObject(part) || typeof part.text !== "string" || !/^\s*[\[{]/.test(part.text)) continue;
+      let parsed; try { parsed = JSON.parse(part.text); } catch (e) { continue; }
+      rejectUnsafeKeys(parsed, label);
+    }
+  }
+  if (typeof r === "string" && /^\s*[\[{]/.test(r)) { let parsed; try { parsed = JSON.parse(r); } catch (e) { return; } rejectUnsafeKeys(parsed, label); }
 }
 function idOf(v) { if (typeof v !== "string" || !ID_RE.test(v)) fail("publication_id_invalid", "attendu : minuscules, chiffres et tirets, 48 caractères au plus"); return v; }
 function optionalId(v) { return v === undefined || v === null || v === "" ? null : idOf(v); }
@@ -195,6 +207,8 @@ function mcpUnwrap(r, isRead) {
 async function storageCall(name, args) {
   let r;
   try { r = await callTool(name, args); } catch (e) { storageError(errorInfo(String(e && e.message), e), args.path); }
+  // read_file returns a file: its text is data, not a tool answer. The other Storage tools answer in JSON.
+  if (name !== "read_file") rejectUnsafeAnswer(r, "réponse de l'outil " + name); else if (isObject(r)) rejectUnsafeKeys(r, "réponse de l'outil " + name);
   const message = structuredError(r, name !== "read_file");
   if (message !== null) storageError(message, args.path);
   r = mcpUnwrap(r, name === "read_file");
@@ -273,14 +287,17 @@ async function loadRecordOrNull(id) {
 // With an explicit publication_id, a replay is decided on the journal ALONE, before any read of the Storage source: published ->
 // already_published, removed -> already_removed, requested / outcome_unknown -> refused. The cheap parts of the request (target,
 // recipients, channels) and an optional source_sha256 are compared so that another request under the same id is still a conflict.
-async function peek(channel, given, lite, expectedSha, resend) {
+async function peek(channel, given, lite, expectedSha, resend, inlineSha) {
   if (!given) return null;
   const rec = await loadRecordOrNull(given);
   if (!rec) return null;
-  const conflict = () => fail("publication_conflict", given + " existe avec une autre demande : changez publication_id");
-  if (rec.channel !== channel) conflict();
-  for (const [k, v] of Object.entries(lite)) if (canonical(rec.target[k]) !== canonical(v)) conflict();
-  if (typeof expectedSha === "string" && expectedSha && isObject(rec.source) && typeof rec.source.sha256 === "string" && rec.source.sha256 !== expectedSha.toLowerCase()) conflict();
+  // The full request fingerprint needs the source, which a journal-only replay does not read: the received side is the fingerprint of what is known.
+  const conflict = async () => fail("idempotency_conflict", given + " existe avec une autre demande : changez publication_id (request_sha256 enregistrée " + rec.request_sha256 + ", reçue (partielle, sans lecture de la source) " + await fingerprint({channel, target: lite, source_sha256: typeof expectedSha === "string" && expectedSha ? expectedSha.toLowerCase() : null, inline_sha256: inlineSha || null}) + ")");
+  if (rec.channel !== channel) await conflict();
+  for (const [k, v] of Object.entries(lite)) if (canonical(rec.target[k]) !== canonical(v)) await conflict();
+  if (typeof expectedSha === "string" && expectedSha && isObject(rec.source) && typeof rec.source.sha256 === "string" && rec.source.sha256 !== expectedSha.toLowerCase()) await conflict();
+  // An inline body or content is known without reading Storage: a different text under the same id is another request.
+  if (inlineSha && isObject(rec.source) && rec.source.kind === "text" && rec.source.sha256 !== inlineSha) await conflict();
   if (rec.status === "published") return {...summarize(rec), already_published: true};
   if (rec.status === "removed") return {...summarize(rec), already_removed: true};
   if ((rec.status === "requested" || rec.status === "outcome_unknown") && !resend) fail("publication_outcome_unknown", given + " : la diffusion est en cours ou son issue est inconnue (statut " + rec.status + ") ; vérifiez la destination, puis utilisez un nouveau publication_id ou resend_after_unknown = oui");
@@ -384,7 +401,7 @@ async function begin(channel, given, request, opts, precheck) {
   const existing = await loadRecordOrNull(id);
   const at = nowIso();
   if (existing) {
-    if (existing.channel !== channel || existing.request_sha256 !== sha) fail("publication_conflict", id + " existe avec une autre demande : changez publication_id");
+    if (existing.channel !== channel || existing.request_sha256 !== sha) fail("idempotency_conflict", id + " existe avec une autre demande : changez publication_id (request_sha256 enregistrée " + existing.request_sha256 + ", reçue " + sha + ")");
     if (existing.status === "published") return {rec: existing, done: {...summarize(existing), already_published: true}};
     if (existing.status === "removed") return {rec: existing, done: {...summarize(existing), already_removed: true}};
     if ((existing.status === "requested" || existing.status === "outcome_unknown") && !resend) fail("publication_outcome_unknown", id + " : la diffusion est en cours ou son issue est inconnue (statut " + existing.status + ") ; vérifiez la destination, puis utilisez un nouveau publication_id ou resend_after_unknown = oui");
@@ -453,6 +470,8 @@ function externalError(name, message, thrown) {
 async function callExternal(name, args) {
   let r;
   try { r = await callTool(name, args); } catch (e) { throw externalError(name, String(e && e.message), true); }
+  // The same guard as for incoming data. The call has gone out: an unsafe answer proves nothing about the outcome.
+  try { rejectUnsafeAnswer(r, "réponse de l'outil " + name); } catch (e) { throw Object.assign(externalError(name, "réponse refusée : clé interdite", false), {code: "response_invalid", unknown: true, detail: clip(String(e && e.message), 200)}); }
   // isError always wins, even with a structuredContent or a text that says ok. The code is read from the content when there is
   // one; without any code the outcome is unknown (the call may have gone through).
   if (isObject(r) && r.isError === true) {
@@ -675,7 +694,8 @@ if (/[\r\n]/.test(subject)) fail("subject_invalid", "pas de saut de ligne");
 const hasBody = input.body !== undefined && input.body !== null && input.body !== "";
 const hasPath = input.source_path !== undefined && input.source_path !== null && input.source_path !== "";
 if (hasBody === hasPath) fail("body_required", "exactement un corps : body ou source_path");
-const early = await peek("email", given, {to, subject}, input.source_sha256, confirmed(input.resend_after_unknown));
+const inlineSha = hasBody ? await sha256Hex(new TextEncoder().encode(text(input.body, "body", 20000, true))) : null;
+const early = await peek("email", given, {to, subject}, input.source_sha256, confirmed(input.resend_after_unknown), inlineSha);
 if (early) return early;
 let body, source;
 if (hasPath) {
@@ -701,6 +721,8 @@ let answer = res.body;
 if (typeof answer === "string") { try { answer = JSON.parse(answer); } catch (e) { answer = null; } }
 if (isObject(answer)) rejectUnsafeKeys(answer, "réponse du connecteur");
 if (isObject(answer) && typeof answer.error_code === "string" && answer.error_code) { const c = clip(answer.error_code, 60).replace(/[^a-z0-9_]/g, "_"); await markFailed(rec, {code: c, unknown: !PRESEND.includes(c), detail: "erreur du connecteur"}); }
+// An `error` in the body wins over everything, even a 2xx status and a message id.
+if (isObject(answer) && answer.error !== undefined && answer.error !== null && answer.error !== "" && answer.error !== false) { const raw = isObject(answer.error) ? answer.error.code : answer.error; const c = typeof raw === "string" && raw ? clip(raw, 60).toLowerCase().replace(/[^a-z0-9_]/g, "_") : "connector_error"; await markFailed(rec, {code: c, unknown: !PRESEND.includes(c), detail: "erreur dans la réponse du connecteur"}); }
 if (Number.isInteger(res.status_code) && res.status_code >= 400 && res.status_code < 500) await markFailed(rec, {code: "email_rejected", detail: "statut " + res.status_code});
 if (Number.isInteger(res.status_code) && (res.status_code < 200 || res.status_code >= 300)) await markFailed(rec, {unknown: true, detail: "statut " + res.status_code + " : l'envoi n'est pas exclu"});
 if (!Number.isInteger(res.status_code) || !isObject(answer) || typeof answer.id !== "string" || !answer.id) await markFailed(rec, {unknown: true, detail: "réponse du connecteur sans statut 2xx ou sans identifiant de message : l'envoi n'est ni prouvé ni exclu"});
@@ -725,7 +747,8 @@ if (mode === "schedule") {
 const hasContent = input.content !== undefined && input.content !== null && input.content !== "";
 const hasPath = input.source_path !== undefined && input.source_path !== null && input.source_path !== "";
 if (hasContent === hasPath) fail("content_required", "exactement un contenu : content ou source_path");
-const early = await peek("social", given, {channels, mode, schedule_at: scheduleAt}, input.source_sha256, confirmed(input.resend_after_unknown));
+const inlineSha = hasContent ? await sha256Hex(new TextEncoder().encode(text(input.content, "content", 5000, true))) : null;
+const early = await peek("social", given, {channels, mode, schedule_at: scheduleAt}, input.source_sha256, confirmed(input.resend_after_unknown), inlineSha);
 if (early) return early;
 let content, source;
 if (hasPath) {

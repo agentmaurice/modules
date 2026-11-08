@@ -105,6 +105,8 @@ async function rawTool(name, args) {
     if (opts.mail_enveloped) return {isError: true, content: [{type: "text", text: opts.mail_enveloped === true ? JSON.stringify({error_code: "not_connected", connector_key: "google-mail", connect_available: true}) : opts.mail_enveloped}]};
     if (opts.mail_throw) throw new Error(opts.mail_throw);
     if (opts.mail_empty) return {};
+    if (opts.mail_body_error) return {status_code: 200, body: {id: "msg-e", threadId: "t", error: opts.mail_body_error}};
+    if (opts.mail_proto) return {status_code: 200, body: JSON.parse('{"id": "msg-p", "__proto__": {"x": 1}}')};
     if (opts.mail_no_id) return {status_code: 200, body: {}};
     if (opts.mail_body_string) return {status_code: 200, body: JSON.stringify({id: "msg-s", threadId: "t"})};
     if (opts.mail_returned_error) return {error_code: "authorization_required", authorization_id: "a1"};
@@ -115,6 +117,7 @@ async function rawTool(name, args) {
 }
 async function callTool(name, args) {
   const r = await rawTool(name, args);
+  if (opts.unsafe_answer && name === "ssh_upload_v1") return JSON.parse('{"status": "ok", "bytes": 1, "' + opts.unsafe_answer + '": {"a": 1}}');
   if (opts.status_error && ["ssh_upload_v1", "google_mail_send", "social_post_create_v1"].includes(name)) return {status: "error", message: "upstream timeout"};
   if (opts.structured_error && ["ssh_upload_v1", "google_mail_send", "social_post_create_v1", "social_post_get_v1"].includes(name)) return {content: [{type: "text", text: "ok"}], structuredContent: {...r, error: {code: "remote_boom"}}};
   if (opts.ok_with_error && ["ssh_upload_v1", "ssh_remove_v1", "social_post_create_v1", "social_post_get_v1", "social_post_delete_v1"].includes(name) && r && typeof r === "object") return {...r, error: {code: "remote_boom"}};
@@ -322,8 +325,42 @@ class WebTest(unittest.TestCase):
     def test_same_id_with_another_request_is_a_conflict(self):
         first = ok(self, web()) and web()
         out = run_node('publish-web', 'publish', {**WEB, 'remote_path': 'news/other.html'}, first['fs'])
-        self.assertTrue(out['error'].startswith('publication_conflict'), out)
+        self.assertTrue(out['error'].startswith('idempotency_conflict'), out)
         self.assertEqual(external(out), [])
+
+    def test_modified_request_under_a_published_id_is_an_idempotency_conflict(self):
+        first = ok(self, web()) and web()
+        for ctx in ({'remote_path': 'news/other.html'}, {'source_sha256': 'a' * 64}):
+            out = run_node('publish-web', 'publish', {**WEB, **ctx}, first['fs'])
+            self.assertTrue(out['error'].startswith('idempotency_conflict'), out)
+            self.assertIn(record(first, 'page-1')['request_sha256'], out['error'])
+            self.assertEqual((external(out), writes(out)), ([], []))
+        # same request, replayed: still already_published
+        self.assertIs(ok(self, run_node('publish-web', 'publish', WEB, first['fs']))['already_published'], True)
+        # a changed inline body under the same id (e-mail, social) is a conflict, the same one a replay
+        for runner, wf, ctx, field in ((email, 'publish-email', EMAIL, 'body'), (social, 'publish-social', SOCIAL, 'content')):
+            done = runner()
+            changed = run_node(wf, 'publish', {**ctx, field: 'Autre texte'}, done['fs'])
+            self.assertTrue(changed['error'].startswith('idempotency_conflict'), (wf, changed))
+            self.assertEqual(external(changed), [], wf)
+            self.assertIs(ok(self, run_node(wf, 'publish', ctx, done['fs']))['already_published'], True, wf)
+
+    def test_gmail_error_in_the_body_wins_over_status_and_id(self):
+        out = email(mail_body_error='quota_exceeded')
+        self.assertTrue(out['error'].startswith('publication_outcome_unknown'), out)
+        self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
+        out = email(mail_body_error={'code': 'not_connected', 'message': 'x'})
+        self.assertEqual(record(out, 'mail-1')['status'], 'failed')
+        self.assertEqual(record(out, 'mail-1')['error']['code'], 'not_connected')
+
+    def test_unsafe_keys_in_tool_answers_are_refused(self):
+        out = email(mail_proto=True)
+        self.assertTrue(out['error'].startswith('publication_outcome_unknown'), out)
+        self.assertEqual(record(out, 'mail-1')['status'], 'outcome_unknown')
+        for key in ('__proto__', 'constructor', 'prototype'):
+            out = run_node('publish-web', 'publish', WEB, dict(FILES), unsafe_answer=key)
+            self.assertIn('error', out, key)
+            self.assertNotIn('result', out, key)
 
     def test_upload_error_is_journaled_failed_then_retried(self):
         out = web(upload_error='publish_not_enabled')
@@ -995,7 +1032,7 @@ class Review11Test(unittest.TestCase):
             self.assertFalse(any(c['name'] == 'read_file' and c['args']['path'].startswith('/docs/') for c in again['calls']), pid)
             self.assertEqual((external(again), writes(again)), ([], []), pid)
             conflict = run_node(wf, 'publish', {**ctx, 'source_sha256': 'a' * 64}, fs)
-            self.assertTrue(conflict['error'].startswith('publication_conflict'), (pid, conflict))
+            self.assertTrue(conflict['error'].startswith('idempotency_conflict'), (pid, conflict))
             rm = run_node('publish-remove', 'remove', {'publication_id': pid, **CONFIRMED}, done['fs']) if pid != 'mail-1' else None
             if rm:
                 fs2 = {k: v for k, v in rm['fs'].items() if k != src}

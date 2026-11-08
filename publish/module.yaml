@@ -3,7 +3,7 @@
   "schema_version": 2,
   "key": "publish",
   "name": "Publish",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "provides": {
     "actions": [
       {
