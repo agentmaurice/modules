@@ -68,6 +68,14 @@ async function callTool(name, args) {
     const brokerRecords = store.__broker || (store.__broker = {});
     const perms = (r) => ({can_read: true, can_write: true, can_manage: true});
     const view = (k, r) => ({namespace: args.namespace, key: k, revision: r.revision, owner_user_id: "owner-1", permissions: perms(r), shares: r.shares, data: r.data});
+    if (args.namespace === "cib-profile") {
+      calls[calls.length - 1].profile_read = true;
+      if (args.operation !== "read" || args.record_key !== "company-profile") throw new Error("unexpected profile call");
+      if (opts.cib_profile_error) throw Object.assign(new Error(opts.cib_profile_error), {code: opts.cib_profile_error});
+      if (opts.cib_profile_error_value) return {error: {code: opts.cib_profile_error_value}};
+      if (opts.cib_profile === undefined) throw Object.assign(new Error("application data record not found"), {code: "NOT_FOUND"});
+      return {data: {record: {namespace: "cib-profile", key: "company-profile", revision: 3, owner_user_id: "owner-1", permissions: {can_read: opts.cib_profile_unreadable ? false : true, can_write: false, can_manage: false}, shares: [], data: opts.cib_profile}}};
+    }
     if (args.namespace !== "cib-documents") throw new Error("namespace_forbidden");
     if (opts.broker_error) throw new Error(opts.broker_error);
     const cur = brokerRecords[args.record_key];
@@ -988,6 +996,62 @@ class SharingTest(unittest.TestCase):
         self.assertEqual(listing['items'][0]['sha256'], one['record']['sha256'])
         self.assertIn('error', run_node('document-read', 'read', {'doc_id': 'absent'}, fs))
         self.assertIn('error', run_node('document-read', 'read', {'doc_id': 'devis-test'}, fs, broker_error='access_denied'))
+
+
+class ProfileSourceTest(unittest.TestCase):
+    BROKER_PROFILE = json.loads(json.dumps(PROFILE)) | {}
+
+    def prepared(self):
+        _, fs = create_quote(self, seeded())
+        return fs
+
+    def render(self, fs, **opts):
+        return run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs, **opts)
+
+    def profile_call(self, out):
+        return [c for c in out['calls'] if c.get('profile_read')]
+
+    def test_the_cib_profile_record_is_read_with_the_exact_broker_call(self):
+        brand_from_broker = json.loads(json.dumps(PROFILE))
+        brand_from_broker['company']['legal_name'] = 'Societe du record'
+        out = self.render(self.prepared() | {'/document-studio/profile.json': text_file('{oops')}, cib_profile=brand_from_broker)
+        result = ok(self, out)
+        self.assertEqual(result['profile_source'], 'cib-profile')
+        self.assertEqual(self.profile_call(out)[0]['args'], {'operation': 'read', 'namespace': 'cib-profile', 'record_key': 'company-profile'})
+        render_call = [c for c in out['calls'] if c['name'] == 'artifact_render_v1'][0]['full']
+        self.assertEqual(render_call['context']['company']['legal_name'], 'Societe du record')
+        self.assertNotIn('profile.json', json.dumps([c['args'] for c in out['calls'] if c['name'] == 'read_file']))
+
+    def test_an_absent_record_falls_back_to_storage(self):
+        result = ok(self, self.render(self.prepared()))
+        self.assertEqual(result['profile_source'], 'storage')
+
+    def test_a_refused_unreadable_or_invalid_record_falls_back_to_storage(self):
+        for opts in ({'cib_profile_error': 'PERMISSION_DENIED'}, {'cib_profile_error_value': 'FORBIDDEN'},
+                     {'cib_profile': PROFILE, 'cib_profile_unreadable': True}, {'cib_profile': {'schema_version': 1}}):
+            out = self.render(self.prepared(), **opts)
+            self.assertEqual(ok(self, out)['profile_source'], 'storage', opts)
+            self.assertEqual(len(self.profile_call(out)), 1)
+
+    def test_without_any_profile_the_render_still_fails(self):
+        fs = {k: v for k, v in self.prepared().items() if 'devis-test' in k}
+        self.assertTrue(self.render(fs)['error'].startswith('profile_missing'))
+
+    def test_publish_keeps_the_fingerprint_check_across_sources(self):
+        fs = self.prepared()
+        rendered = self.render(fs, cib_profile=PROFILE)
+        self.assertEqual(ok(self, rendered)['profile_source'], 'cib-profile')
+        approved = run_node('document-studio-finalize', 'finalize', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, rendered['fs'])
+        same = run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, approved['fs'], cib_profile=PROFILE)
+        self.assertEqual(ok(self, same)['profile_source'], 'cib-profile')
+        # same content through the Storage fallback: same fingerprint, the issue goes through
+        via_storage = run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, approved['fs'])
+        self.assertEqual(ok(self, via_storage)['profile_source'], 'storage')
+        changed = json.loads(json.dumps(PROFILE))
+        changed['brand']['colors']['primary'] = '#112233'
+        refused = run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, approved['fs'], cib_profile=changed)
+        self.assertTrue(refused['error'].startswith('profile_changed'), refused.get('error'))
+        self.assertEqual(load(WORKFLOWS / 'document-studio-publish.json')['actions'][0]['context']['allowed_tools'][-1], 'recipe--application_data_v1')
 
 
 if __name__ == '__main__':

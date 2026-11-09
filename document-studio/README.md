@@ -68,7 +68,7 @@ The Module never approves on a person's behalf.
 
 ## Storage
 
-- `/document-studio/profile.json`: the brand, with the `{schema_version: 1, company, brand}` shape of the template contract. A fictitious example is in `examples/profile.example.json`.
+- `/document-studio/profile.json`: the fallback brand (used when `cib-profile` is unavailable), with the `{schema_version: 1, company, brand}` shape of the template contract. A fictitious example is in `examples/profile.example.json`.
 - `/document-studio/docs/<doc_id>/record.json`: the record (`document-studio.record/v1`): status, number, revision (+1 at every write), data, history, renders (path, SHA-256, previews, provenance), issue.
 - `/document-studio/docs/<doc_id>/r<revision>-<sha12>/`: PDF and previews of one render attempt (12 first characters of the PDF SHA-256, so a losing attempt never overwrites another attempt's file).
 - `/document-studio/docs/<doc_id>/issued/<number>-<sha12>.pdf`: the issued PDF.
@@ -78,8 +78,11 @@ The Module never approves on a person's behalf.
 title with a short suffix. Number: `<PREFIX>-<year>-<seq>` (`DEV` for the
 quote, `CR` for the minutes).
 
-Without a company profile, `render` and `publish` fail with `profile_missing`:
-store the brand with `document-studio-profile-save`.
+The company profile is read from the `cib-profile` record of the `profile` Module through
+`recipe--application_data_v1` (`operation: read`, `namespace: cib-profile`, `record_key: company-profile`, the call of
+`cib-profile-read`); `render` and `publish` report the source in `profile_source`. Fallback: `/document-studio/profile.json`
+in Storage. Without either, they fail with `profile_missing`. The fingerprints of the brand checked at issue
+(`profile_changed`) are computed on the projected profile, whatever its source.
 
 ## Templates
 
@@ -133,7 +136,7 @@ renderer, on synthetic data. They do not prove the behavior on a One.
 
 ## Known limits (V0)
 
-- The brand is still read from Storage (`/document-studio/profile.json`), not from the `cib-profile` record of the `profile` Module, although the broker now exists: switching the source is a separate change of `render` and `publish`.
+- The brand is read from the `cib-profile` record (key `company-profile`) through the broker, by `render` and `publish`. If that record is absent, refused to the caller or unreadable, the Storage copy `/document-studio/profile.json` is used and the output says so (`profile_source`: `cib-profile` or `storage`). A broker refusal is therefore not distinguished from an absent record. `document-studio-profile-save` still writes only the Storage copy: save the profile in `cib-profile` (profile Module) to make it the source.
 - The logo is a reference (`storage://…`); this Module does not resolve it to a file before rendering.
 - Number reservation is not atomic: it lists, writes without overwrite, reads back and checks the owner, at most 5 attempts (`number_conflict`). A number reserved then lost (failed render) stays reserved: it is taken again on the next attempt, never reused by another document. Atomic sequences are a platform follow-up.
 - No sending (mail, SFTP), no DOCX, one locale (`fr`).

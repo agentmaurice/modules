@@ -377,17 +377,6 @@ async function saveRecord(rec) {
   await writeJson(recordPath(rec.doc_id), rec, true);
   remember(rec);
 }
-async function loadProfile() {
-  let stored = null;
-  try { stored = await readJson(ROOT + "/profile.json"); } catch (e) {
-    const m = String(e && e.message);
-    if (m.startsWith("json_corrupt")) fail("profile_corrupt", "profile.json illisible");
-    if (!m.startsWith("storage_not_found")) throw e;
-    stored = null;
-  }
-  if (!isObject(stored)) fail("profile_missing", "enregistrez la charte par document-studio-profile-save");
-  return projectProfile(normalizeProfile(stored));
-}
 '''
 
 PROFILE = r'''
@@ -464,6 +453,39 @@ function projectProfile(body) {
   company.address = {line1: "", line2: "", postal_code: "", city: "", country: "", ...(company.address || {})};
   company.logo = {ref: body.brand.logo.ref};
   return {company, brand: body.brand};
+}
+'''
+
+PROFILE_LOAD = r'''
+// The company profile comes from the cib-profile record (native broker, same read call as cib-profile-read). When that record is
+// absent, refused to this caller or unreadable, the Storage copy written by document-studio-profile-save is used, as before.
+let PROFILE_SOURCE = "storage";
+async function brokerProfileBody() {
+  let response;
+  try { response = await callTool("recipe--application_data_v1", {operation: "read", namespace: "cib-profile", record_key: "company-profile"}); } catch (e) { return null; }
+  if (isObject(response) && isObject(response.error)) return null;
+  const payload = response && response.data ? response.data : response;
+  const item = payload && payload.record;
+  if (!isObject(item) || item.namespace !== "cib-profile" || item.key !== "company-profile" || !isObject(item.data)) return null;
+  const p = item.permissions;
+  if (!isObject(p) || p.can_read !== true) return null;
+  return item.data;
+}
+async function loadProfile() {
+  const body = await brokerProfileBody();
+  if (body !== null) {
+    try { const projected = projectProfile(normalizeProfile(body)); PROFILE_SOURCE = "cib-profile"; return projected; } catch (e) { /* unreadable record: fall back to Storage */ }
+  }
+  PROFILE_SOURCE = "storage";
+  let stored = null;
+  try { stored = await readJson(ROOT + "/profile.json"); } catch (e) {
+    const m = String(e && e.message);
+    if (m.startsWith("json_corrupt")) fail("profile_corrupt", "profile.json illisible");
+    if (!m.startsWith("storage_not_found")) throw e;
+    stored = null;
+  }
+  if (!isObject(stored)) fail("profile_missing", "enregistrez la charte dans cib-profile ou par document-studio-profile-save");
+  return projectProfile(normalizeProfile(stored));
 }
 '''
 
@@ -651,7 +673,7 @@ def node(action_id, source, output_key, tools=None):
     return data
 
 
-def lib(*, templates=None, io=False, profile=False, render=False, numbering=False):
+def lib(*, templates=None, io=False, profile=False, render=False, numbering=False, load_profile=False):
     parts = [IMPORT if io else '']
     if templates is not None:
         parts.append('const TEMPLATES = ' + js_embed(load_templates(templates == 'full')) + ';\nObject.setPrototypeOf(TEMPLATES, null);\n')
@@ -662,6 +684,8 @@ def lib(*, templates=None, io=False, profile=False, render=False, numbering=Fals
         parts.append(PROFILE)
     if io:
         parts.append(IO)
+    if load_profile:
+        parts.append(PROFILE_LOAD)
     if render:
         parts.append(RENDER)
     if numbering:
@@ -801,7 +825,7 @@ rec.data = data;
 rec.revision = revision;
 rec.renders.push({revision, mode: "preview", profile_sha256: await fingerprint(profile), data_sha256: await fingerprint(data), file, previews, provenance: res.provenance === undefined ? null : res.provenance});
 await saveRecord(rec);
-return summarize(rec);
+return {...summarize(rec), profile_source: PROFILE_SOURCE};
 '''
 
 FINALIZE_CODE = r'''
@@ -868,7 +892,7 @@ rec.renders.push({revision, mode: "final", profile_sha256: approved.profile_sha2
 rec.issued = {number: rec.number, file: {path: file.path, sha256: file.sha256}, at};
 rec.history.push({at, action: "issued", note: rec.number});
 await saveRecord(rec);
-return summarize(rec);
+return {...summarize(rec), profile_source: PROFILE_SOURCE};
 '''
 
 CANCEL_CODE = r'''
@@ -988,8 +1012,8 @@ def build():
              'Renders the current data with the company profile through the artifact tool (mode preview), stores the PDF '
              'and its page previews in Storage and appends a revision. An issued or cancelled document is locked.',
              schema(['doc_id'], doc_id=DOC_ID, data_patch={'type': 'object', 'description': 'Shallow merge into the draft data, then revalidated'}),
-             [node('render', code(lib(templates='full', io=True, profile=True, render=True), RENDER_CODE), 'result', tools=RENDER_TOOLS)],
-             out_summary,
+             [node('render', code(lib(templates='full', io=True, profile=True, render=True, load_profile=True), RENDER_CODE), 'result', tools=RENDER_TOOLS + [BROKER])],
+             {**out_summary, 'profile_source': '{{ result.profile_source }}'},
              forms=[form('render', 'Nouveau rendu', [field('doc_id', 'Identifiant du document', 'string', True)], ['render'])])
 
     workflow('document-studio-finalize', 'Approve a document',
@@ -1003,8 +1027,8 @@ def build():
              'Reserves the next number of the template for the year, renders the final PDF (mode final) and stores it as the '
              'issued file. Requires an approved document and a manual confirmation. The reservation is not atomic.',
              schema(['doc_id', 'confirmation_manuelle'], doc_id=DOC_ID, confirmation_manuelle=CONFIRM),
-             [node('publish', code(lib(templates='full', io=True, profile=True, render=True, numbering=True), PUBLISH_CODE), 'result', tools=RENDER_TOOLS)],
-             out_summary,
+             [node('publish', code(lib(templates='full', io=True, profile=True, render=True, numbering=True, load_profile=True), PUBLISH_CODE), 'result', tools=RENDER_TOOLS + [BROKER])],
+             {**out_summary, 'profile_source': '{{ result.profile_source }}'},
              forms=[form('issue', 'Émettre un document', [field('doc_id', 'Identifiant du document', 'string', True), CONFIRM_FIELD], ['publish'])])
 
     workflow('document-studio-cancel', 'Cancel a document',
