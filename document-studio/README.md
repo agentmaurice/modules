@@ -22,6 +22,8 @@ messages) is French; `fr` is the only locale in V0.
 | `document-studio-publish` | requires `approved` and `confirmation_manuelle`. Reserves the next number, renders in `final` mode, stores the issued PDF, moves to `issued` |
 | `document-studio-cancel` | moves to `cancelled` with a reason. An issued number is never reused |
 | `document-studio-export` | refuses a cancelled document (`document_cancelled`); otherwise copies the issued PDF (or the latest render, flagged as a draft) to a Storage path outside `/document-studio/`, with its SHA-256. Mail and SFTP are out of V0 |
+| `document-studio-new-version` | adds a DOCX version of an existing document from a Storage file (`source_path`, `author`): fingerprints it, compares it with the previous version through the MCP tool `office_compare_v1`, stores the redline (tracked changes) and appends the version to the versions manifest. Refuses a stale `base_version` or `base_manifest_sha256` (`base_version_conflict`) and a cancelled document. Same request again: nothing is written (`replayed`) |
+| `document-studio-mark-authoritative` | makes one version the authoritative one (`confirmation_manuelle` required, refused before any read otherwise); the previously authoritative version becomes `superseded`. No version file is modified |
 | `document-studio-profile-save` | validates and stores the company profile and brand (`/document-studio/profile.json`), with manual confirmation |
 | `document-studio-list` | lists the documents (identifier, title, status, number, revision, latest hash) |
 | `document-studio-review-read` | full record of a document and previews of its latest render, for the MiniApp |
@@ -51,6 +53,8 @@ The Module never approves on a person's behalf.
 - `/document-studio/docs/<doc_id>/r<revision>-<sha12>/`: PDF and previews of one render attempt (12 first characters of the PDF SHA-256, so a losing attempt never overwrites another attempt's file).
 - `/document-studio/docs/<doc_id>/issued/<number>-<sha12>.pdf`: the issued PDF.
 - `/document-studio/numbers/<template>/<year>/<4-digit seq>.json`: number token.
+- `/document-studio/docs/<doc_id>/versions/manifest.json`: the versions manifest (`document-studio.versions/v1`): `versions` is the list of `{version, sha256, bytes, storage_ref, redline_ref, redline_sha256, changes: {insertions, deletions, changed_paragraphs}, author, created_at, status: draft|authoritative|superseded, supersedes, base_version, request_sha256}` (plus `superseded_by`, `authoritative_at`, `approved_by` when set), and `history` is its journal. At most one version is authoritative.
+- `/document-studio/docs/<doc_id>/versions/v<N>-<sha12>.docx` and `v<N>-redline-<sha12>.docx`: one immutable file per version and its redline against version N-1 (the first version has none). The file name carries the content, so a retry rewrites the same bytes.
 
 `doc_id`: `^[a-z0-9][a-z0-9-]{0,47}$`, chosen by the caller or derived from the
 title with a short suffix. Number: `<PREFIX>-<year>-<seq>` (`DEV` for the
@@ -58,6 +62,18 @@ quote, `CR` for the minutes).
 
 Without a company profile, `render` and `publish` fail with `profile_missing`:
 store the brand with `document-studio-profile-save`.
+
+## DOCX versions
+
+Versions live in Storage, next to the record, which they never write: an issued or signed document keeps its record and
+its PDF, and a new version is only added. `new-version` accepts a DOCX (ZIP package, 20 MiB at most) and numbers it N+1. A DOCX is checked twice before anything is written: a fast structural filter (readable ZIP holding `[Content_Types].xml` and `word/document.xml`), then the document engine. The first version goes through `office_inspect_v1` (it has nothing to compare with), the next ones through `office_compare_v1`; `mark-authoritative` inspects the version again before it makes it authoritative. An engine error or an unreadable document is `docx_invalid`.
+`mark-authoritative` is the only action that changes a status, with the manual confirmation, and never on a person's behalf
+(`approved_by` is recorded as stated, not attested). A superseded version is never restored: add a new version instead, and an
+older draft cannot take over from a newer authoritative one.
+
+The request fingerprint of `new-version` is the canonical hash of `{action, doc_id, sha256 of the file, author}`, stored in the
+manifest entry (`request_sha256`). The same request as any entry of the manifest is a replay: it returns that entry and writes nothing, even after later versions were added. To bring old content back, send it under another author.
+The same bytes under another author are refused (`version_unchanged`).
 
 ## Templates
 
@@ -111,10 +127,14 @@ renderer, on synthetic data. They do not prove the behavior on a One.
 
 ## Known limits (V0)
 
+- Concurrent `mark-authoritative`: two calls on the same document at the same time are not safe. Both may pass the second read and the later write wins, which can leave the wrong version authoritative or bring a superseded one back while both calls report success. Serialise them (one writer per document). Moving the manifest to `application_data_v1`, which has compare-and-swap, lifts this limit (lot 4).
+- Versions: Storage has no compare-and-swap. A manifest is read, the version file and redline are written, then the manifest is read again and written only if its text is unchanged (`concurrent_update` otherwise; a first manifest is written without overwrite). The window between the second read and the write is small, not null: allow one writer at a time per document. Files written before an abandoned manifest write stay orphaned in `versions/`. Pass `base_version` and `base_manifest_sha256` (returned as `manifest_sha256`) to make a stale caller fail.
+- Versions are DOCX only (XLSX and PDF are out of this lot), the comparison and its 20 MiB input limit are those of `office_compare_v1`, and there is no review MiniApp for versions yet.
+
 - The brand is read from Storage only. The `profile` Module keeps the profile in an application record whose broker is not wired in the One yet: calling the `cib-profile-read` Workflow would make every render fail until then.
 - The logo is a reference (`storage://…`); this Module does not resolve it to a file before rendering.
 - Number reservation is not atomic: it lists, writes without overwrite, reads back and checks the owner, at most 5 attempts (`number_conflict`). A number reserved then lost (failed render) stays reserved: it is taken again on the next attempt, never reused by another document. Atomic sequences are a platform follow-up.
-- No sending (mail, SFTP), no DOCX, one locale (`fr`).
+- No sending (mail, SFTP), no DOCX rendering (DOCX files are only versioned), one locale (`fr`).
 - `document-studio-export` reads the PDF in base64 through `read_file`; if the runtime does not allow it, the export fails on the hash (`export_integrity_failed`).
 - No Viewer `document` card for a preview in the chat yet.
 - Concurrent updates: Storage has no conditional write. Before each record write, `render`, `finalize`, `publish` and `cancel` read the record again and abandon with `concurrent_update` if its revision or status changed (for example a cancel during a render). Files already rendered stay orphaned in `r<revision>-<sha12>/`. The window is small but not null until Storage offers conditional writes.

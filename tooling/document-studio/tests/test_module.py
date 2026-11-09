@@ -7,6 +7,8 @@ import base64
 import datetime
 import hashlib
 import importlib.util
+import io
+import zipfile
 import json
 import re
 import subprocess
@@ -63,6 +65,22 @@ async function callTool(name, args) {
     if (opts.dup_page) previews.push({...prev});
     if (opts.bad_page) previews.push({...prev, page: opts.bad_page});
     return {status: "ok", mode: args.mode, output: "pdf", file, pages: opts.pages || 1, previews: opts.no_previews ? undefined : previews, provenance: {engine: "mock"}};
+  }
+  if (name === "office_inspect_v1") {
+    const data = Buffer.from(args.file.content_base64, "base64");
+    if (opts.inspect_error) throw new Error(opts.inspect_error);
+    if (opts.inspect_reject_sha && sha(data) === opts.inspect_reject_sha) return {error: "invalid_document", message: "the engine cannot read the document"};
+    if (opts.inspect_result) return opts.inspect_result;
+    return {status: "ok", text: "x", structure: {format: "docx", blocks: 1, block_types: {}, headings: []}, issues: []};
+  }
+  if (name === "office_compare_v1") {
+    calls[calls.length - 1].args = {...calls[calls.length - 1].args, before: {sha: sha(Buffer.from(args.before.content_base64, "base64"))}, after: {sha: sha(Buffer.from(args.after.content_base64, "base64"))}};
+    if (opts.compare_error) throw new Error(opts.compare_error);
+    if (opts.compare_result) return opts.compare_result;
+    const body = Buffer.concat([Buffer.from([0x50, 0x4b, 3, 4]), Buffer.from("redline " + args.before.content_base64 + args.after.content_base64 + (opts.nonce || ""))]);
+    const file = {filename: args.filename, mime_type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", bytes: body.length, sha256: opts.compare_bad_sha ? "0000" : sha(body)};
+    if (opts.compare_mode === "ref") { buffers["buf-redline-" + calls.length] = body.toString("base64"); file.ref = "buf-redline-" + calls.length; } else file.content_base64 = body.toString("base64");
+    return {status: "ok", changes: {insertions: 3, deletions: 1, changed_paragraphs: 2}, file};
   }
   if (name === "read_file") {
     if (opts.read_error && args.path.includes(opts.read_error_path || "") && args.encoding === undefined) throw new Error(opts.read_error);
@@ -161,7 +179,7 @@ class ResourcesTest(unittest.TestCase):
         manifest = load(MODULE / 'module.yaml')
         refs = {r['workflow_id'] for kind in ('actions', 'queries') for r in manifest['provides'][kind]}
         self.assertEqual(refs, set(self.workflows))
-        self.assertEqual(len(refs), 11)
+        self.assertEqual(len(refs), 13)
         apps = {r['miniapp_id'] for r in manifest['provides']['apps']}
         self.assertEqual(apps, {p.stem for p in (MODULE / 'agents/main/miniapps').glob('*.json')})
         self.assertEqual((manifest['key'], manifest['schema_version']), ('document-studio', 2))
@@ -187,7 +205,7 @@ class ResourcesTest(unittest.TestCase):
                 self.assertEqual('callTool' in source.replace("import { callTool }", ''), bool(used), name)
 
     def test_publish_and_finalize_and_cancel_demand_a_manual_confirmation(self):
-        for name in ('document-studio-finalize', 'document-studio-publish', 'document-studio-cancel', 'document-studio-profile-save'):
+        for name in ('document-studio-finalize', 'document-studio-publish', 'document-studio-cancel', 'document-studio-profile-save', 'document-studio-mark-authoritative'):
             self.assertIn('confirmation_manuelle', self.workflows[name]['input_schema']['required'], name)
         for name, extra in (('document-studio-finalize', {}), ('document-studio-publish', {}), ('document-studio-cancel', {'reason': 'test'})):
             node = self.workflows[name]['actions'][0]['id']
@@ -871,6 +889,330 @@ class LifecycleTest(unittest.TestCase):
         self.assertRegex(review['previews'][0]['path'], r'^/document-studio/docs/devis-test/r2-[0-9a-f]{12}/page-1\.png$')
         self.assertEqual(len(review['previews']), 1)
         self.assertEqual(review['renders'][0]['mode'], 'preview')
+
+
+DIR = '/document-studio/docs/devis-test/versions'
+
+
+def docx(label, names=('[Content_Types].xml', 'word/document.xml')):
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as z:
+        for name in names:
+            z.writestr(name, '<x>' + label + '</x>')
+    return buf.getvalue()
+
+
+def put(fs, path, data):
+    fs[path] = {'b64': base64.b64encode(data).decode()}
+
+
+def sha_of(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def manifest_of(fs):
+    return json.loads(fs[f'{DIR}/manifest.json']['text'])
+
+
+class VersionsTest(unittest.TestCase):
+    def setUp(self):
+        _, self.fs = create_quote(self, seeded())
+        self.v1, self.v2, self.v3 = docx('un'), docx('deux'), docx('trois')
+        for name, data in (('v1', self.v1), ('v2', self.v2), ('v3', self.v3)):
+            put(self.fs, f'/inbox/{name}.docx', data)
+
+    def add(self, name, fs=None, author='Alice Exemple', **extra):
+        return run_node('document-studio-new-version', 'new-version', {'doc_id': 'devis-test', 'source_path': f'/inbox/{name}.docx', 'author': author, **extra}, fs if fs is not None else self.fs, **self.opts)
+
+    opts = {}
+
+    def two_versions(self):
+        first = self.add('v1')
+        ok(self, first)
+        second = self.add('v2', first['fs'])
+        return ok(self, first), ok(self, second), second['fs']
+
+    def test_the_first_version_is_stored_without_redline(self):
+        out = self.add('v1')
+        result = ok(self, out)
+        self.assertEqual((result['version'], result['status'], result['redline_ref'], result['changes'], result['replayed']), (1, 'draft', None, None, False))
+        self.assertEqual(result['storage_ref'], f'{DIR}/v1-{sha_of(self.v1)[:12]}.docx')
+        self.assertEqual(base64.b64decode(out['fs'][result['storage_ref']]['b64']), self.v1)
+        self.assertFalse([c for c in out['calls'] if c['name'] == 'office_compare_v1'])
+        manifest = manifest_of(out['fs'])
+        self.assertEqual((manifest['schema'], manifest['doc_id']), ('document-studio.versions/v1', 'devis-test'))
+        self.assertEqual(manifest['versions'][0]['sha256'], sha_of(self.v1))
+        self.assertEqual(result['manifest_sha256'], sha_of(out['fs'][f'{DIR}/manifest.json']['text'].encode()))
+        record = json.loads(out['fs']['/document-studio/docs/devis-test/record.json']['text'])
+        self.assertEqual(record, json.loads(self.fs['/document-studio/docs/devis-test/record.json']['text']), 'record.json is never written')
+
+    def test_a_new_version_is_compared_and_the_redline_and_manifest_are_stored(self):
+        first, second, fs = self.two_versions()
+        self.assertEqual((second['version'], second['status'], second['changes']), (2, 'draft', {'insertions': 3, 'deletions': 1, 'changed_paragraphs': 2}))
+        calls = [c for c in run_node('document-studio-new-version', 'new-version', {'doc_id': 'devis-test', 'source_path': '/inbox/v2.docx', 'author': 'Alice Exemple'}, self.add('v1')['fs'])['calls'] if c['name'] == 'office_compare_v1']
+        self.assertEqual(len(calls), 1)
+        self.assertEqual((calls[0]['args']['before']['sha'], calls[0]['args']['after']['sha']), (sha_of(self.v1), sha_of(self.v2)))
+        self.assertEqual(calls[0]['args']['author'], 'Alice Exemple')
+        self.assertTrue(second['redline_ref'].startswith(f'{DIR}/v2-redline-'))
+        self.assertTrue(base64.b64decode(fs[second['redline_ref']]['b64']).startswith(b'PK\x03\x04'))
+        manifest = manifest_of(fs)
+        self.assertEqual([v['version'] for v in manifest['versions']], [1, 2])
+        entry = manifest['versions'][1]
+        self.assertEqual((entry['sha256'], entry['storage_ref'], entry['redline_ref'], entry['author'], entry['status'], entry['supersedes'], entry['base_version']),
+                         (sha_of(self.v2), second['storage_ref'], second['redline_ref'], 'Alice Exemple', 'draft', None, 1))
+        self.assertEqual(entry['redline_sha256'], sha_of(base64.b64decode(fs[second['redline_ref']]['b64'])))
+        self.assertEqual(entry['changes'], {'insertions': 3, 'deletions': 1, 'changed_paragraphs': 2})
+        self.assertEqual([h['action'] for h in manifest['history']], ['version_added', 'version_added'])
+        self.assertEqual(base64.b64decode(fs[first['storage_ref']]['b64']), self.v1, 'the first version is untouched')
+
+    def test_the_redline_is_stored_from_a_buffer_reference(self):
+        self.opts = {'compare_mode': 'ref'}
+        _, second, fs = self.two_versions()
+        self.assertEqual(sha_of(base64.b64decode(fs[second['redline_ref']]['b64'])), manifest_of(fs)['versions'][1]['redline_sha256'])
+
+    def test_a_wrong_redline_fingerprint_or_answer_is_refused_before_the_manifest(self):
+        base = self.add('v1')['fs']
+        for opts, code in (({'compare_bad_sha': True}, 'version_integrity_failed'), ({'compare_error': 'engine_busy'}, 'compare_failed'),
+                           ({'compare_result': {'error': 'invalid_document', 'message': 'x'}}, 'compare_failed'),
+                           ({'compare_result': {'status': 'ok', 'file': {}, 'changes': {'insertions': -1, 'deletions': 0}}}, 'compare_invalid'),
+                           ({'compare_result': {'status': 'ok', 'changes': {'insertions': 1, 'deletions': 0}}}, 'compare_invalid')):
+            self.opts = opts
+            out = self.add('v2', base)
+            self.assertTrue(out['error'].startswith(code), (opts, out['error']))
+            self.assertEqual([v['version'] for v in manifest_of(out['fs'])['versions']], [1], opts)
+        self.opts = {}
+
+    def test_a_base_version_that_is_no_longer_the_latest_is_refused(self):
+        _, _, fs = self.two_versions()
+        before = {k: dict(v) for k, v in fs.items()}
+        out = self.add('v3', fs, base_version=1)
+        self.assertTrue(out['error'].startswith('base_version_conflict'), out)
+        self.assertEqual(out['fs'], before)
+        stale = ok(self, self.add('v1'))['manifest_sha256']
+        out = self.add('v3', fs, base_manifest_sha256=stale)
+        self.assertTrue(out['error'].startswith('base_version_conflict'), out)
+        self.assertEqual(out['fs'], before)
+        current = manifest_of(fs)
+        good = self.add('v3', fs, base_version=2, base_manifest_sha256=sha_of(fs[f'{DIR}/manifest.json']['text'].encode()))
+        self.assertEqual(ok(self, good)['version'], 3)
+        self.assertEqual(len(current['versions']), 2)
+        self.assertTrue(self.add('v3', fs, base_version=0)['error'].startswith('base_version_conflict'))
+
+    def test_a_manifest_that_changes_during_the_write_is_never_overwritten(self):
+        _, _, fs = self.two_versions()
+        # another writer appends version 3 between our read and our write: simulated by a manifest that differs at the second read
+        wf = load(WORKFLOWS / 'document-studio-new-version.json')
+        source = wf['actions'][0]['code']
+        self.assertIn('fresh !== expectedRaw', source)
+        racing = run_node_with_race(fs)
+        self.assertTrue(racing['error'].startswith('concurrent_update'), racing)
+        self.assertEqual(manifest_of(racing['fs'])['versions'][-1]['author'], 'Intrus')
+
+    def test_replaying_the_same_request_writes_nothing(self):
+        first, second, fs = self.two_versions()
+        before = json.dumps(fs, sort_keys=True)
+        again = run_node('document-studio-new-version', 'new-version', {'doc_id': 'devis-test', 'source_path': '/inbox/v2.docx', 'author': 'Alice Exemple'}, fs)
+        replay = ok(self, again)
+        self.assertEqual((replay['replayed'], replay['version'], replay['manifest_sha256']), (True, 2, sha_of(fs[f'{DIR}/manifest.json']['text'].encode())))
+        self.assertEqual(json.dumps(again['fs'], sort_keys=True), before)
+        self.assertEqual([c['name'] for c in again['calls']], ['read_file', 'read_file', 'read_file'])
+        self.assertTrue(ok(self, self.add('v2', fs, base_version=1))['replayed'])
+        # same bytes, another author, is not a replay and not a new version
+        other = self.add('v2', fs, author='Bob Exemple')
+        self.assertTrue(other['error'].startswith('version_unchanged'), other)
+
+    def test_replaying_an_older_request_writes_nothing(self):
+        _, _, fs = self.two_versions()
+        third = self.add('v3', fs)
+        self.assertEqual(ok(self, third)['version'], 3)
+        before = json.dumps(third['fs'], sort_keys=True)
+        for name, version in (('v1', 1), ('v2', 2)):
+            again = self.add(name, third['fs'])
+            replay = ok(self, again)
+            self.assertEqual((replay['replayed'], replay['version']), (True, version))
+            self.assertEqual(json.dumps(again['fs'], sort_keys=True), before)
+            self.assertFalse([c for c in again['calls'] if c['name'] in ('write_file', 'office_compare_v1')])
+        self.assertTrue(ok(self, self.add('v1', third['fs'], base_version=0))['replayed'])
+        self.assertEqual(ok(self, self.add('v1', third['fs'], author='Bob Exemple'))['version'], 4)
+
+    def test_a_manifest_or_input_with_unsafe_keys_is_refused(self):
+        literal = run_node('document-studio-new-version', 'new-version', {'doc_id': 'devis-test', 'source_path': '/inbox/v1.docx', 'author': json.loads('{"__proto__": {"x": 1}}')}, self.fs)
+        self.assertTrue(literal['error'].startswith('data_invalid'), literal)
+        for extra in ({'constructor': 1}, {'prototype': {}}, {'unknown': 1}):
+            out = self.add('v1', **extra)
+            self.assertIn('error', out, extra)
+            self.assertNotIn(f'{DIR}/manifest.json', out['fs'])
+        first = self.add('v1')
+        evil = json.dumps(manifest_of(first['fs'])).replace('"history"', '"__proto__": {"x": 1}, "history"')
+        first['fs'][f'{DIR}/manifest.json'] = {'text': evil}
+        out = self.add('v2', first['fs'])
+        self.assertTrue(out['error'].startswith('manifest_corrupt'), out)
+        broken = {'text': json.dumps({'schema': 'other'})}
+        first['fs'][f'{DIR}/manifest.json'] = broken
+        self.assertTrue(self.add('v2', first['fs'])['error'].startswith('manifest_corrupt'))
+
+    def test_inputs_are_checked_before_anything_is_written(self):
+        put(self.fs, '/inbox/bad.docx', b'not a zip')
+        put(self.fs, '/inbox/faux.docx', base64.b64decode('UEsDBA=='))
+        put(self.fs, '/inbox/truncated.docx', docx('x')[:-10])
+        put(self.fs, '/inbox/other-zip.docx', docx('x', ('readme.txt',)))
+        for patch, code in (({'source_path': '/inbox/bad.docx'}, 'docx_invalid'), ({'source_path': '/inbox/faux.docx'}, 'docx_invalid'), ({'source_path': '/inbox/truncated.docx'}, 'docx_invalid'), ({'source_path': '/inbox/other-zip.docx'}, 'docx_invalid'), ({'source_path': '/inbox/absent.docx'}, 'source_not_found'),
+                            ({'source_path': '/inbox/../x.docx'}, 'source_invalid'), ({'source_path': '/inbox/v1.pdf'}, 'source_invalid'),
+                            ({'source_path': f'{DIR}/x.docx'}, 'source_invalid'), ({'author': ''}, 'author_required'), ({'doc_id': 'Mauvais'}, 'doc_id_invalid'),
+                            ({'doc_id': 'inconnu'}, 'document_not_found'), ({'base_version': -1}, 'base_version_invalid'), ({'base_manifest_sha256': 'xyz'}, 'base_manifest_sha256_invalid')):
+            ctx = {'doc_id': 'devis-test', 'source_path': '/inbox/v1.docx', 'author': 'Alice', **patch}
+            out = run_node('document-studio-new-version', 'new-version', ctx, self.fs)
+            self.assertTrue(out['error'].startswith(code), (patch, out['error']))
+            self.assertFalse([c for c in out['calls'] if c['name'] == 'write_file'], patch)
+
+    def test_a_cancelled_document_accepts_no_version(self):
+        record = json.loads(self.fs['/document-studio/docs/devis-test/record.json']['text'])
+        record['status'] = 'cancelled'
+        self.fs['/document-studio/docs/devis-test/record.json'] = {'text': json.dumps(record)}
+        self.assertTrue(self.add('v1')['error'].startswith('document_cancelled'))
+
+    def test_an_issued_document_still_accepts_a_new_version_and_stays_untouched(self):
+        record = json.loads(self.fs['/document-studio/docs/devis-test/record.json']['text'])
+        record['status'] = 'issued'
+        self.fs['/document-studio/docs/devis-test/record.json'] = {'text': json.dumps(record)}
+        out = self.add('v1')
+        self.assertEqual(ok(self, out)['version'], 1)
+        self.assertEqual(json.loads(out['fs']['/document-studio/docs/devis-test/record.json']['text'])['status'], 'issued')
+
+    def mark(self, fs, version=2, confirm='oui', **extra):
+        return run_node('document-studio-mark-authoritative', 'mark', {'doc_id': 'devis-test', 'version': version, 'confirmation_manuelle': confirm, **extra}, fs)
+
+    def test_mark_authoritative_needs_the_manual_confirmation_before_any_read(self):
+        _, _, fs = self.two_versions()
+        for value in ('non', False, '', None, 'false'):
+            out = self.mark(fs, confirm=value)
+            self.assertTrue(out['error'].startswith('manual_confirmation_required'), (value, out))
+            self.assertEqual(out['calls'], [])
+        self.assertEqual({v['status'] for v in manifest_of(fs)['versions']}, {'draft'})
+
+    def test_mark_authoritative_supersedes_the_previous_one_and_changes_nothing_else(self):
+        _, _, fs = self.two_versions()
+        before = {k: v for k, v in fs.items() if k != f'{DIR}/manifest.json'}
+        first = self.mark(fs, 1, approved_by='Carole Exemple')
+        self.assertEqual((ok(self, first)['status'], ok(self, first)['supersedes'], ok(self, first)['authoritative_version']), ('authoritative', None, 1))
+        second = self.mark(first['fs'], 2)
+        result = ok(self, second)
+        self.assertEqual((result['status'], result['supersedes'], result['authoritative_version'], result['replayed']), ('authoritative', 1, 2, False))
+        manifest = manifest_of(second['fs'])
+        self.assertEqual([v['status'] for v in manifest['versions']], ['superseded', 'authoritative'])
+        self.assertEqual(manifest['versions'][0]['superseded_by'], 2)
+        self.assertEqual(manifest['versions'][0]['approved_by'], 'Carole Exemple')
+        self.assertEqual({k: v for k, v in second['fs'].items() if k != f'{DIR}/manifest.json'}, before, 'no version file or record is modified')
+        self.assertEqual([h['action'] for h in manifest['history']][-2:], ['marked_authoritative', 'marked_authoritative'])
+        # a new version is added as a draft and the authoritative one stays
+        third = self.add('v3', second['fs'])
+        self.assertEqual([v['status'] for v in manifest_of(third['fs'])['versions']], ['superseded', 'authoritative', 'draft'])
+
+    def test_mark_authoritative_is_idempotent_and_refuses_regressions(self):
+        _, _, fs = self.two_versions()
+        marked = self.mark(fs, 2)
+        again = self.mark(marked['fs'], 2)
+        self.assertTrue(ok(self, again)['replayed'])
+        self.assertEqual(again['fs'], marked['fs'])
+        self.assertFalse([c for c in again['calls'] if c['name'] == 'write_file'])
+        old = self.mark(marked['fs'], 1)
+        self.assertTrue(old['error'].startswith('status_invalid'), old)
+        again3 = self.mark(self.mark(marked['fs'], 2)['fs'], 3)
+        self.assertTrue(again3['error'].startswith('version_not_found'), again3)
+        self.assertTrue(self.mark({k: v for k, v in fs.items() if not k.endswith('manifest.json')}, 1)['error'].startswith('manifest_not_found'))
+
+    def test_mark_authoritative_checks_the_file_and_the_manifest_token(self):
+        _, _, fs = self.two_versions()
+        stored = manifest_of(fs)['versions'][1]['storage_ref']
+        tampered = {**fs, stored: {'b64': base64.b64encode(docx('altere')).decode()}}
+        out = self.mark(tampered, 2)
+        self.assertTrue(out['error'].startswith('version_integrity_failed'), out)
+        stale = self.mark(fs, 2, base_manifest_sha256='0' * 64)
+        self.assertTrue(stale['error'].startswith('base_version_conflict'), stale)
+        good = self.mark(fs, 2, base_manifest_sha256=sha_of(fs[f'{DIR}/manifest.json']['text'].encode()).upper())
+        self.assertEqual(ok(self, good)['status'], 'authoritative')
+
+    def test_mark_authoritative_refuses_a_stored_version_that_is_not_a_docx(self):
+        first = self.add('v1')
+        fs = first['fs']
+        fake = base64.b64decode('UEsDBA==')
+        entry = manifest_of(fs)['versions'][0]
+        put(fs, entry['storage_ref'], fake)
+        manifest = manifest_of(fs)
+        manifest['versions'][0]['sha256'] = sha_of(fake)
+        fs[f'{DIR}/manifest.json'] = {'text': json.dumps(manifest)}
+        out = self.mark(fs, 1)
+        self.assertTrue(out['error'].startswith('docx_invalid'), out)
+        self.assertEqual(manifest_of(out['fs'])['versions'][0]['status'], 'draft')
+
+    def test_the_engine_has_the_last_word_on_a_docx_that_passes_the_structural_filter(self):
+        empty = docx('', names=('[Content_Types].xml', 'word/document.xml'))
+        put(self.fs, '/inbox/vide.docx', empty)
+        ctx = {'doc_id': 'devis-test', 'source_path': '/inbox/vide.docx', 'author': 'Alice'}
+        for opts in ({'inspect_reject_sha': sha_of(empty)}, {'inspect_error': 'engine_unavailable'}, {'inspect_result': {'status': 'ok'}}):
+            out = run_node('document-studio-new-version', 'new-version', ctx, self.fs, **opts)
+            self.assertTrue(out['error'].startswith('docx_invalid'), (opts, out))
+            self.assertFalse([c for c in out['calls'] if c['name'] == 'write_file'], opts)
+            self.assertEqual(out['fs'], self.fs)
+        accepted = run_node('document-studio-new-version', 'new-version', ctx, self.fs)
+        self.assertEqual(ok(self, accepted)['version'], 1, 'without the engine refusal the same file is accepted: the engine decides')
+        inspected = [c for c in accepted['calls'] if c['name'] == 'office_inspect_v1']
+        self.assertEqual(len(inspected), 1)
+        self.assertEqual(inspected[0]['args']['format'], 'docx')
+        # later versions are read by office_compare_v1, not inspected again
+        second = self.add('v2', ok_fs(self, self.add('v1')))
+        self.assertFalse([c for c in second['calls'] if c['name'] == 'office_inspect_v1'])
+
+    def test_mark_authoritative_asks_the_engine_before_declaring_a_version_authoritative(self):
+        _, _, fs = self.two_versions()
+        for opts in ({'inspect_reject_sha': sha_of(self.v2)}, {'inspect_error': 'engine_busy'}):
+            out = run_node('document-studio-mark-authoritative', 'mark', {'doc_id': 'devis-test', 'version': 2, 'confirmation_manuelle': 'oui'}, fs, **opts)
+            self.assertTrue(out['error'].startswith('docx_invalid'), (opts, out))
+            self.assertFalse([c for c in out['calls'] if c['name'] == 'write_file'])
+            self.assertEqual(out['fs'], fs)
+        good = self.mark(fs, 2)
+        self.assertEqual(ok(self, good)['status'], 'authoritative')
+        self.assertEqual(len([c for c in good['calls'] if c['name'] == 'office_inspect_v1']), 1)
+
+    def test_mark_authoritative_refuses_unsafe_input(self):
+        _, _, fs = self.two_versions()
+        out = run_node('document-studio-mark-authoritative', 'mark', {'doc_id': 'devis-test', 'version': 2, 'confirmation_manuelle': 'oui', 'approved_by': json.loads('{"__proto__": 1}')}, fs)
+        self.assertIn('error', out)
+        self.assertIn('error', self.mark(fs, 2, constructor=1))
+        self.assertTrue(self.mark(fs, 'deux')['error'].startswith('version_invalid'))
+        self.assertTrue(self.mark(fs, 0)['error'].startswith('version_invalid'))
+        self.assertEqual(manifest_of(fs)['versions'][1]['status'], 'draft')
+
+    def test_new_workflows_are_closed_declare_their_tools_and_never_call_an_unlisted_one(self):
+        for name in ('document-studio-new-version', 'document-studio-mark-authoritative'):
+            wf = load(WORKFLOWS / f'{name}.json')
+            self.assertIs(wf['input_schema']['additionalProperties'], False)
+            self.assertEqual(set(wf['actions'][0]['context']['allowed_tools']), {'read_file', 'write_file', 'list_files', 'office_compare_v1', 'office_inspect_v1'})
+            self.assertNotIn('artifact_render_v1', wf['actions'][0]['code'])
+            self.assertIn('doc_id', wf['input_schema']['required'])
+
+
+def ok_fs(case, out):
+    ok(case, out)
+    return out['fs']
+
+
+def run_node_with_race(fs):
+    """Runs new-version with a manifest rewritten by another writer between the first and the second read."""
+    wf = load(WORKFLOWS / 'document-studio-new-version.json')
+    code = wf['actions'][0]['code']
+    racing = code.replace('const written = await writeManifest(id, next, raw);',
+                          'const other = JSON.parse(raw); other.versions.push({version: 3, sha256: "a".repeat(64), storage_ref: "/x", author: "Intrus", created_at: "2026-01-01T00:00:00.000Z", status: "draft", request_sha256: "z"});\n'
+                          'await callTool("write_file", {path: manifestPath(id), content: JSON.stringify(other, null, 2) + "\\n", overwrite: true});\n'
+                          'const written = await writeManifest(id, next, raw);')
+    assert racing != code
+    payload = json.dumps({'code': racing, 'ctx': {'doc_id': 'devis-test', 'source_path': '/inbox/v3.docx', 'author': 'Alice'}, 'fs': fs, 'opts': {}})
+    with tempfile.TemporaryDirectory() as tmp:
+        harness = Path(tmp) / 'harness.js'
+        harness.write_text(HARNESS, encoding='utf-8')
+        proc = subprocess.run(['node', str(harness)], input=payload, capture_output=True, text=True)
+    assert proc.returncode == 0, proc.stderr
+    return json.loads(proc.stdout)
 
 
 if __name__ == '__main__':
