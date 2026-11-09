@@ -997,6 +997,21 @@ class SharingTest(unittest.TestCase):
         self.assertIn('error', run_node('document-read', 'read', {'doc_id': 'absent'}, fs))
         self.assertIn('error', run_node('document-read', 'read', {'doc_id': 'devis-test'}, fs, broker_error='access_denied'))
 
+    def test_republishing_reports_the_real_shares_and_read_accepts_an_empty_id(self):
+        fs = self.share(self.issued(), share_subject_user_id='member-b')['fs']
+        again = ok(self, self.share(fs, expected_revision=2))
+        self.assertEqual(again['share_count'], 1)
+        self.assertNotIn('seul', again['message'])
+        self.assertIn('1 membre', again['message'])
+        private = ok(self, self.share(self.issued()))
+        self.assertIn('propriétaire seul', private['message'])
+        schema = load(WORKFLOWS / 'document-read.json')['input_schema']
+        self.assertTrue(re.fullmatch(schema['properties']['doc_id']['pattern'], ''))
+        self.assertTrue(re.fullmatch(schema['properties']['doc_id']['pattern'], 'devis-test'))
+        self.assertIsNone(re.fullmatch(schema['properties']['doc_id']['pattern'], '../x'))
+        self.assertEqual(schema['required'], [])
+        self.assertEqual(ok(self, run_node('document-read', 'read', {'doc_id': ''}, fs))['total'], 1)
+
 
 class ProfileSourceTest(unittest.TestCase):
     BROKER_PROFILE = json.loads(json.dumps(PROFILE)) | {}

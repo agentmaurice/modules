@@ -156,10 +156,12 @@ class TemplateComposeTests(unittest.TestCase):
                 self.assertTrue((consumer / "agents/documents/workflows" / f"{name}.json").is_file(), name)
             self.assertTrue((consumer / "agents/documents/tests/test-plan.json").is_file())
             draft = json.loads((consumer / "surface-drafts/cib-documents.surface-draft.json").read_text(encoding="utf-8"))
-            roles = {w["workflow_id"]: w["required_role"] for w in draft["public_surface"]["workflows"]}
+            roles = {w["workflow_id"]: w.get("required_role") for w in draft["public_surface"]["workflows"]}
             self.assertEqual(len(roles), 13)
             self.assertEqual(roles["document-studio-profile-save"], "cib_admin")
-            self.assertEqual({r for k, r in roles.items() if k != "document-studio-profile-save"}, {"cib_documents"})
+            self.assertIsNone(roles["document-read"], "ACL of the record protects the read, as for contenu-read")
+            self.assertNotIn("required_role", next(w for w in draft["public_surface"]["workflows"] if w["workflow_id"] == "document-read"))
+            self.assertEqual({r for k, r in roles.items() if k not in ("document-studio-profile-save", "document-read")}, {"cib_documents"})
             self.assertEqual({w["agent_id"] for w in draft["public_surface"]["workflows"]}, {"agent-documents"})
             self.assertEqual([a["miniapp_id"] for a in draft["public_surface"]["miniapps"]], ["document-studio-review"])
             self.assertEqual(self.run_main(source, consumer, "--with-service", "documents", "--write"), 0, "rerun is idempotent")

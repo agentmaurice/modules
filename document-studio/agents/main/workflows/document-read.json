@@ -13,8 +13,8 @@
     "properties": {
       "doc_id": {
         "type": "string",
-        "description": "Document identifier: lowercase letters, digits and hyphens",
-        "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"
+        "description": "Document identifier; empty (or absent) lists the references the caller may read",
+        "pattern": "^([a-z0-9][a-z0-9-]{0,47})?$"
       }
     }
   },

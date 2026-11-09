@@ -28,7 +28,9 @@ OPTIONAL_SERVICES = {
         "module_dir": "document-studio",
         "version": "0.2.0",
         "role": "cib_documents",
-        "gates": {"document-studio-profile-save": "cib_admin"},
+        # document-read carries no required_role, like contenu-read: any member of the Application may call it
+        # and the ACL of each shared record decides what it returns. None = no role.
+        "gates": {"document-studio-profile-save": "cib_admin", "document-read": None},
     },
 }
 SURFACE_DRAFT_DIR = "surface-drafts"
@@ -151,16 +153,18 @@ def validate_agent_spec(path: Path, role: str, errors: list[str]) -> None:
 
 
 def surface_draft(source_root: Path, service: str, agent_spec: Path) -> str:
-    """Surface entries of an optional service, with `required_role` on every Workflow (never left to a naming convention)."""
+    """Surface entries of an optional service, with `required_role` on every Workflow but the ACL-protected read (never left to a naming convention)."""
     config = OPTIONAL_SERVICES[service]
     manifest = load_json(source_root / config["module_dir"] / "module.yaml")
     agent_id = load_json(agent_spec)["agent_id"]
     provides = manifest["provides"]
-    workflows = [
-        {"agent_id": agent_id, "workflow_id": ref["workflow_id"], "version": ref["workflow_version"],
-         "required_role": config["gates"].get(ref["workflow_id"], config["role"])}
-        for ref in provides["actions"] + provides["queries"]
-    ]
+    workflows = []
+    for ref in provides["actions"] + provides["queries"]:
+        entry = {"agent_id": agent_id, "workflow_id": ref["workflow_id"], "version": ref["workflow_version"]}
+        role = config["gates"].get(ref["workflow_id"], config["role"])
+        if role is not None:
+            entry["required_role"] = role
+        workflows.append(entry)
     miniapps = [{"agent_id": agent_id, "miniapp_id": a["miniapp_id"], "version": a["miniapp_version"]} for a in provides["apps"]]
     return json.dumps({"public_surface": {"workflows": workflows, "miniapps": miniapps}}, indent=2) + "\n"
 
@@ -273,7 +277,7 @@ def main() -> int:
                 return 3
 
     for draft_path, draft in drafts:
-        print(f"surface draft -> {draft_path} (required_role on every Workflow; merge it into the Application surface and publish it yourself)")
+        print(f"surface draft -> {draft_path} (required_role on every Workflow except document-read, protected by the record ACL; merge it into the Application surface and publish it yourself)")
         if args.write:
             draft_path.parent.mkdir(parents=True, exist_ok=True)
             draft_path.write_text(draft, encoding="utf-8")

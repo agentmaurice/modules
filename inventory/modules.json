@@ -1237,8 +1237,8 @@
         ],
         "sha256": {
           "document-studio/module.yaml": "64bb28f928d537ff486519146022efab8cc1e2edbe5bbc898a96012ccfe602eb",
-          "document-studio/agents/main/workflows/document-read.json": "4c1e20b58a546f415f480145882523ae607fabfbf784eac5de02d1ad3515a2ef",
-          "document-studio/agents/main/workflows/document-share.json": "a37a4d7bbe729c74b769f26c85a3c4766d691ca76821cdc846abe816b15ebdb2",
+          "document-studio/agents/main/workflows/document-read.json": "d71940349fd9f9013989a0de9c78b07c93d6cb3b758f579c2f6f33bf24c79048",
+          "document-studio/agents/main/workflows/document-share.json": "f7755cb4f6049b97e8ca9b762929e5b51fd8b98dc8c2d8ec7dec9588449acf8d",
           "document-studio/agents/main/workflows/document-studio-cancel.json": "a23e2f969ff387c63dd28614bb491cda5aaef9837c08f395e75bba3667ccd973",
           "document-studio/agents/main/workflows/document-studio-draft.json": "c6b0593f2ad8db5ecab9f17fa47019e94054b8e66c917e0bac6447695141454d",
           "document-studio/agents/main/workflows/document-studio-export.json": "231e46fecd19be8aa951b7e4f5862a7cec2b8edf79ee65ba001038150ac37dd4",
@@ -1276,7 +1276,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "1b5d8e9c893c9bc45e81c5107585cb3d8f42fdc75b50ccaf963e5cf1481564d9"
+              "code_sha256": "659157ddb8688061a808d19c50ef5dfc096d7cf89d0a08518f313f5dfdd2a79c"
             }
           ]
         },

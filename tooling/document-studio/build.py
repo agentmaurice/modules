@@ -635,7 +635,7 @@ if (subject) {
   item = brokerItem(await callTool("recipe--application_data_v1", {operation: "share", namespace: NAMESPACE, record_key: id, expected_revision: revision, subject_user_id: subject.trim(), permission}), id);
 }
 const view = brokerView(item);
-return {...view, doc_id: id, shared_with: subject ? subject.trim() : "", message: subject ? "Partage mis à jour par le broker natif. Partager un document ne donne pas accès au service." : "Référence du document publiée, visible de son propriétaire seul tant qu'aucun membre n'est ajouté.", external_effect: false};
+return {...view, doc_id: id, shared_with: subject ? subject.trim() : "", message: subject ? "Partage mis à jour par le broker natif. Partager un document ne donne pas accès au service." : (view.share_count > 0 ? "Référence du document republiée ; partagée avec " + view.share_count + " membre(s), partages inchangés." : "Référence du document publiée, visible de son propriétaire seul tant qu'aucun membre n'est ajouté."), external_effect: false};
 """
 
 READ_CODE = r"""
@@ -1101,7 +1101,7 @@ def build():
     workflow('document-read', 'Read shared documents',
              'Reads, through the native application data broker, the reference of one shared document (with the permissions of the '
              'caller), or lists the references the caller may read when doc_id is empty. Only the rights of the caller apply.',
-             schema([], doc_id=DOC_ID),
+             schema([], doc_id=text('Document identifier; empty (or absent) lists the references the caller may read', pattern='^([a-z0-9][a-z0-9-]{0,47})?$')),
              [node('read', code(IMPORT, lib(), BROKER_LIB, READ_CODE), 'result', tools=[BROKER])],
              {'record': '{{ result.record }}', 'revision': '{{ result.revision }}', 'owner_user_id': '{{ result.owner_user_id }}',
               'permissions': '{{ result.permissions }}', 'permissions_summary': '{{ result.permissions_summary }}',

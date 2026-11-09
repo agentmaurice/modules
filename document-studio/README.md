@@ -27,7 +27,7 @@ messages) is French; `fr` is the only locale in V0.
 | `document-studio-review-read` | full record of a document and previews of its latest render, for the MiniApp |
 | `document-studio-template-read` | lists the templates, or the manifest and data schemas of one template |
 | `document-share` | publishes the reference of an **issued** document as a record of the native application data broker (`recipe--application_data_v1`, namespace `cib-documents`, key `doc_id`), then grants or removes `read` for one member. Requires `confirmation_manuelle`. The PDF stays in Storage |
-| `document-read` | reads one shared reference through the broker (with the caller's permissions), or lists the references the caller may read when `doc_id` is empty |
+| `document-read` | reads one shared reference through the broker (with the caller's permissions), or lists the references the caller may read when `doc_id` is empty or absent (`"doc_id": ""` is valid, so the form can be submitted blank) |
 
 The `document-studio-review` MiniApp has no input component of its own (the
 MiniApp vocabulary has none): the document identifier (`doc_id`) is typed in
@@ -54,7 +54,7 @@ Storage right, separate from the ACL of the reference.
 (`documents`, spec-init'ed in the consumer like the three roles; off by default). Besides the resources and the test
 plan it writes `surface-drafts/cib-documents.surface-draft.json`, with `required_role` on every Workflow: `cib_documents`
 for the owner of the service, `cib_admin` for `document-studio-profile-save`. Role grants and the ACL of each record are
-cumulative; the Module never grants a role or a share. The Administration select of `cib-admin-manage` does not list
+cumulative; the Module never grants a role or a share. `document-read` has no `required_role` in the surface draft, like `contenu-read`: any member of the Application may call it and the ACL of each record decides what is returned. `document-share` republished without a member reports the real shares returned by the broker. The Administration select of `cib-admin-manage` does not list
 `cib_documents` yet.
 
 ## Lifecycle
