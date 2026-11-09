@@ -1205,9 +1205,9 @@
     },
     {
       "key": "document-studio",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "manifest": "document-studio/module.yaml",
-      "workflows": 11,
+      "workflows": 13,
       "miniapps": 1,
       "source": {
         "repository": "github.com/agentmaurice/modules",
@@ -1223,6 +1223,8 @@
           "document-studio/agents/main/workflows/document-studio-export.json",
           "document-studio/agents/main/workflows/document-studio-finalize.json",
           "document-studio/agents/main/workflows/document-studio-list.json",
+          "document-studio/agents/main/workflows/document-studio-mark-authoritative.json",
+          "document-studio/agents/main/workflows/document-studio-new-version.json",
           "document-studio/agents/main/workflows/document-studio-plan.json",
           "document-studio/agents/main/workflows/document-studio-profile-save.json",
           "document-studio/agents/main/workflows/document-studio-publish.json",
@@ -1234,12 +1236,14 @@
           "document-studio/agents/main/miniapps/document-studio-review.json"
         ],
         "sha256": {
-          "document-studio/module.yaml": "89c05d34793969a8fccb1b767f9b6aa87bda29d6fb9edaf4f80e1f827e2a0299",
+          "document-studio/module.yaml": "2e09f02654084161cdea77ebbdeb479e7da92034c5939b63cfb73402747cdecb",
           "document-studio/agents/main/workflows/document-studio-cancel.json": "899e24cb5688d92497891ea09a3181f64093df9d2802d818da78f1298f807965",
           "document-studio/agents/main/workflows/document-studio-draft.json": "72be0b86b67c6fc4392bff1795c38c59763334582fedf1ccdd95b296e9492b4e",
           "document-studio/agents/main/workflows/document-studio-export.json": "52aa5bcc2ee64715be59fab234804fcebd3cc1cfec4e32dd5f9ea5d69c9371db",
           "document-studio/agents/main/workflows/document-studio-finalize.json": "07f6f1bce4cb549c1973b06b3523abefc77c253967711415d51bd499360ed020",
           "document-studio/agents/main/workflows/document-studio-list.json": "38daf2284f500b2e71d0bbd73dbfbd8d3c3ca1259f600384a6ce95c565ba5a33",
+          "document-studio/agents/main/workflows/document-studio-mark-authoritative.json": "862633e27a7999e8e8e12c57a707afee5c0a03cb4770fcddb2bd91dbbd59b989",
+          "document-studio/agents/main/workflows/document-studio-new-version.json": "7da83ff9f4b62399885fdcfa0403b262d164a195bf61b649a3ec6450ca6ca2ae",
           "document-studio/agents/main/workflows/document-studio-plan.json": "47a1a75463b75cdfc287a56f80a23f3faef513ae46b6b980a0851579089eb99b",
           "document-studio/agents/main/workflows/document-studio-profile-save.json": "686d4ccf1265c6b3990a0fdec57b7ddc3e3252bcc66025f25d640f12c7f9454e",
           "document-studio/agents/main/workflows/document-studio-publish.json": "350a0c4318d39c76b907891181c8abb66c6d21ce372f03548c013e7e3653a8b1",
@@ -1325,6 +1329,32 @@
               "runtime": "deno",
               "runtime_source": "contract default",
               "code_sha256": "9ea76c328efb36d97b4cda1c4cff6f290a56ec5950564155f3b549fdb955a2c4"
+            }
+          ]
+        },
+        "document-studio/agents/main/workflows/document-studio-mark-authoritative.json": {
+          "workflow_id": "document-studio-mark-authoritative",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "mark",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "6563fac6db85c18ad0a4ca6536fcbf83581304912c0eba47469295d0c2b53a26"
+            }
+          ]
+        },
+        "document-studio/agents/main/workflows/document-studio-new-version.json": {
+          "workflow_id": "document-studio-new-version",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "new-version",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "4a0872aa5a2a97eec4d9e41b0fc38a58254eecbd68b52f13570161f093b41529"
             }
           ]
         },
@@ -1468,6 +1498,18 @@
             "key": "document-studio-profile-save",
             "name": "Save the company profile",
             "workflow_id": "document-studio-profile-save",
+            "workflow_version": "1"
+          },
+          {
+            "key": "document-studio-new-version",
+            "name": "Add a DOCX version",
+            "workflow_id": "document-studio-new-version",
+            "workflow_version": "1"
+          },
+          {
+            "key": "document-studio-mark-authoritative",
+            "name": "Mark a version authoritative",
+            "workflow_id": "document-studio-mark-authoritative",
             "workflow_version": "1"
           }
         ],

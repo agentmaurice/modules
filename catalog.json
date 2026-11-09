@@ -643,11 +643,11 @@
     {
       "key": "document-studio",
       "name": "Document studio",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "subpath": "document-studio",
       "manifest": "document-studio/module.yaml",
-      "manifest_sha256": "89c05d34793969a8fccb1b767f9b6aa87bda29d6fb9edaf4f80e1f827e2a0299",
-      "tree_sha256": "5cc05c17fa5dea65b2b71bd76521530f4aa046fcb50a915c6b3aff3eb4bcb268",
+      "manifest_sha256": "2e09f02654084161cdea77ebbdeb479e7da92034c5939b63cfb73402747cdecb",
+      "tree_sha256": "91e63a07777f3dd53228d31acd0cff2dfe7b5bbd15cae127529c185ba4fe68fc",
       "description": {
         "en": "Document studio: draft business documents from a brief, render them to PDF from templates and the company profile, review, approve and issue them with a number, and keep every revision in Storage.",
         "fr": "Studio de documents : rédiger des documents professionnels depuis un brief, les rendre en PDF avec des gabarits et la fiche entreprise, les relire, les approuver et les émettre avec un numéro, en gardant chaque révision dans Storage."
@@ -692,6 +692,14 @@
         {
           "key": "document-studio-profile-save",
           "name": "Save the company profile"
+        },
+        {
+          "key": "document-studio-new-version",
+          "name": "Add a DOCX version"
+        },
+        {
+          "key": "document-studio-mark-authoritative",
+          "name": "Mark a version authoritative"
         }
       ],
       "queries": [
@@ -712,7 +720,7 @@
         "model": "free"
       },
       "maturity": "preview",
-      "workflows": 11,
+      "workflows": 13,
       "miniapps": 1
     },
     {
