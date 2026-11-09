@@ -18,10 +18,13 @@ ROOT = Path(__file__).resolve().parent
 MODULE = ROOT.parents[1] / 'document-studio'
 DEST = MODULE / 'agents/main'
 TEMPLATES_DIR = MODULE / 'examples/templates'
-VERSION = '0.2.0'
+VERSION = '0.3.0'
 RENDER_TOOL = 'artifact_render_v1'
 STORAGE_TOOLS = ['read_file', 'write_file', 'list_files']
 RENDER_TOOLS = STORAGE_TOOLS + [RENDER_TOOL]
+BROKER = 'recipe--application_data_v1'
+SHARE_TOOLS = ['read_file', BROKER]
+NAMESPACE = 'cib-documents'
 COMPARE_TOOL = 'office_compare_v1'
 INSPECT_TOOL = 'office_inspect_v1'
 VERSION_TOOLS = STORAGE_TOOLS + [COMPARE_TOOL, INSPECT_TOOL]
@@ -377,17 +380,6 @@ async function saveRecord(rec) {
   await writeJson(recordPath(rec.doc_id), rec, true);
   remember(rec);
 }
-async function loadProfile() {
-  let stored = null;
-  try { stored = await readJson(ROOT + "/profile.json"); } catch (e) {
-    const m = String(e && e.message);
-    if (m.startsWith("json_corrupt")) fail("profile_corrupt", "profile.json illisible");
-    if (!m.startsWith("storage_not_found")) throw e;
-    stored = null;
-  }
-  if (!isObject(stored)) fail("profile_missing", "enregistrez la charte par document-studio-profile-save");
-  return projectProfile(normalizeProfile(stored));
-}
 '''
 
 PROFILE = r'''
@@ -464,6 +456,39 @@ function projectProfile(body) {
   company.address = {line1: "", line2: "", postal_code: "", city: "", country: "", ...(company.address || {})};
   company.logo = {ref: body.brand.logo.ref};
   return {company, brand: body.brand};
+}
+'''
+
+PROFILE_LOAD = r'''
+// The company profile comes from the cib-profile record (native broker, same read call as cib-profile-read). When that record is
+// absent, refused to this caller or unreadable, the Storage copy written by document-studio-profile-save is used, as before.
+let PROFILE_SOURCE = "storage";
+async function brokerProfileBody() {
+  let response;
+  try { response = await callTool("recipe--application_data_v1", {operation: "read", namespace: "cib-profile", record_key: "company-profile"}); } catch (e) { return null; }
+  if (isObject(response) && isObject(response.error)) return null;
+  const payload = response && response.data ? response.data : response;
+  const item = payload && payload.record;
+  if (!isObject(item) || item.namespace !== "cib-profile" || item.key !== "company-profile" || !isObject(item.data)) return null;
+  const p = item.permissions;
+  if (!isObject(p) || p.can_read !== true) return null;
+  return item.data;
+}
+async function loadProfile() {
+  const body = await brokerProfileBody();
+  if (body !== null) {
+    try { const projected = projectProfile(normalizeProfile(body)); PROFILE_SOURCE = "cib-profile"; return projected; } catch (e) { /* unreadable record: fall back to Storage */ }
+  }
+  PROFILE_SOURCE = "storage";
+  let stored = null;
+  try { stored = await readJson(ROOT + "/profile.json"); } catch (e) {
+    const m = String(e && e.message);
+    if (m.startsWith("json_corrupt")) fail("profile_corrupt", "profile.json illisible");
+    if (!m.startsWith("storage_not_found")) throw e;
+    stored = null;
+  }
+  if (!isObject(stored)) fail("profile_missing", "enregistrez la charte dans cib-profile ou par document-studio-profile-save");
+  return projectProfile(normalizeProfile(stored));
 }
 '''
 
@@ -802,6 +827,122 @@ return versionSummary(id, versions[version - 1], next, written, false);
 '''
 
 
+BROKER_LIB = r"""
+const NAMESPACE = "cib-documents";
+
+function brokerItem(response, id) {
+  const payload = response && response.data ? response.data : response;
+  const item = payload && payload.record;
+  if (!isObject(item) || item.namespace !== NAMESPACE || item.key !== id) fail("broker_record_identity_invalid");
+  if (!Number.isSafeInteger(item.revision) || item.revision < 0) fail("broker_revision_invalid");
+  const p = item.permissions;
+  if (!isObject(p) || typeof p.can_read !== "boolean" || typeof p.can_write !== "boolean" || typeof p.can_manage !== "boolean") fail("broker_permissions_invalid");
+  return item;
+}
+function brokerView(item) {
+  const p = item.permissions;
+  const shares = Array.isArray(item.shares) ? item.shares : [];
+  return {record: isObject(item.data) ? item.data : null, revision: item.revision, owner_user_id: typeof item.owner_user_id === "string" ? item.owner_user_id : "", permissions: p, permissions_summary: "Lecture : " + (p.can_read ? "oui" : "non") + " · Modification : " + (p.can_write ? "oui" : "non") + " · Partage : " + (p.can_manage ? "oui" : "non"), shares, share_count: shares.length};
+}
+"""
+
+SHARE_IO = r"""
+async function readIssuedRecord(id) {
+  let raw;
+  try {
+    const r = await callTool("read_file", {path: ROOT + "/docs/" + id + "/record.json"});
+    raw = typeof r === "string" ? r : (isObject(r) && typeof r.content === "string" ? r.content : (isObject(r) && isObject(r.data) && typeof r.data.content === "string" ? r.data.content : null));
+  } catch (e) {
+    const message = String(e && e.message);
+    if (/not found|does not exist|no such/i.test(message)) fail("document_not_found", id);
+    fail("storage_unavailable", message.slice(0, 200));
+  }
+  if (raw === null) fail("storage_read_failed", id);
+  let rec;
+  try { rec = JSON.parse(raw); } catch (e) { fail("record_corrupt", id); }
+  return checkRecord(rec, id);
+}
+"""
+
+SHARE_CODE = r"""
+const input = {{ json . }};
+requireConfirmation(input);
+const id = docIdOf(input.doc_id);
+let expected = input.expected_revision;
+if (expected === undefined || expected === null || expected === "") expected = 0;
+if (typeof expected === "string" && /^[0-9]+$/.test(expected)) expected = Number(expected);
+if (!Number.isSafeInteger(expected) || expected < 0) fail("expected_revision_invalid");
+const subject = input.share_subject_user_id === undefined || input.share_subject_user_id === null ? "" : input.share_subject_user_id;
+if (typeof subject !== "string" || subject.length > 256 || /[\/\s]/.test(subject)) fail("subject_user_id_invalid");
+const permission = input.share_permission === undefined || input.share_permission === null || input.share_permission === "" ? "read" : input.share_permission;
+if (!["read", "none"].includes(permission)) fail("permission_invalid", "lecture ou retrait seulement");
+if (permission === "none" && !subject) fail("subject_user_id_required", "indiquez le membre dont retirer l'accès");
+let revision = expected;
+let item = null;
+if (permission !== "none") {
+  const rec = await readIssuedRecord(id);
+  if (rec.status !== "issued" || !isObject(rec.issued) || !isObject(rec.issued.file) || typeof rec.issued.file.path !== "string" || typeof rec.issued.file.sha256 !== "string") fail("status_invalid", "seul un document émis se partage (statut actuel : " + rec.status + ")");
+  const data = {schema: "document-studio.shared/v1", doc_id: rec.doc_id, title: String(rec.title || ""), template_key: rec.template_key, number: rec.number, version: rec.revision, path: rec.issued.file.path, sha256: rec.issued.file.sha256, issued_at: rec.issued.at};
+  item = brokerItem(await callTool("recipe--application_data_v1", {operation: "save", namespace: NAMESPACE, record_key: id, data, expected_revision: expected}), id);
+  revision = item.revision;
+}
+if (subject) {
+  if (revision < 1) fail("expected_revision_invalid", "révision du record partagé requise pour retirer un accès");
+  item = brokerItem(await callTool("recipe--application_data_v1", {operation: "share", namespace: NAMESPACE, record_key: id, expected_revision: revision, subject_user_id: subject.trim(), permission}), id);
+}
+const view = brokerView(item);
+return {...view, doc_id: id, shared_with: subject ? subject.trim() : "", message: subject ? "Partage mis à jour par le broker natif. Partager un document ne donne pas accès au service." : (view.share_count > 0 ? "Référence du document republiée ; partagée avec " + view.share_count + " membre(s), partages inchangés." : "Référence du document publiée, visible de son propriétaire seul tant qu'aucun membre n'est ajouté."), external_effect: false};
+"""
+
+READ_CODE = r"""
+const input = {{ json . }};
+const wantPdf = (() => {
+  const v = input.include_pdf;
+  if (v === undefined || v === null || v === "" || v === false || v === "non" || v === "false") return false;
+  if (v === true || v === "oui" || v === "true") return true;
+  return fail("include_pdf_invalid", "oui ou non attendu");
+})();
+const MAX_PDF_BYTES = 5 * 1024 * 1024;
+if (input.doc_id === undefined || input.doc_id === null || input.doc_id === "") {
+  if (wantPdf) fail("include_pdf_requires_doc_id", "indiquez le document dont lire le PDF");
+  const response = await callTool("recipe--application_data_v1", {operation: "list", namespace: NAMESPACE, prefix: ""});
+  const payload = response && response.data ? response.data : response;
+  if (!payload || !Array.isArray(payload.items) || !Number.isSafeInteger(payload.total) || payload.total !== payload.items.length) fail("broker_list_invalid");
+  const items = payload.items.map((view) => {
+    const key = typeof view.record_key === "string" ? view.record_key : view.key;
+    if (typeof key !== "string" || !ID_RE.test(key)) fail("broker_list_key_invalid");
+    const d = isObject(view.data) ? view.data : (isObject(view.record) ? view.record : {});
+    return {doc_id: key, title: d.title === undefined ? "" : d.title, template_key: d.template_key === undefined ? "" : d.template_key, number: d.number === undefined ? "" : d.number, version: d.version === undefined ? null : d.version, path: d.path === undefined ? "" : d.path, sha256: d.sha256 === undefined ? "" : d.sha256, revision: view.revision, owner_user_id: typeof view.owner_user_id === "string" ? view.owner_user_id : "", permissions: isObject(view.permissions) ? view.permissions : {}};
+  });
+  return {items, total: payload.total, record: null, revision: null, owner_user_id: "", permissions: null, permissions_summary: "", shares: [], share_count: 0, pdf_base64: null, pdf_sha256: null, pdf_bytes: null};
+}
+const id = docIdOf(input.doc_id);
+const item = brokerItem(await callTool("recipe--application_data_v1", {operation: "read", namespace: NAMESPACE, record_key: id}), id);
+if (!isObject(item.data)) fail("broker_record_data_invalid");
+const out = {...brokerView(item), items: [], total: 1, pdf_base64: null, pdf_sha256: null, pdf_bytes: null};
+if (wantPdf) {
+  // Only after the broker read succeeded: the ACL of the record, not the Storage rights of the member, opens the PDF.
+  const path = item.data.path;
+  const prefix = ROOT + "/docs/" + id + "/issued/";
+  if (typeof path !== "string" || !path.startsWith(prefix) || path.length > 300 || path.includes("..") || path.includes("//") || path.slice(prefix.length).includes("/") || !path.endsWith(".pdf")) fail("invalid_path", "le PDF doit être un document émis de " + ROOT);
+  if (typeof item.data.sha256 !== "string" || !/^[0-9a-f]{64}$/.test(item.data.sha256)) fail("broker_record_data_invalid", "empreinte absente");
+  let r;
+  try { r = await callTool("read_file", {path, encoding: "base64"}); } catch (e) { fail("storage_unavailable", String(e && e.message).slice(0, 200)); }
+  if (isObject(r) && isObject(r.data) && r.content === undefined) r = r.data;
+  const encoded = typeof r === "string" ? r : (isObject(r) && typeof r.content === "string" ? r.content : null);
+  if (encoded === null) fail("storage_read_failed", path);
+  const clean = encoded.replace(/\s+/g, "");
+  if (clean.length > Math.ceil(MAX_PDF_BYTES / 3) * 4) fail("pdf_too_large", "au plus 5 Mio");
+  const bytes = b64ToBytes(clean);
+  if (bytes.length > MAX_PDF_BYTES) fail("pdf_too_large", "au plus 5 Mio");
+  const sha = await sha256Hex(bytes);
+  if (sha !== item.data.sha256) fail("pdf_integrity_failed", "l'empreinte du PDF lu ne correspond pas au record partagé");
+  out.pdf_base64 = clean; out.pdf_sha256 = sha; out.pdf_bytes = bytes.length;
+}
+return out;
+"""
+
+
 def code(*parts):
     body = ''.join(parts)
     assert '{{' not in body.replace('{{ json . }}', ''), 'a double-brace sequence in the JavaScript'
@@ -816,7 +957,7 @@ def node(action_id, source, output_key, tools=None):
     return data
 
 
-def lib(*, templates=None, io=False, profile=False, render=False, numbering=False, versions=False):
+def lib(*, templates=None, io=False, profile=False, render=False, numbering=False, load_profile=False, versions=False):
     parts = [IMPORT if io else '']
     if templates is not None:
         parts.append('const TEMPLATES = ' + js_embed(load_templates(templates == 'full')) + ';\nObject.setPrototypeOf(TEMPLATES, null);\n')
@@ -827,6 +968,8 @@ def lib(*, templates=None, io=False, profile=False, render=False, numbering=Fals
         parts.append(PROFILE)
     if io:
         parts.append(IO)
+    if load_profile:
+        parts.append(PROFILE_LOAD)
     if render:
         parts.append(RENDER)
     if numbering:
@@ -968,7 +1111,7 @@ rec.data = data;
 rec.revision = revision;
 rec.renders.push({revision, mode: "preview", profile_sha256: await fingerprint(profile), data_sha256: await fingerprint(data), file, previews, provenance: res.provenance === undefined ? null : res.provenance});
 await saveRecord(rec);
-return summarize(rec);
+return {...summarize(rec), profile_source: PROFILE_SOURCE};
 '''
 
 FINALIZE_CODE = r'''
@@ -1035,7 +1178,7 @@ rec.renders.push({revision, mode: "final", profile_sha256: approved.profile_sha2
 rec.issued = {number: rec.number, file: {path: file.path, sha256: file.sha256}, at};
 rec.history.push({at, action: "issued", note: rec.number});
 await saveRecord(rec);
-return summarize(rec);
+return {...summarize(rec), profile_source: PROFILE_SOURCE};
 '''
 
 CANCEL_CODE = r'''
@@ -1155,8 +1298,8 @@ def build():
              'Renders the current data with the company profile through the artifact tool (mode preview), stores the PDF '
              'and its page previews in Storage and appends a revision. An issued or cancelled document is locked.',
              schema(['doc_id'], doc_id=DOC_ID, data_patch={'type': 'object', 'description': 'Shallow merge into the draft data, then revalidated'}),
-             [node('render', code(lib(templates='full', io=True, profile=True, render=True), RENDER_CODE), 'result', tools=RENDER_TOOLS)],
-             out_summary,
+             [node('render', code(lib(templates='full', io=True, profile=True, render=True, load_profile=True), RENDER_CODE), 'result', tools=RENDER_TOOLS + [BROKER])],
+             {**out_summary, 'profile_source': '{{ result.profile_source }}'},
              forms=[form('render', 'Nouveau rendu', [field('doc_id', 'Identifiant du document', 'string', True)], ['render'])])
 
     workflow('document-studio-finalize', 'Approve a document',
@@ -1170,8 +1313,8 @@ def build():
              'Reserves the next number of the template for the year, renders the final PDF (mode final) and stores it as the '
              'issued file. Requires an approved document and a manual confirmation. The reservation is not atomic.',
              schema(['doc_id', 'confirmation_manuelle'], doc_id=DOC_ID, confirmation_manuelle=CONFIRM),
-             [node('publish', code(lib(templates='full', io=True, profile=True, render=True, numbering=True), PUBLISH_CODE), 'result', tools=RENDER_TOOLS)],
-             out_summary,
+             [node('publish', code(lib(templates='full', io=True, profile=True, render=True, numbering=True, load_profile=True), PUBLISH_CODE), 'result', tools=RENDER_TOOLS + [BROKER])],
+             {**out_summary, 'profile_source': '{{ result.profile_source }}'},
              forms=[form('issue', 'Émettre un document', [field('doc_id', 'Identifiant du document', 'string', True), CONFIRM_FIELD], ['publish'])])
 
     workflow('document-studio-cancel', 'Cancel a document',
@@ -1251,6 +1394,42 @@ def build():
              [node('read', code(lib(templates='meta'), TEMPLATE_READ_CODE), 'result')],
              {'templates': '{{ result.templates }}', 'template': '{{ result.template }}'})
 
+    workflow('document-share', 'Share an issued document',
+             'Publishes the reference of an issued document (identifier, title, type, number, version, Storage path and SHA-256 of '
+             'the PDF) as a record of the native application data broker, then grants or removes read access for one member. '
+             'The PDF stays in Storage. A record is private to its owner until shared; sharing never gives access to the service. '
+             'expected_revision is 0 for the first publication, else the revision returned by the previous call.',
+             schema(['doc_id', 'confirmation_manuelle'], doc_id=DOC_ID, confirmation_manuelle=CONFIRM,
+                    expected_revision={'type': ['integer', 'string'], 'description': '0 (or empty) to create the reference, else the current revision of the shared record'},
+                    share_subject_user_id=text('Member to grant or remove; empty to only publish the reference'),
+                    share_permission=text('Right of the member', enum=['read', 'none'])),
+             [node('share', code(IMPORT, lib(), BROKER_LIB, SHARE_IO, SHARE_CODE), 'result', tools=SHARE_TOOLS)],
+             {'doc_id': '{{ result.doc_id }}', 'record': '{{ result.record }}', 'revision': '{{ result.revision }}',
+              'owner_user_id': '{{ result.owner_user_id }}', 'permissions': '{{ result.permissions }}',
+              'permissions_summary': '{{ result.permissions_summary }}', 'shares': '{{ result.shares }}',
+              'share_count': '{{ result.share_count }}', 'shared_with': '{{ result.shared_with }}',
+              'message': '{{ result.message }}', 'scope': 'internal_only', 'external_effect': False},
+             forms=[form('document-share', 'Partager un document émis', [
+                 field('doc_id', 'Identifiant du document', 'string', True),
+                 field('expected_revision', 'Révision attendue (0 pour une première publication)', 'string', True, default='0'),
+                 field('share_subject_user_id', 'Membre', 'string', False),
+                 field('share_permission', 'Droit', 'select', True, options=[{'value': 'read', 'label': 'Lecture'}, {'value': 'none', 'label': 'Retirer'}], default='read'),
+                 CONFIRM_FIELD], ['share'])])
+
+    workflow('document-read', 'Read shared documents',
+             'Reads, through the native application data broker, the reference of one shared document (with the permissions of the '
+             'caller), or lists the references the caller may read when doc_id is empty. Only the rights of the caller apply.',
+             schema([], include_pdf={'type': ['boolean', 'string'], 'description': 'oui to also return the issued PDF (base64, 5 MiB at most, checked against the shared sha256); default non'}, doc_id=text('Document identifier; empty (or absent) lists the references the caller may read', pattern='^([a-z0-9][a-z0-9-]{0,47})?$')),
+             [node('read', code(IMPORT, lib(), BROKER_LIB, READ_CODE), 'result', tools=['read_file', BROKER])],
+             {'record': '{{ result.record }}', 'revision': '{{ result.revision }}', 'owner_user_id': '{{ result.owner_user_id }}',
+              'permissions': '{{ result.permissions }}', 'permissions_summary': '{{ result.permissions_summary }}',
+              'shares': '{{ result.shares }}', 'share_count': '{{ result.share_count }}', 'items': '{{ result.items }}',
+              'total': '{{ result.total }}', 'pdf_base64': '{{ result.pdf_base64 }}', 'pdf_sha256': '{{ result.pdf_sha256 }}',
+              'pdf_bytes': '{{ result.pdf_bytes }}'},
+             forms=[form('document-read', 'Relire un document partagé', [
+                 field('doc_id', 'Identifiant du document (vide pour la liste)', 'string', False),
+                 field('include_pdf', 'Joindre le PDF', 'select', False, options=[{'value': 'non', 'label': 'Non'}, {'value': 'oui', 'label': 'Oui'}], default='non')], ['read'])])
+
     miniapp()
     manifest()
 
@@ -1306,9 +1485,10 @@ def manifest():
                         ref('document-studio-render', 'Render a document preview'), ref('document-studio-finalize', 'Approve a document'),
                         ref('document-studio-publish', 'Issue a document'), ref('document-studio-cancel', 'Cancel a document'),
                         ref('document-studio-export', 'Export a document'), ref('document-studio-profile-save', 'Save the company profile'),
+                        ref('document-share', 'Share an issued document'),
                         ref('document-studio-new-version', 'Add a DOCX version'), ref('document-studio-mark-authoritative', 'Mark a version authoritative')],
             'queries': [ref('document-studio-list', 'List documents'), ref('document-studio-review-read', 'Read a document for review'),
-                        ref('document-studio-template-read', 'Read the templates')],
+                        ref('document-studio-template-read', 'Read the templates'), ref('document-read', 'Read shared documents')],
             'apps': [{'key': 'document-studio-review', 'name': 'Document studio', 'miniapp_id': 'document-studio-review',
                       'miniapp_version': '1'}]},
         'requires': {},

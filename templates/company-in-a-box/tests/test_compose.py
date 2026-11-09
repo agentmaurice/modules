@@ -120,6 +120,60 @@ class TemplateComposeTests(unittest.TestCase):
             source, consumer = self.make_source_and_consumer(tmp)
             self.assertEqual(self.run_main(source, consumer), 0)
 
+    def add_documents(self, source, consumer, with_agent=True):
+        shutil.copytree(ROOT / "document-studio", source / "document-studio")
+        if with_agent:
+            spec_dir = consumer / "agents" / "documents"
+            spec_dir.mkdir(parents=True)
+            (spec_dir / "agent-spec.json").write_text(json.dumps({
+                "$schema": "agentmaurice.agent_spec/v2", "schema_version": 2,
+                "agent_alias": "documents", "agent_id": "agent-documents",
+            }), encoding="utf-8")
+
+    def test_document_studio_is_an_optional_service_off_by_default(self):
+        with tempfile.TemporaryDirectory(prefix="cib-template-compose-") as directory:
+            source, consumer = self.make_source_and_consumer(Path(directory))
+            self.add_documents(source, consumer)
+            self.assertEqual(self.run_main(source, consumer, "--write"), 0)
+            self.assertFalse((consumer / "agents/documents/workflows").exists())
+            self.assertFalse((consumer / "surface-drafts").exists())
+
+    def test_optional_service_needs_its_agent_and_the_pinned_version(self):
+        with tempfile.TemporaryDirectory(prefix="cib-template-compose-") as directory:
+            source, consumer = self.make_source_and_consumer(Path(directory))
+            self.add_documents(source, consumer, with_agent=False)
+            self.assertEqual(self.run_main(source, consumer, "--with-service", "documents", "--write"), 2)
+            self.assertFalse((consumer / "agents/documents").exists())
+
+    def test_documents_service_copies_the_module_and_gates_every_workflow_by_role(self):
+        with tempfile.TemporaryDirectory(prefix="cib-template-compose-") as directory:
+            source, consumer = self.make_source_and_consumer(Path(directory))
+            self.add_documents(source, consumer)
+            self.assertEqual(self.run_main(source, consumer, "--with-service", "documents"), 0)
+            self.assertFalse((consumer / "surface-drafts").exists(), "dry-run writes nothing")
+            self.assertEqual(self.run_main(source, consumer, "--with-service", "documents", "--write"), 0)
+            for name in ("document-share", "document-read", "document-studio-publish"):
+                self.assertTrue((consumer / "agents/documents/workflows" / f"{name}.json").is_file(), name)
+            self.assertTrue((consumer / "agents/documents/tests/test-plan.json").is_file())
+            draft = json.loads((consumer / "surface-drafts/cib-documents.surface-draft.json").read_text(encoding="utf-8"))
+            roles = {w["workflow_id"]: w.get("required_role") for w in draft["public_surface"]["workflows"]}
+            self.assertEqual(len(roles), 15)
+            self.assertEqual(roles["document-studio-profile-save"], "cib_admin")
+            self.assertIsNone(roles["document-read"], "ACL of the record protects the read, as for contenu-read")
+            self.assertNotIn("required_role", next(w for w in draft["public_surface"]["workflows"] if w["workflow_id"] == "document-read"))
+            self.assertEqual({r for k, r in roles.items() if k not in ("document-studio-profile-save", "document-read")}, {"cib_documents"})
+            self.assertEqual({w["agent_id"] for w in draft["public_surface"]["workflows"]}, {"agent-documents"})
+            self.assertEqual([a["miniapp_id"] for a in draft["public_surface"]["miniapps"]], ["document-studio-review"])
+            self.assertEqual(self.run_main(source, consumer, "--with-service", "documents", "--write"), 0, "rerun is idempotent")
+            (consumer / "surface-drafts/cib-documents.surface-draft.json").write_text("{}", encoding="utf-8")
+            self.assertEqual(self.run_main(source, consumer, "--with-service", "documents", "--write"), 2, "divergent draft is refused")
+
+    def test_documents_test_plan_targets_existing_workflows(self):
+        plan = json.loads((ROOT / "templates/company-in-a-box/tests/documents.json").read_text(encoding="utf-8"))
+        self.assertEqual((plan["$schema"], plan["schema_version"]), ("agentmaurice.test_plan/v2", 2))
+        names = {p.stem for p in (ROOT / "document-studio/agents/main/workflows").glob("*.json")}
+        self.assertLessEqual({c["workflow"]["workflow_id"] for c in plan["cases"]}, names)
+
 
 if __name__ == "__main__":
     unittest.main()

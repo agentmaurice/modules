@@ -28,6 +28,8 @@ messages) is French; `fr` is the only locale in V0.
 | `document-studio-list` | lists the documents (identifier, title, status, number, revision, latest hash) |
 | `document-studio-review-read` | full record of a document and previews of its latest render, for the MiniApp |
 | `document-studio-template-read` | lists the templates, or the manifest and data schemas of one template |
+| `document-share` | publishes the reference of an **issued** document as a record of the native application data broker (`recipe--application_data_v1`, namespace `cib-documents`, key `doc_id`), then grants or removes `read` for one member. Requires `confirmation_manuelle`. The PDF stays in Storage |
+| `document-read` | reads one shared reference through the broker (with the caller's permissions), or lists the references the caller may read when `doc_id` is empty or absent (`"doc_id": ""` is valid, so the form can be submitted blank) |
 
 The `document-studio-review` MiniApp has no input component of its own (the
 MiniApp vocabulary has none): the document identifier (`doc_id`) is typed in
@@ -36,6 +38,31 @@ the document. The MiniApp then shows status, revision, number, pages and the
 table of renders (revision, mode, hash, path), refreshes it, and triggers a
 new render. Approval and issue go through the
 Workflow forms, with the manual confirmation.
+
+## Sharing with the company
+
+Sharing follows the `cib-contenu` pattern: the broker holds one record per document and enforces a per-member ACL; a
+record is private to its owner until `document-share` grants `read` (`write` is refused on purpose: a member must not
+be able to rewrite the reference). `expected_revision` is `0` for the first publication, then the revision returned by
+the previous call (compare-and-set). The shared record (`document-studio.shared/v1`) holds `doc_id`, `title`,
+`template_key`, `number`, `version` (the revision of the Storage record at issue), `path` (Storage path of the issued
+PDF), `sha256` and `issued_at`. Removing access (`none`) does not need the Storage record, so it still works after a
+cancellation; a cancelled document stays referenced until its owner removes the members. The PDF itself is read through the ACL of the
+record, not through the Storage rights of the member: `document-read` with `doc_id` and `include_pdf: oui` (optional,
+default `non`; a form field, `non` by default) reads the PDF at `data.path` from the Agent's Storage with `read_file`
+(base64) only after the broker read succeeded, recomputes its SHA-256 and refuses `pdf_integrity_failed` when it differs
+from the shared `sha256`, `pdf_too_large` above 5 MiB, and `invalid_path` when the path is not an issued document of
+`/document-studio/docs/<doc_id>/issued/`. It returns `pdf_base64`, `pdf_sha256` and `pdf_bytes`. `include_pdf` without a
+`doc_id` is refused.
+
+## Optional service in the Company-in-a-Box template
+
+`templates/company-in-a-box/compose.py --with-service documents` adds this Module as an optional fourth Agent
+(`documents`, spec-init'ed in the consumer like the three roles; off by default). Besides the resources and the test
+plan it writes `surface-drafts/cib-documents.surface-draft.json`, with `required_role` on every Workflow: `cib_documents`
+for the owner of the service, `cib_admin` for `document-studio-profile-save`. Role grants and the ACL of each record are
+cumulative; the Module never grants a role or a share. `document-read` has no `required_role` in the surface draft, like `contenu-read`: any member of the Application may call it and the ACL of each record decides what is returned. `document-share` republished without a member reports the real shares returned by the broker. The Administration select of `cib-admin-manage` does not list
+`cib_documents` yet.
 
 ## Lifecycle
 
@@ -48,7 +75,7 @@ The Module never approves on a person's behalf.
 
 ## Storage
 
-- `/document-studio/profile.json`: the brand, with the `{schema_version: 1, company, brand}` shape of the template contract. A fictitious example is in `examples/profile.example.json`.
+- `/document-studio/profile.json`: the fallback brand (used when `cib-profile` is unavailable), with the `{schema_version: 1, company, brand}` shape of the template contract. A fictitious example is in `examples/profile.example.json`.
 - `/document-studio/docs/<doc_id>/record.json`: the record (`document-studio.record/v1`): status, number, revision (+1 at every write), data, history, renders (path, SHA-256, previews, provenance), issue.
 - `/document-studio/docs/<doc_id>/r<revision>-<sha12>/`: PDF and previews of one render attempt (12 first characters of the PDF SHA-256, so a losing attempt never overwrites another attempt's file).
 - `/document-studio/docs/<doc_id>/issued/<number>-<sha12>.pdf`: the issued PDF.
@@ -60,8 +87,11 @@ The Module never approves on a person's behalf.
 title with a short suffix. Number: `<PREFIX>-<year>-<seq>` (`DEV` for the
 quote, `CR` for the minutes).
 
-Without a company profile, `render` and `publish` fail with `profile_missing`:
-store the brand with `document-studio-profile-save`.
+The company profile is read from the `cib-profile` record of the `profile` Module through
+`recipe--application_data_v1` (`operation: read`, `namespace: cib-profile`, `record_key: company-profile`, the call of
+`cib-profile-read`); `render` and `publish` report the source in `profile_source`. Fallback: `/document-studio/profile.json`
+in Storage. Without either, they fail with `profile_missing`. The fingerprints of the brand checked at issue
+(`profile_changed`) are computed on the projected profile, whatever its source.
 
 ## DOCX versions
 
@@ -127,11 +157,10 @@ renderer, on synthetic data. They do not prove the behavior on a One.
 
 ## Known limits (V0)
 
+- The brand is read from the `cib-profile` record (key `company-profile`) through the broker, by `render` and `publish`. If that record is absent, refused to the caller or unreadable, the Storage copy `/document-studio/profile.json` is used and the output says so (`profile_source`: `cib-profile` or `storage`). A broker refusal is therefore not distinguished from an absent record. `document-studio-profile-save` still writes only the Storage copy: save the profile in `cib-profile` (profile Module) to make it the source.
 - Concurrent `mark-authoritative`: two calls on the same document at the same time are not safe. Both may pass the second read and the later write wins, which can leave the wrong version authoritative or bring a superseded one back while both calls report success. Serialise them (one writer per document). Moving the manifest to `application_data_v1`, which has compare-and-swap, lifts this limit (lot 4).
 - Versions: Storage has no compare-and-swap. A manifest is read, the version file and redline are written, then the manifest is read again and written only if its text is unchanged (`concurrent_update` otherwise; a first manifest is written without overwrite). The window between the second read and the write is small, not null: allow one writer at a time per document. Files written before an abandoned manifest write stay orphaned in `versions/`. Pass `base_version` and `base_manifest_sha256` (returned as `manifest_sha256`) to make a stale caller fail.
 - Versions are DOCX only (XLSX and PDF are out of this lot), the comparison and its 20 MiB input limit are those of `office_compare_v1`, and there is no review MiniApp for versions yet.
-
-- The brand is read from Storage only. The `profile` Module keeps the profile in an application record whose broker is not wired in the One yet: calling the `cib-profile-read` Workflow would make every render fail until then.
 - The logo is a reference (`storage://…`); this Module does not resolve it to a file before rendering.
 - Number reservation is not atomic: it lists, writes without overwrite, reads back and checks the owner, at most 5 attempts (`number_conflict`). A number reserved then lost (failed render) stays reserved: it is taken again on the next attempt, never reused by another document. Atomic sequences are a platform follow-up.
 - No sending (mail, SFTP), no DOCX rendering (DOCX files are only versioned), one locale (`fr`).

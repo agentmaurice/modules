@@ -66,6 +66,44 @@ async function callTool(name, args) {
     if (opts.bad_page) previews.push({...prev, page: opts.bad_page});
     return {status: "ok", mode: args.mode, output: "pdf", file, pages: opts.pages || 1, previews: opts.no_previews ? undefined : previews, provenance: {engine: "mock"}};
   }
+  if (name === "recipe--application_data_v1") {
+    const brokerRecords = store.__broker || (store.__broker = {});
+    const perms = (r) => ({can_read: true, can_write: true, can_manage: true});
+    const view = (k, r) => ({namespace: args.namespace, key: k, revision: r.revision, owner_user_id: "owner-1", permissions: perms(r), shares: r.shares, data: r.data});
+    if (args.namespace === "cib-profile") {
+      calls[calls.length - 1].profile_read = true;
+      if (args.operation !== "read" || args.record_key !== "company-profile") throw new Error("unexpected profile call");
+      if (opts.cib_profile_error) throw Object.assign(new Error(opts.cib_profile_error), {code: opts.cib_profile_error});
+      if (opts.cib_profile_error_value) return {error: {code: opts.cib_profile_error_value}};
+      if (opts.cib_profile === undefined) throw Object.assign(new Error("application data record not found"), {code: "NOT_FOUND"});
+      return {data: {record: {namespace: "cib-profile", key: "company-profile", revision: 3, owner_user_id: "owner-1", permissions: {can_read: opts.cib_profile_unreadable ? false : true, can_write: false, can_manage: false}, shares: [], data: opts.cib_profile}}};
+    }
+    if (args.namespace !== "cib-documents") throw new Error("namespace_forbidden");
+    if (opts.broker_error) throw new Error(opts.broker_error);
+    const cur = brokerRecords[args.record_key];
+    if (args.operation === "save") {
+      if ((cur ? cur.revision : 0) !== args.expected_revision) throw new Error("revision_conflict");
+      brokerRecords[args.record_key] = {revision: (cur ? cur.revision : 0) + 1, data: args.data, shares: cur ? cur.shares : []};
+      return {data: {record: view(args.record_key, brokerRecords[args.record_key])}};
+    }
+    if (args.operation === "share") {
+      if (!cur) throw new Error("record_not_found");
+      if (cur.revision !== args.expected_revision) throw new Error("revision_conflict");
+      cur.shares = cur.shares.filter((x) => x.subject_user_id !== args.subject_user_id);
+      if (args.permission !== "none") cur.shares.push({subject_user_id: args.subject_user_id, permission: args.permission});
+      cur.revision += 1;
+      return {data: {record: view(args.record_key, cur)}};
+    }
+    if (args.operation === "read") {
+      if (!cur) throw new Error("record_not_found");
+      return {data: {record: view(args.record_key, cur)}};
+    }
+    if (args.operation === "list") {
+      const items = Object.keys(brokerRecords).sort().map((k) => ({record_key: k, ...view(k, brokerRecords[k])}));
+      return {data: {items, total: items.length}};
+    }
+    throw new Error("operation_unsupported");
+  }
   if (name === "office_inspect_v1") {
     const data = Buffer.from(args.file.content_base64, "base64");
     if (opts.inspect_error) throw new Error(opts.inspect_error);
@@ -179,7 +217,7 @@ class ResourcesTest(unittest.TestCase):
         manifest = load(MODULE / 'module.yaml')
         refs = {r['workflow_id'] for kind in ('actions', 'queries') for r in manifest['provides'][kind]}
         self.assertEqual(refs, set(self.workflows))
-        self.assertEqual(len(refs), 13)
+        self.assertEqual(len(refs), 15)
         apps = {r['miniapp_id'] for r in manifest['provides']['apps']}
         self.assertEqual(apps, {p.stem for p in (MODULE / 'agents/main/miniapps').glob('*.json')})
         self.assertEqual((manifest['key'], manifest['schema_version']), ('document-studio', 2))
@@ -890,6 +928,227 @@ class LifecycleTest(unittest.TestCase):
         self.assertEqual(len(review['previews']), 1)
         self.assertEqual(review['renders'][0]['mode'], 'preview')
 
+
+class SharingTest(unittest.TestCase):
+    def issued(self):
+        _, fs = create_quote(self, seeded())
+        fs = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs)['fs']
+        fs = run_node('document-studio-finalize', 'finalize', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs)['fs']
+        return run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, fs)['fs']
+
+    def share(self, fs, **extra):
+        ctx = {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui', 'expected_revision': 0, **extra}
+        return run_node('document-share', 'share', ctx, fs)
+
+    def test_workflows_use_only_the_broker_and_read_the_record(self):
+        for name, tools in (('document-share', ['read_file', 'recipe--application_data_v1']), ('document-read', ['read_file', 'recipe--application_data_v1'])):
+            wf = load(WORKFLOWS / f'{name}.json')
+            self.assertEqual(wf['actions'][0]['context']['allowed_tools'], tools)
+            self.assertNotIn('write_file', wf['actions'][0]['code'])
+        self.assertIn('namespace', load(WORKFLOWS / 'document-share.json')['actions'][0]['code'])
+        self.assertEqual(load(WORKFLOWS / 'document-share.json')['output']['external_effect'], False)
+
+    def test_share_needs_a_manual_confirmation_before_any_call(self):
+        out = self.share({}, confirmation_manuelle='non')
+        self.assertTrue(out['error'].startswith('manual_confirmation_required'))
+        self.assertEqual(out['calls'], [])
+
+    def test_only_an_issued_document_is_shared(self):
+        _, fs = create_quote(self, seeded())
+        out = self.share(fs, share_subject_user_id='member-b')
+        self.assertTrue(out['error'].startswith('status_invalid'), out)
+        self.assertEqual([c['name'] for c in out['calls']], ['read_file'])
+
+    def test_share_publishes_the_reference_then_grants_read(self):
+        fs = self.issued()
+        record = json.loads(fs['/document-studio/docs/devis-test/record.json']['text'])
+        out = self.share(fs, share_subject_user_id='member-b', share_permission='read')
+        result = ok(self, out)
+        brokered = [c['args'] for c in out['calls'] if c['name'] == 'recipe--application_data_v1']
+        self.assertEqual([c['operation'] for c in brokered], ['save', 'share'])
+        self.assertEqual((brokered[0]['expected_revision'], brokered[1]['expected_revision']), (0, 1))
+        self.assertEqual((brokered[1]['subject_user_id'], brokered[1]['permission']), ('member-b', 'read'))
+        data = brokered[0]['data']
+        self.assertEqual(data, {'schema': 'document-studio.shared/v1', 'doc_id': 'devis-test', 'title': record['title'],
+                                'template_key': 'quote', 'number': record['number'], 'version': record['revision'],
+                                'path': record['issued']['file']['path'], 'sha256': record['issued']['file']['sha256'],
+                                'issued_at': record['issued']['at']})
+        self.assertNotIn('content', json.dumps(brokered[0]['data']))
+        self.assertEqual((result['revision'], result['share_count'], result['shared_with']), (2, 1, 'member-b'))
+        self.assertIs(result['external_effect'], False)
+        self.assertEqual([c['name'] for c in out['calls']].count('write_file'), 0)
+
+    def test_publishing_without_a_member_keeps_the_record_private(self):
+        out = self.share(self.issued())
+        result = ok(self, out)
+        self.assertEqual([c['args']['operation'] for c in out['calls'] if c['name'] != 'read_file'], ['save'])
+        self.assertEqual((result['revision'], result['share_count']), (1, 0))
+
+    def test_removal_does_not_need_the_storage_record_and_wrong_revisions_fail(self):
+        fs = self.issued()
+        shared = self.share(fs, share_subject_user_id='member-b')
+        self.assertIn('error', self.share(shared['fs'], share_subject_user_id='member-b'), 'create again at revision 0 must conflict')
+        gone = run_node('document-share', 'share', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui', 'expected_revision': '2',
+                                                    'share_subject_user_id': 'member-b', 'share_permission': 'none'}, shared['fs'])
+        self.assertEqual(ok(self, gone)['share_count'], 0)
+        self.assertEqual([c['name'] for c in gone['calls']], ['recipe--application_data_v1'])
+        self.assertTrue(run_node('document-share', 'share', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui', 'share_permission': 'none'}, {})['error'].startswith('subject_user_id_required'))
+
+    def test_inputs_are_validated(self):
+        fs = self.issued()
+        for extra, code in (({'share_permission': 'write', 'share_subject_user_id': 'm'}, 'permission_invalid'),
+                            ({'share_subject_user_id': 'a b'}, 'subject_user_id_invalid'),
+                            ({'share_subject_user_id': 'a/b'}, 'subject_user_id_invalid'),
+                            ({'expected_revision': -1}, 'expected_revision_invalid'),
+                            ({'doc_id': '../x'}, 'doc_id_invalid')):
+            out = self.share(fs, **extra)
+            self.assertTrue(out['error'].startswith(code), (extra, out))
+
+    def test_read_returns_the_reference_with_permissions_and_lists(self):
+        fs = self.share(self.issued(), share_subject_user_id='member-b')['fs']
+        one = ok(self, run_node('document-read', 'read', {'doc_id': 'devis-test'}, fs))
+        self.assertEqual((one['record']['doc_id'], one['revision'], one['total']), ('devis-test', 2, 1))
+        self.assertTrue(one['permissions']['can_read'])
+        listing = ok(self, run_node('document-read', 'read', {}, fs))
+        self.assertEqual((listing['total'], [i['doc_id'] for i in listing['items']]), (1, ['devis-test']))
+        self.assertEqual(listing['items'][0]['sha256'], one['record']['sha256'])
+        self.assertIn('error', run_node('document-read', 'read', {'doc_id': 'absent'}, fs))
+        self.assertIn('error', run_node('document-read', 'read', {'doc_id': 'devis-test'}, fs, broker_error='access_denied'))
+
+    def test_republishing_reports_the_real_shares_and_read_accepts_an_empty_id(self):
+        fs = self.share(self.issued(), share_subject_user_id='member-b')['fs']
+        again = ok(self, self.share(fs, expected_revision=2))
+        self.assertEqual(again['share_count'], 1)
+        self.assertNotIn('seul', again['message'])
+        self.assertIn('1 membre', again['message'])
+        private = ok(self, self.share(self.issued()))
+        self.assertIn('propriétaire seul', private['message'])
+        schema = load(WORKFLOWS / 'document-read.json')['input_schema']
+        self.assertTrue(re.fullmatch(schema['properties']['doc_id']['pattern'], ''))
+        self.assertTrue(re.fullmatch(schema['properties']['doc_id']['pattern'], 'devis-test'))
+        self.assertIsNone(re.fullmatch(schema['properties']['doc_id']['pattern'], '../x'))
+        self.assertEqual(schema['required'], [])
+        self.assertEqual(ok(self, run_node('document-read', 'read', {'doc_id': ''}, fs))['total'], 1)
+
+    def shared(self):
+        fs = self.share(self.issued(), share_subject_user_id='member-b')['fs']
+        record = json.loads(fs['/document-studio/docs/devis-test/record.json']['text'])
+        return fs, record['issued']['file']
+
+    def test_include_pdf_returns_the_checked_pdf_only_after_the_broker_read(self):
+        fs, file = self.shared()
+        plain = run_node('document-read', 'read', {'doc_id': 'devis-test', 'include_pdf': 'non'}, fs)
+        self.assertIsNone(ok(self, plain)['pdf_base64'])
+        self.assertNotIn('read_file', [c['name'] for c in plain['calls']])
+        out = run_node('document-read', 'read', {'doc_id': 'devis-test', 'include_pdf': 'oui'}, fs)
+        result = ok(self, out)
+        self.assertEqual([c['name'] for c in out['calls']], ['recipe--application_data_v1', 'read_file'])
+        self.assertEqual(out['calls'][1]['args'], {'path': file['path'], 'encoding': 'base64'})
+        self.assertEqual(result['pdf_sha256'], file['sha256'])
+        self.assertEqual(hashlib.sha256(base64.b64decode(result['pdf_base64'])).hexdigest(), file['sha256'])
+        self.assertEqual(result['pdf_bytes'], len(base64.b64decode(result['pdf_base64'])))
+        self.assertEqual(ok(self, run_node('document-read', 'read', {'doc_id': 'devis-test', 'include_pdf': True}, fs))['pdf_sha256'], file['sha256'])
+
+    def test_include_pdf_is_refused_when_the_broker_refuses_and_without_an_id(self):
+        fs, _ = self.shared()
+        denied = run_node('document-read', 'read', {'doc_id': 'devis-test', 'include_pdf': 'oui'}, fs, broker_error='access_denied')
+        self.assertIn('error', denied)
+        self.assertNotIn('read_file', [c['name'] for c in denied['calls']])
+        self.assertTrue(run_node('document-read', 'read', {'include_pdf': 'oui'}, fs)['error'].startswith('include_pdf_requires_doc_id'))
+        self.assertTrue(run_node('document-read', 'read', {'doc_id': 'devis-test', 'include_pdf': 'peut-etre'}, fs)['error'].startswith('include_pdf_invalid'))
+
+    def test_include_pdf_checks_integrity_size_and_path(self):
+        fs, file = self.shared()
+        bad = json.loads(json.dumps(fs))
+        bad[file['path']] = {'b64': base64.b64encode(b'%PDF-other').decode()}
+        self.assertTrue(run_node('document-read', 'read', {'doc_id': 'devis-test', 'include_pdf': 'oui'}, bad)['error'].startswith('pdf_integrity_failed'))
+        big = json.loads(json.dumps(fs))
+        big[file['path']] = {'b64': base64.b64encode(b'a' * (5 * 1024 * 1024 + 1)).decode()}
+        self.assertTrue(run_node('document-read', 'read', {'doc_id': 'devis-test', 'include_pdf': 'oui'}, big)['error'].startswith('pdf_too_large'))
+        for wrong in ('/etc/passwd', '/document-studio/profile.json', '/document-studio/docs/autre/issued/x.pdf',
+                      '/document-studio/docs/devis-test/issued/../record.json', '/document-studio/docs/devis-test/r2-aaaaaaaaaaaa/document.pdf'):
+            forged = json.loads(json.dumps(fs))
+            forged['__broker']['devis-test']['data']['path'] = wrong
+            out = run_node('document-read', 'read', {'doc_id': 'devis-test', 'include_pdf': 'oui'}, forged)
+            self.assertTrue(out['error'].startswith('invalid_path'), (wrong, out.get('error')))
+            self.assertNotIn('read_file', [c['name'] for c in out['calls']])
+
+    def declared_keys(self, name):
+        wf = load(WORKFLOWS / f'{name}.json')
+        return {m for v in wf['output'].values() if isinstance(v, str) for m in re.findall(r'\{\{ result\.(\w+) \}\}', v)}
+
+    def test_every_declared_output_exists_on_every_branch(self):
+        # The runtime resolves each declared output path and fails when a key is absent, whatever the branch.
+        fs, _ = self.shared()
+        read_keys = self.declared_keys('document-read')
+        self.assertLessEqual({'pdf_base64', 'pdf_sha256', 'pdf_bytes', 'items', 'total', 'record'}, read_keys)
+        for label, ctx in (('list', {'doc_id': ''}), ('list-absent', {}), ('read', {'doc_id': 'devis-test'}),
+                           ('read-pdf-non', {'doc_id': 'devis-test', 'include_pdf': 'non'}), ('read-pdf', {'doc_id': 'devis-test', 'include_pdf': 'oui'})):
+            result = ok(self, run_node('document-read', 'read', ctx, fs))
+            self.assertLessEqual(read_keys, set(result), (label, read_keys - set(result)))
+        share_keys = self.declared_keys('document-share')
+        issued = self.issued()
+        for label, ctx in (('publish', {}), ('share', {'share_subject_user_id': 'member-b'})):
+            result = ok(self, self.share(issued, **ctx))
+            self.assertLessEqual(share_keys, set(result), (label, share_keys - set(result)))
+        removal = ok(self, run_node('document-share', 'share', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui', 'expected_revision': '2', 'share_subject_user_id': 'member-b', 'share_permission': 'none'}, self.share(issued, share_subject_user_id='member-b')['fs']))
+        self.assertLessEqual(share_keys, set(removal), share_keys - set(removal))
+
+
+class ProfileSourceTest(unittest.TestCase):
+    BROKER_PROFILE = json.loads(json.dumps(PROFILE)) | {}
+
+    def prepared(self):
+        _, fs = create_quote(self, seeded())
+        return fs
+
+    def render(self, fs, **opts):
+        return run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, fs, **opts)
+
+    def profile_call(self, out):
+        return [c for c in out['calls'] if c.get('profile_read')]
+
+    def test_the_cib_profile_record_is_read_with_the_exact_broker_call(self):
+        brand_from_broker = json.loads(json.dumps(PROFILE))
+        brand_from_broker['company']['legal_name'] = 'Societe du record'
+        out = self.render(self.prepared() | {'/document-studio/profile.json': text_file('{oops')}, cib_profile=brand_from_broker)
+        result = ok(self, out)
+        self.assertEqual(result['profile_source'], 'cib-profile')
+        self.assertEqual(self.profile_call(out)[0]['args'], {'operation': 'read', 'namespace': 'cib-profile', 'record_key': 'company-profile'})
+        render_call = [c for c in out['calls'] if c['name'] == 'artifact_render_v1'][0]['full']
+        self.assertEqual(render_call['context']['company']['legal_name'], 'Societe du record')
+        self.assertNotIn('profile.json', json.dumps([c['args'] for c in out['calls'] if c['name'] == 'read_file']))
+
+    def test_an_absent_record_falls_back_to_storage(self):
+        result = ok(self, self.render(self.prepared()))
+        self.assertEqual(result['profile_source'], 'storage')
+
+    def test_a_refused_unreadable_or_invalid_record_falls_back_to_storage(self):
+        for opts in ({'cib_profile_error': 'PERMISSION_DENIED'}, {'cib_profile_error_value': 'FORBIDDEN'},
+                     {'cib_profile': PROFILE, 'cib_profile_unreadable': True}, {'cib_profile': {'schema_version': 1}}):
+            out = self.render(self.prepared(), **opts)
+            self.assertEqual(ok(self, out)['profile_source'], 'storage', opts)
+            self.assertEqual(len(self.profile_call(out)), 1)
+
+    def test_without_any_profile_the_render_still_fails(self):
+        fs = {k: v for k, v in self.prepared().items() if 'devis-test' in k}
+        self.assertTrue(self.render(fs)['error'].startswith('profile_missing'))
+
+    def test_publish_keeps_the_fingerprint_check_across_sources(self):
+        fs = self.prepared()
+        rendered = self.render(fs, cib_profile=PROFILE)
+        self.assertEqual(ok(self, rendered)['profile_source'], 'cib-profile')
+        approved = run_node('document-studio-finalize', 'finalize', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, rendered['fs'])
+        same = run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, approved['fs'], cib_profile=PROFILE)
+        self.assertEqual(ok(self, same)['profile_source'], 'cib-profile')
+        # same content through the Storage fallback: same fingerprint, the issue goes through
+        via_storage = run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, approved['fs'])
+        self.assertEqual(ok(self, via_storage)['profile_source'], 'storage')
+        changed = json.loads(json.dumps(PROFILE))
+        changed['brand']['colors']['primary'] = '#112233'
+        refused = run_node('document-studio-publish', 'publish', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui'}, approved['fs'], cib_profile=changed)
+        self.assertTrue(refused['error'].startswith('profile_changed'), refused.get('error'))
+        self.assertEqual(load(WORKFLOWS / 'document-studio-publish.json')['actions'][0]['context']['allowed_tools'][-1], 'recipe--application_data_v1')
 
 DIR = '/document-studio/docs/devis-test/versions'
 

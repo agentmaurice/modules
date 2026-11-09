@@ -17,6 +17,24 @@ ROLES = ("veille", "contenu", "accompagnement")
 MODULE_DIRS = {"veille": "watch", "contenu": "content", "accompagnement": "support"}
 MODULE_VERSION = "0.2.4"
 
+# Optional services are off unless asked with --with-service. Each one is an
+# extra Agent (alias = service name) that must already be spec-init'ed in the
+# consumer. `role` is the business role of the service owner ("responsable") and
+# is carried explicitly, per Workflow, in the surface draft written next to the
+# copied files; `gates` overrides it for the Workflows an administrator owns.
+# Role grants and per-record ACL stay cumulative, as for the three roles.
+OPTIONAL_SERVICES = {
+    "documents": {
+        "module_dir": "document-studio",
+        "version": "0.3.0",
+        "role": "cib_documents",
+        # document-read carries no required_role, like contenu-read: any member of the Application may call it
+        # and the ACL of each shared record decides what it returns. None = no role.
+        "gates": {"document-studio-profile-save": "cib_admin", "document-read": None},
+    },
+}
+SURFACE_DRAFT_DIR = "surface-drafts"
+
 # A consumer composed at 0.2.3 may already contain the old console.  Only
 # these exact source bytes are a supported in-place upgrade; any other
 # destination divergence remains an operator conflict.
@@ -85,7 +103,7 @@ def load_json(path: Path) -> dict:
     return value
 
 
-def validate_module(module_root: Path, role: str, errors: list[str]) -> None:
+def validate_module(module_root: Path, role: str, errors: list[str], version: str = MODULE_VERSION) -> None:
     manifest_path = module_root / "module.yaml"
     try:
         manifest = load_json(manifest_path)
@@ -102,7 +120,7 @@ def validate_module(module_root: Path, role: str, errors: list[str]) -> None:
             errors.append(f"forbidden legacy path {module_root / forbidden_path}")
     if not isinstance(manifest.get("key"), str) or not manifest["key"]:
         errors.append(f"module key missing: {manifest_path}")
-    if manifest.get("version") != MODULE_VERSION:
+    if manifest.get("version") != version:
         errors.append(f"unexpected bundle version in {manifest_path}: {manifest.get('version')!r}")
     workflows = module_root / "agents" / "main" / "workflows"
     miniapps = module_root / "agents" / "main" / "miniapps"
@@ -134,6 +152,23 @@ def validate_agent_spec(path: Path, role: str, errors: list[str]) -> None:
         errors.append(f"consumer spec agent_id is empty: {path}")
 
 
+def surface_draft(source_root: Path, service: str, agent_spec: Path) -> str:
+    """Surface entries of an optional service, with `required_role` on every Workflow but the ACL-protected read (never left to a naming convention)."""
+    config = OPTIONAL_SERVICES[service]
+    manifest = load_json(source_root / config["module_dir"] / "module.yaml")
+    agent_id = load_json(agent_spec)["agent_id"]
+    provides = manifest["provides"]
+    workflows = []
+    for ref in provides["actions"] + provides["queries"]:
+        entry = {"agent_id": agent_id, "workflow_id": ref["workflow_id"], "version": ref["workflow_version"]}
+        role = config["gates"].get(ref["workflow_id"], config["role"])
+        if role is not None:
+            entry["required_role"] = role
+        workflows.append(entry)
+    miniapps = [{"agent_id": agent_id, "miniapp_id": a["miniapp_id"], "version": a["miniapp_version"]} for a in provides["apps"]]
+    return json.dumps({"public_surface": {"workflows": workflows, "miniapps": miniapps}}, indent=2) + "\n"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -149,6 +184,13 @@ def main() -> int:
         help="Racine du dépôt contenant les Modules et templates/",
     )
     parser.add_argument(
+        "--with-service",
+        action="append",
+        default=[],
+        choices=sorted(OPTIONAL_SERVICES),
+        help="Ajouter un service optionnel (Agent déjà spec-init sous le même alias) ; aucun par défaut",
+    )
+    parser.add_argument(
         "--write",
         action="store_true",
         help="Copier les octets après toutes les validations préalables",
@@ -159,15 +201,20 @@ def main() -> int:
 
     errors: list[str] = []
     planned: list[tuple[Path, Path]] = []
-    for role in ROLES:
-        module_root = source_root / MODULE_DIRS[role]
+    drafts: list[tuple[Path, str]] = []
+    targets = [(role, MODULE_DIRS[role], MODULE_VERSION) for role in ROLES]
+    for service in dict.fromkeys(args.with_service):
+        config = OPTIONAL_SERVICES[service]
+        targets.append((service, config["module_dir"], config["version"]))
+    for role, module_dir, version in targets:
+        module_root = source_root / module_dir
         manifest = module_root / "module.yaml"
         workflows = module_root / "agents" / "main" / "workflows"
         miniapps = module_root / "agents" / "main" / "miniapps"
         test_plan = source_root / "templates/company-in-a-box/tests" / f"{role}.json"
         agent_spec = consumer / "agents" / role / "agent-spec.json"
 
-        validate_module(module_root, role, errors)
+        validate_module(module_root, role, errors, version)
         if agent_spec.exists():
             validate_agent_spec(agent_spec, role, errors)
         for required in (manifest, workflows, miniapps, test_plan, agent_spec):
@@ -185,6 +232,12 @@ def main() -> int:
             except ValueError as exc:
                 errors.append(str(exc))
             planned.append((test_plan, consumer / "agents" / role / "tests" / "test-plan.json"))
+        if role in OPTIONAL_SERVICES and not errors:
+            draft_path = consumer / SURFACE_DRAFT_DIR / f"cib-{role}.surface-draft.json"
+            draft = surface_draft(source_root, role, agent_spec)
+            if draft_path.exists() and draft_path.read_text(encoding="utf-8") != draft:
+                errors.append(f"destination conflict (refusing overwrite): {draft_path}")
+            drafts.append((draft_path, draft))
 
     upgradeable: set[tuple[Path, Path]] = set()
     for source, destination in planned:
@@ -222,6 +275,12 @@ def main() -> int:
             if digest(destination) != source_hash:
                 print(f"ERROR copy verification failed: {destination}", file=sys.stderr)
                 return 3
+
+    for draft_path, draft in drafts:
+        print(f"surface draft -> {draft_path} (required_role on every Workflow except document-read, protected by the record ACL; merge it into the Application surface and publish it yourself)")
+        if args.write:
+            draft_path.parent.mkdir(parents=True, exist_ok=True)
+            draft_path.write_text(draft, encoding="utf-8")
 
     return 0
 
