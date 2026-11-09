@@ -3,7 +3,7 @@
   "schema_version": 2,
   "key": "document-studio",
   "name": "Document studio",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "provides": {
     "actions": [
       {
@@ -53,6 +53,12 @@
         "name": "Save the company profile",
         "workflow_id": "document-studio-profile-save",
         "workflow_version": "1"
+      },
+      {
+        "key": "document-share",
+        "name": "Share an issued document",
+        "workflow_id": "document-share",
+        "workflow_version": "1"
       }
     ],
     "queries": [
@@ -72,6 +78,12 @@
         "key": "document-studio-template-read",
         "name": "Read the templates",
         "workflow_id": "document-studio-template-read",
+        "workflow_version": "1"
+      },
+      {
+        "key": "document-read",
+        "name": "Read shared documents",
+        "workflow_id": "document-read",
         "workflow_version": "1"
       }
     ],

@@ -26,6 +26,8 @@ messages) is French; `fr` is the only locale in V0.
 | `document-studio-list` | lists the documents (identifier, title, status, number, revision, latest hash) |
 | `document-studio-review-read` | full record of a document and previews of its latest render, for the MiniApp |
 | `document-studio-template-read` | lists the templates, or the manifest and data schemas of one template |
+| `document-share` | publishes the reference of an **issued** document as a record of the native application data broker (`recipe--application_data_v1`, namespace `cib-documents`, key `doc_id`), then grants or removes `read` for one member. Requires `confirmation_manuelle`. The PDF stays in Storage |
+| `document-read` | reads one shared reference through the broker (with the caller's permissions), or lists the references the caller may read when `doc_id` is empty |
 
 The `document-studio-review` MiniApp has no input component of its own (the
 MiniApp vocabulary has none): the document identifier (`doc_id`) is typed in
@@ -34,6 +36,26 @@ the document. The MiniApp then shows status, revision, number, pages and the
 table of renders (revision, mode, hash, path), refreshes it, and triggers a
 new render. Approval and issue go through the
 Workflow forms, with the manual confirmation.
+
+## Sharing with the company
+
+Sharing follows the `cib-contenu` pattern: the broker holds one record per document and enforces a per-member ACL; a
+record is private to its owner until `document-share` grants `read` (`write` is refused on purpose: a member must not
+be able to rewrite the reference). `expected_revision` is `0` for the first publication, then the revision returned by
+the previous call (compare-and-set). The shared record (`document-studio.shared/v1`) holds `doc_id`, `title`,
+`template_key`, `number`, `version` (the revision of the Storage record at issue), `path` (Storage path of the issued
+PDF), `sha256` and `issued_at`. Removing access (`none`) does not need the Storage record, so it still works after a
+cancellation; a cancelled document stays referenced until its owner removes the members. Reading the PDF itself is a
+Storage right, separate from the ACL of the reference.
+
+## Optional service in the Company-in-a-Box template
+
+`templates/company-in-a-box/compose.py --with-service documents` adds this Module as an optional fourth Agent
+(`documents`, spec-init'ed in the consumer like the three roles; off by default). Besides the resources and the test
+plan it writes `surface-drafts/cib-documents.surface-draft.json`, with `required_role` on every Workflow: `cib_documents`
+for the owner of the service, `cib_admin` for `document-studio-profile-save`. Role grants and the ACL of each record are
+cumulative; the Module never grants a role or a share. The Administration select of `cib-admin-manage` does not list
+`cib_documents` yet.
 
 ## Lifecycle
 
@@ -111,7 +133,7 @@ renderer, on synthetic data. They do not prove the behavior on a One.
 
 ## Known limits (V0)
 
-- The brand is read from Storage only. The `profile` Module keeps the profile in an application record whose broker is not wired in the One yet: calling the `cib-profile-read` Workflow would make every render fail until then.
+- The brand is still read from Storage (`/document-studio/profile.json`), not from the `cib-profile` record of the `profile` Module, although the broker now exists: switching the source is a separate change of `render` and `publish`.
 - The logo is a reference (`storage://…`); this Module does not resolve it to a file before rendering.
 - Number reservation is not atomic: it lists, writes without overwrite, reads back and checks the owner, at most 5 attempts (`number_conflict`). A number reserved then lost (failed render) stays reserved: it is taken again on the next attempt, never reused by another document. Atomic sequences are a platform follow-up.
 - No sending (mail, SFTP), no DOCX, one locale (`fr`).

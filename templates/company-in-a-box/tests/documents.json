@@ -1,0 +1,59 @@
+{
+  "$schema": "agentmaurice.test_plan/v2",
+  "schema_version": 2,
+  "test_plan_id": "documents-regression",
+  "cases": [
+    {
+      "id": "document-share-without-confirmation",
+      "description": "Refus avant tout appel : sans confirmation manuelle, document-share n'écrit ni ne partage rien.",
+      "workflow": {
+        "workflow_id": "document-share",
+        "input": {
+          "doc_id": "devis-demo",
+          "expected_revision": 0,
+          "share_subject_user_id": "member-b",
+          "share_permission": "read",
+          "confirmation_manuelle": "non"
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "failed"
+        }
+      ]
+    },
+    {
+      "id": "document-read-invalid-id",
+      "description": "Refus d'un identifiant de document hors format avant l'appel au broker.",
+      "workflow": {
+        "workflow_id": "document-read",
+        "input": {
+          "doc_id": "../hors-scope"
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "failed"
+        }
+      ]
+    },
+    {
+      "id": "document-read-without-proof",
+      "description": "Exécution technique sans preuve humaine : le broker ACL doit refuser cet accès. Les cas positifs sont vérifiés avec les comptes existants depuis la surface CIB.",
+      "workflow": {
+        "workflow_id": "document-read",
+        "input": {
+          "doc_id": "devis-demo"
+        }
+      },
+      "assertions": [
+        {
+          "type": "status",
+          "expected": "failed"
+        }
+      ]
+    }
+  ]
+}

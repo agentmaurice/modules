@@ -18,10 +18,13 @@ ROOT = Path(__file__).resolve().parent
 MODULE = ROOT.parents[1] / 'document-studio'
 DEST = MODULE / 'agents/main'
 TEMPLATES_DIR = MODULE / 'examples/templates'
-VERSION = '0.1.0'
+VERSION = '0.2.0'
 RENDER_TOOL = 'artifact_render_v1'
 STORAGE_TOOLS = ['read_file', 'write_file', 'list_files']
 RENDER_TOOLS = STORAGE_TOOLS + [RENDER_TOOL]
+BROKER = 'recipe--application_data_v1'
+SHARE_TOOLS = ['read_file', BROKER]
+NAMESPACE = 'cib-documents'
 I18N = json.loads((ROOT / 'contract/i18n.fr.json').read_text(encoding='utf-8'))
 
 # Draft data of a quote: numbers, never formatted amounts and never totals.
@@ -546,6 +549,94 @@ async function reserveNumber(rec) {
 '''
 
 
+BROKER_LIB = r"""
+const NAMESPACE = "cib-documents";
+
+function brokerItem(response, id) {
+  const payload = response && response.data ? response.data : response;
+  const item = payload && payload.record;
+  if (!isObject(item) || item.namespace !== NAMESPACE || item.key !== id) fail("broker_record_identity_invalid");
+  if (!Number.isSafeInteger(item.revision) || item.revision < 0) fail("broker_revision_invalid");
+  const p = item.permissions;
+  if (!isObject(p) || typeof p.can_read !== "boolean" || typeof p.can_write !== "boolean" || typeof p.can_manage !== "boolean") fail("broker_permissions_invalid");
+  return item;
+}
+function brokerView(item) {
+  const p = item.permissions;
+  const shares = Array.isArray(item.shares) ? item.shares : [];
+  return {record: isObject(item.data) ? item.data : null, revision: item.revision, owner_user_id: typeof item.owner_user_id === "string" ? item.owner_user_id : "", permissions: p, permissions_summary: "Lecture : " + (p.can_read ? "oui" : "non") + " · Modification : " + (p.can_write ? "oui" : "non") + " · Partage : " + (p.can_manage ? "oui" : "non"), shares, share_count: shares.length};
+}
+"""
+
+SHARE_IO = r"""
+async function readIssuedRecord(id) {
+  let raw;
+  try {
+    const r = await callTool("read_file", {path: ROOT + "/docs/" + id + "/record.json"});
+    raw = typeof r === "string" ? r : (isObject(r) && typeof r.content === "string" ? r.content : (isObject(r) && isObject(r.data) && typeof r.data.content === "string" ? r.data.content : null));
+  } catch (e) {
+    const message = String(e && e.message);
+    if (/not found|does not exist|no such/i.test(message)) fail("document_not_found", id);
+    fail("storage_unavailable", message.slice(0, 200));
+  }
+  if (raw === null) fail("storage_read_failed", id);
+  let rec;
+  try { rec = JSON.parse(raw); } catch (e) { fail("record_corrupt", id); }
+  return checkRecord(rec, id);
+}
+"""
+
+SHARE_CODE = r"""
+const input = {{ json . }};
+requireConfirmation(input);
+const id = docIdOf(input.doc_id);
+let expected = input.expected_revision;
+if (expected === undefined || expected === null || expected === "") expected = 0;
+if (typeof expected === "string" && /^[0-9]+$/.test(expected)) expected = Number(expected);
+if (!Number.isSafeInteger(expected) || expected < 0) fail("expected_revision_invalid");
+const subject = input.share_subject_user_id === undefined || input.share_subject_user_id === null ? "" : input.share_subject_user_id;
+if (typeof subject !== "string" || subject.length > 256 || /[\/\s]/.test(subject)) fail("subject_user_id_invalid");
+const permission = input.share_permission === undefined || input.share_permission === null || input.share_permission === "" ? "read" : input.share_permission;
+if (!["read", "none"].includes(permission)) fail("permission_invalid", "lecture ou retrait seulement");
+if (permission === "none" && !subject) fail("subject_user_id_required", "indiquez le membre dont retirer l'accès");
+let revision = expected;
+let item = null;
+if (permission !== "none") {
+  const rec = await readIssuedRecord(id);
+  if (rec.status !== "issued" || !isObject(rec.issued) || !isObject(rec.issued.file) || typeof rec.issued.file.path !== "string" || typeof rec.issued.file.sha256 !== "string") fail("status_invalid", "seul un document émis se partage (statut actuel : " + rec.status + ")");
+  const data = {schema: "document-studio.shared/v1", doc_id: rec.doc_id, title: String(rec.title || ""), template_key: rec.template_key, number: rec.number, version: rec.revision, path: rec.issued.file.path, sha256: rec.issued.file.sha256, issued_at: rec.issued.at};
+  item = brokerItem(await callTool("recipe--application_data_v1", {operation: "save", namespace: NAMESPACE, record_key: id, data, expected_revision: expected}), id);
+  revision = item.revision;
+}
+if (subject) {
+  if (revision < 1) fail("expected_revision_invalid", "révision du record partagé requise pour retirer un accès");
+  item = brokerItem(await callTool("recipe--application_data_v1", {operation: "share", namespace: NAMESPACE, record_key: id, expected_revision: revision, subject_user_id: subject.trim(), permission}), id);
+}
+const view = brokerView(item);
+return {...view, doc_id: id, shared_with: subject ? subject.trim() : "", message: subject ? "Partage mis à jour par le broker natif. Partager un document ne donne pas accès au service." : "Référence du document publiée, visible de son propriétaire seul tant qu'aucun membre n'est ajouté.", external_effect: false};
+"""
+
+READ_CODE = r"""
+const input = {{ json . }};
+if (input.doc_id === undefined || input.doc_id === null || input.doc_id === "") {
+  const response = await callTool("recipe--application_data_v1", {operation: "list", namespace: NAMESPACE, prefix: ""});
+  const payload = response && response.data ? response.data : response;
+  if (!payload || !Array.isArray(payload.items) || !Number.isSafeInteger(payload.total) || payload.total !== payload.items.length) fail("broker_list_invalid");
+  const items = payload.items.map((view) => {
+    const key = typeof view.record_key === "string" ? view.record_key : view.key;
+    if (typeof key !== "string" || !ID_RE.test(key)) fail("broker_list_key_invalid");
+    const d = isObject(view.data) ? view.data : (isObject(view.record) ? view.record : {});
+    return {doc_id: key, title: d.title === undefined ? "" : d.title, template_key: d.template_key === undefined ? "" : d.template_key, number: d.number === undefined ? "" : d.number, version: d.version === undefined ? null : d.version, path: d.path === undefined ? "" : d.path, sha256: d.sha256 === undefined ? "" : d.sha256, revision: view.revision, owner_user_id: typeof view.owner_user_id === "string" ? view.owner_user_id : "", permissions: isObject(view.permissions) ? view.permissions : {}};
+  });
+  return {items, total: payload.total, record: null, revision: null, owner_user_id: "", permissions: null, permissions_summary: "", shares: [], share_count: 0};
+}
+const id = docIdOf(input.doc_id);
+const item = brokerItem(await callTool("recipe--application_data_v1", {operation: "read", namespace: NAMESPACE, record_key: id}), id);
+if (!isObject(item.data)) fail("broker_record_data_invalid");
+return {...brokerView(item), items: [], total: 1};
+"""
+
+
 def code(*parts):
     body = ''.join(parts)
     assert '{{' not in body.replace('{{ json . }}', ''), 'a double-brace sequence in the JavaScript'
@@ -961,6 +1052,39 @@ def build():
              [node('read', code(lib(templates='meta'), TEMPLATE_READ_CODE), 'result')],
              {'templates': '{{ result.templates }}', 'template': '{{ result.template }}'})
 
+    workflow('document-share', 'Share an issued document',
+             'Publishes the reference of an issued document (identifier, title, type, number, version, Storage path and SHA-256 of '
+             'the PDF) as a record of the native application data broker, then grants or removes read access for one member. '
+             'The PDF stays in Storage. A record is private to its owner until shared; sharing never gives access to the service. '
+             'expected_revision is 0 for the first publication, else the revision returned by the previous call.',
+             schema(['doc_id', 'confirmation_manuelle'], doc_id=DOC_ID, confirmation_manuelle=CONFIRM,
+                    expected_revision={'type': ['integer', 'string'], 'description': '0 (or empty) to create the reference, else the current revision of the shared record'},
+                    share_subject_user_id=text('Member to grant or remove; empty to only publish the reference'),
+                    share_permission=text('Right of the member', enum=['read', 'none'])),
+             [node('share', code(IMPORT, lib(), BROKER_LIB, SHARE_IO, SHARE_CODE), 'result', tools=SHARE_TOOLS)],
+             {'doc_id': '{{ result.doc_id }}', 'record': '{{ result.record }}', 'revision': '{{ result.revision }}',
+              'owner_user_id': '{{ result.owner_user_id }}', 'permissions': '{{ result.permissions }}',
+              'permissions_summary': '{{ result.permissions_summary }}', 'shares': '{{ result.shares }}',
+              'share_count': '{{ result.share_count }}', 'shared_with': '{{ result.shared_with }}',
+              'message': '{{ result.message }}', 'scope': 'internal_only', 'external_effect': False},
+             forms=[form('document-share', 'Partager un document émis', [
+                 field('doc_id', 'Identifiant du document', 'string', True),
+                 field('expected_revision', 'Révision attendue (0 pour une première publication)', 'string', True, default='0'),
+                 field('share_subject_user_id', 'Membre', 'string', False),
+                 field('share_permission', 'Droit', 'select', True, options=[{'value': 'read', 'label': 'Lecture'}, {'value': 'none', 'label': 'Retirer'}], default='read'),
+                 CONFIRM_FIELD], ['share'])])
+
+    workflow('document-read', 'Read shared documents',
+             'Reads, through the native application data broker, the reference of one shared document (with the permissions of the '
+             'caller), or lists the references the caller may read when doc_id is empty. Only the rights of the caller apply.',
+             schema([], doc_id=DOC_ID),
+             [node('read', code(IMPORT, lib(), BROKER_LIB, READ_CODE), 'result', tools=[BROKER])],
+             {'record': '{{ result.record }}', 'revision': '{{ result.revision }}', 'owner_user_id': '{{ result.owner_user_id }}',
+              'permissions': '{{ result.permissions }}', 'permissions_summary': '{{ result.permissions_summary }}',
+              'shares': '{{ result.shares }}', 'share_count': '{{ result.share_count }}', 'items': '{{ result.items }}',
+              'total': '{{ result.total }}'},
+             forms=[form('document-read', 'Relire un document partagé', [field('doc_id', 'Identifiant du document (vide pour la liste)', 'string', False)], ['read'])])
+
     miniapp()
     manifest()
 
@@ -1015,9 +1139,10 @@ def manifest():
             'actions': [ref('document-studio-plan', 'Plan a document'), ref('document-studio-draft', 'Draft a document'),
                         ref('document-studio-render', 'Render a document preview'), ref('document-studio-finalize', 'Approve a document'),
                         ref('document-studio-publish', 'Issue a document'), ref('document-studio-cancel', 'Cancel a document'),
-                        ref('document-studio-export', 'Export a document'), ref('document-studio-profile-save', 'Save the company profile')],
+                        ref('document-studio-export', 'Export a document'), ref('document-studio-profile-save', 'Save the company profile'),
+                        ref('document-share', 'Share an issued document')],
             'queries': [ref('document-studio-list', 'List documents'), ref('document-studio-review-read', 'Read a document for review'),
-                        ref('document-studio-template-read', 'Read the templates')],
+                        ref('document-studio-template-read', 'Read the templates'), ref('document-read', 'Read shared documents')],
             'apps': [{'key': 'document-studio-review', 'name': 'Document studio', 'miniapp_id': 'document-studio-review',
                       'miniapp_version': '1'}]},
         'requires': {},

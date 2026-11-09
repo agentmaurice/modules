@@ -1205,9 +1205,9 @@
     },
     {
       "key": "document-studio",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "manifest": "document-studio/module.yaml",
-      "workflows": 11,
+      "workflows": 13,
       "miniapps": 1,
       "source": {
         "repository": "github.com/agentmaurice/modules",
@@ -1218,6 +1218,8 @@
       ],
       "resources": {
         "workflows": [
+          "document-studio/agents/main/workflows/document-read.json",
+          "document-studio/agents/main/workflows/document-share.json",
           "document-studio/agents/main/workflows/document-studio-cancel.json",
           "document-studio/agents/main/workflows/document-studio-draft.json",
           "document-studio/agents/main/workflows/document-studio-export.json",
@@ -1234,7 +1236,9 @@
           "document-studio/agents/main/miniapps/document-studio-review.json"
         ],
         "sha256": {
-          "document-studio/module.yaml": "89c05d34793969a8fccb1b767f9b6aa87bda29d6fb9edaf4f80e1f827e2a0299",
+          "document-studio/module.yaml": "64bb28f928d537ff486519146022efab8cc1e2edbe5bbc898a96012ccfe602eb",
+          "document-studio/agents/main/workflows/document-read.json": "4c1e20b58a546f415f480145882523ae607fabfbf784eac5de02d1ad3515a2ef",
+          "document-studio/agents/main/workflows/document-share.json": "a37a4d7bbe729c74b769f26c85a3c4766d691ca76821cdc846abe816b15ebdb2",
           "document-studio/agents/main/workflows/document-studio-cancel.json": "899e24cb5688d92497891ea09a3181f64093df9d2802d818da78f1298f807965",
           "document-studio/agents/main/workflows/document-studio-draft.json": "72be0b86b67c6fc4392bff1795c38c59763334582fedf1ccdd95b296e9492b4e",
           "document-studio/agents/main/workflows/document-studio-export.json": "52aa5bcc2ee64715be59fab234804fcebd3cc1cfec4e32dd5f9ea5d69c9371db",
@@ -1250,6 +1254,32 @@
         }
       },
       "workflow_actions": {
+        "document-studio/agents/main/workflows/document-read.json": {
+          "workflow_id": "document-read",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "read",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "ea1e3c187debf0615c24169bd8b9eb8e054c11b4184e696d17606c6fe7c78981"
+            }
+          ]
+        },
+        "document-studio/agents/main/workflows/document-share.json": {
+          "workflow_id": "document-share",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "share",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "1b5d8e9c893c9bc45e81c5107585cb3d8f42fdc75b50ccaf963e5cf1481564d9"
+            }
+          ]
+        },
         "document-studio/agents/main/workflows/document-studio-cancel.json": {
           "workflow_id": "document-studio-cancel",
           "actions": [
@@ -1469,6 +1499,12 @@
             "name": "Save the company profile",
             "workflow_id": "document-studio-profile-save",
             "workflow_version": "1"
+          },
+          {
+            "key": "document-share",
+            "name": "Share an issued document",
+            "workflow_id": "document-share",
+            "workflow_version": "1"
           }
         ],
         "queries": [
@@ -1488,6 +1524,12 @@
             "key": "document-studio-template-read",
             "name": "Read the templates",
             "workflow_id": "document-studio-template-read",
+            "workflow_version": "1"
+          },
+          {
+            "key": "document-read",
+            "name": "Read shared documents",
+            "workflow_id": "document-read",
             "workflow_version": "1"
           }
         ],
