@@ -127,6 +127,7 @@ renderer, on synthetic data. They do not prove the behavior on a One.
 
 ## Known limits (V0)
 
+- Concurrent `mark-authoritative`: two calls on the same document at the same time are not safe. Both may pass the second read and the later write wins, which can leave the wrong version authoritative or bring a superseded one back while both calls report success. Serialise them (one writer per document). Moving the manifest to `application_data_v1`, which has compare-and-swap, lifts this limit (lot 4).
 - Versions: Storage has no compare-and-swap. A manifest is read, the version file and redline are written, then the manifest is read again and written only if its text is unchanged (`concurrent_update` otherwise; a first manifest is written without overwrite). The window between the second read and the write is small, not null: allow one writer at a time per document. Files written before an abandoned manifest write stay orphaned in `versions/`. Pass `base_version` and `base_manifest_sha256` (returned as `manifest_sha256`) to make a stale caller fail.
 - Versions are DOCX only (XLSX and PDF are out of this lot), the comparison and its 20 MiB input limit are those of `office_compare_v1`, and there is no review MiniApp for versions yet.
 
