@@ -45,8 +45,13 @@ be able to rewrite the reference). `expected_revision` is `0` for the first publ
 the previous call (compare-and-set). The shared record (`document-studio.shared/v1`) holds `doc_id`, `title`,
 `template_key`, `number`, `version` (the revision of the Storage record at issue), `path` (Storage path of the issued
 PDF), `sha256` and `issued_at`. Removing access (`none`) does not need the Storage record, so it still works after a
-cancellation; a cancelled document stays referenced until its owner removes the members. Reading the PDF itself is a
-Storage right, separate from the ACL of the reference.
+cancellation; a cancelled document stays referenced until its owner removes the members. The PDF itself is read through the ACL of the
+record, not through the Storage rights of the member: `document-read` with `doc_id` and `include_pdf: oui` (optional,
+default `non`; a form field, `non` by default) reads the PDF at `data.path` from the Agent's Storage with `read_file`
+(base64) only after the broker read succeeded, recomputes its SHA-256 and refuses `pdf_integrity_failed` when it differs
+from the shared `sha256`, `pdf_too_large` above 5 MiB, and `invalid_path` when the path is not an issued document of
+`/document-studio/docs/<doc_id>/issued/`. It returns `pdf_base64`, `pdf_sha256` and `pdf_bytes`. `include_pdf` without a
+`doc_id` is refused.
 
 ## Optional service in the Company-in-a-Box template
 

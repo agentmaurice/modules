@@ -923,7 +923,7 @@ class SharingTest(unittest.TestCase):
         return run_node('document-share', 'share', ctx, fs)
 
     def test_workflows_use_only_the_broker_and_read_the_record(self):
-        for name, tools in (('document-share', ['read_file', 'recipe--application_data_v1']), ('document-read', ['recipe--application_data_v1'])):
+        for name, tools in (('document-share', ['read_file', 'recipe--application_data_v1']), ('document-read', ['read_file', 'recipe--application_data_v1'])):
             wf = load(WORKFLOWS / f'{name}.json')
             self.assertEqual(wf['actions'][0]['context']['allowed_tools'], tools)
             self.assertNotIn('write_file', wf['actions'][0]['code'])
@@ -1011,6 +1011,49 @@ class SharingTest(unittest.TestCase):
         self.assertIsNone(re.fullmatch(schema['properties']['doc_id']['pattern'], '../x'))
         self.assertEqual(schema['required'], [])
         self.assertEqual(ok(self, run_node('document-read', 'read', {'doc_id': ''}, fs))['total'], 1)
+
+    def shared(self):
+        fs = self.share(self.issued(), share_subject_user_id='member-b')['fs']
+        record = json.loads(fs['/document-studio/docs/devis-test/record.json']['text'])
+        return fs, record['issued']['file']
+
+    def test_include_pdf_returns_the_checked_pdf_only_after_the_broker_read(self):
+        fs, file = self.shared()
+        plain = run_node('document-read', 'read', {'doc_id': 'devis-test', 'include_pdf': 'non'}, fs)
+        self.assertIsNone(ok(self, plain)['pdf_base64'])
+        self.assertNotIn('read_file', [c['name'] for c in plain['calls']])
+        out = run_node('document-read', 'read', {'doc_id': 'devis-test', 'include_pdf': 'oui'}, fs)
+        result = ok(self, out)
+        self.assertEqual([c['name'] for c in out['calls']], ['recipe--application_data_v1', 'read_file'])
+        self.assertEqual(out['calls'][1]['args'], {'path': file['path'], 'encoding': 'base64'})
+        self.assertEqual(result['pdf_sha256'], file['sha256'])
+        self.assertEqual(hashlib.sha256(base64.b64decode(result['pdf_base64'])).hexdigest(), file['sha256'])
+        self.assertEqual(result['pdf_bytes'], len(base64.b64decode(result['pdf_base64'])))
+        self.assertEqual(ok(self, run_node('document-read', 'read', {'doc_id': 'devis-test', 'include_pdf': True}, fs))['pdf_sha256'], file['sha256'])
+
+    def test_include_pdf_is_refused_when_the_broker_refuses_and_without_an_id(self):
+        fs, _ = self.shared()
+        denied = run_node('document-read', 'read', {'doc_id': 'devis-test', 'include_pdf': 'oui'}, fs, broker_error='access_denied')
+        self.assertIn('error', denied)
+        self.assertNotIn('read_file', [c['name'] for c in denied['calls']])
+        self.assertTrue(run_node('document-read', 'read', {'include_pdf': 'oui'}, fs)['error'].startswith('include_pdf_requires_doc_id'))
+        self.assertTrue(run_node('document-read', 'read', {'doc_id': 'devis-test', 'include_pdf': 'peut-etre'}, fs)['error'].startswith('include_pdf_invalid'))
+
+    def test_include_pdf_checks_integrity_size_and_path(self):
+        fs, file = self.shared()
+        bad = json.loads(json.dumps(fs))
+        bad[file['path']] = {'b64': base64.b64encode(b'%PDF-other').decode()}
+        self.assertTrue(run_node('document-read', 'read', {'doc_id': 'devis-test', 'include_pdf': 'oui'}, bad)['error'].startswith('pdf_integrity_failed'))
+        big = json.loads(json.dumps(fs))
+        big[file['path']] = {'b64': base64.b64encode(b'a' * (5 * 1024 * 1024 + 1)).decode()}
+        self.assertTrue(run_node('document-read', 'read', {'doc_id': 'devis-test', 'include_pdf': 'oui'}, big)['error'].startswith('pdf_too_large'))
+        for wrong in ('/etc/passwd', '/document-studio/profile.json', '/document-studio/docs/autre/issued/x.pdf',
+                      '/document-studio/docs/devis-test/issued/../record.json', '/document-studio/docs/devis-test/r2-aaaaaaaaaaaa/document.pdf'):
+            forged = json.loads(json.dumps(fs))
+            forged['__broker']['devis-test']['data']['path'] = wrong
+            out = run_node('document-read', 'read', {'doc_id': 'devis-test', 'include_pdf': 'oui'}, forged)
+            self.assertTrue(out['error'].startswith('invalid_path'), (wrong, out.get('error')))
+            self.assertNotIn('read_file', [c['name'] for c in out['calls']])
 
 
 class ProfileSourceTest(unittest.TestCase):

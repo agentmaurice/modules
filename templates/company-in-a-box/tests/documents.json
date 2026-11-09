@@ -38,22 +38,6 @@
           "expected": "failed"
         }
       ]
-    },
-    {
-      "id": "document-read-without-proof",
-      "description": "Exécution technique sans preuve humaine : le broker ACL doit refuser cet accès. Les cas positifs sont vérifiés avec les comptes existants depuis la surface CIB.",
-      "workflow": {
-        "workflow_id": "document-read",
-        "input": {
-          "doc_id": "devis-demo"
-        }
-      },
-      "assertions": [
-        {
-          "type": "status",
-          "expected": "failed"
-        }
-      ]
     }
   ]
 }

@@ -640,7 +640,15 @@ return {...view, doc_id: id, shared_with: subject ? subject.trim() : "", message
 
 READ_CODE = r"""
 const input = {{ json . }};
+const wantPdf = (() => {
+  const v = input.include_pdf;
+  if (v === undefined || v === null || v === "" || v === false || v === "non" || v === "false") return false;
+  if (v === true || v === "oui" || v === "true") return true;
+  return fail("include_pdf_invalid", "oui ou non attendu");
+})();
+const MAX_PDF_BYTES = 5 * 1024 * 1024;
 if (input.doc_id === undefined || input.doc_id === null || input.doc_id === "") {
+  if (wantPdf) fail("include_pdf_requires_doc_id", "indiquez le document dont lire le PDF");
   const response = await callTool("recipe--application_data_v1", {operation: "list", namespace: NAMESPACE, prefix: ""});
   const payload = response && response.data ? response.data : response;
   if (!payload || !Array.isArray(payload.items) || !Number.isSafeInteger(payload.total) || payload.total !== payload.items.length) fail("broker_list_invalid");
@@ -655,7 +663,27 @@ if (input.doc_id === undefined || input.doc_id === null || input.doc_id === "") 
 const id = docIdOf(input.doc_id);
 const item = brokerItem(await callTool("recipe--application_data_v1", {operation: "read", namespace: NAMESPACE, record_key: id}), id);
 if (!isObject(item.data)) fail("broker_record_data_invalid");
-return {...brokerView(item), items: [], total: 1};
+const out = {...brokerView(item), items: [], total: 1, pdf_base64: null, pdf_sha256: null, pdf_bytes: null};
+if (wantPdf) {
+  // Only after the broker read succeeded: the ACL of the record, not the Storage rights of the member, opens the PDF.
+  const path = item.data.path;
+  const prefix = ROOT + "/docs/" + id + "/issued/";
+  if (typeof path !== "string" || !path.startsWith(prefix) || path.length > 300 || path.includes("..") || path.includes("//") || path.slice(prefix.length).includes("/") || !path.endsWith(".pdf")) fail("invalid_path", "le PDF doit être un document émis de " + ROOT);
+  if (typeof item.data.sha256 !== "string" || !/^[0-9a-f]{64}$/.test(item.data.sha256)) fail("broker_record_data_invalid", "empreinte absente");
+  let r;
+  try { r = await callTool("read_file", {path, encoding: "base64"}); } catch (e) { fail("storage_unavailable", String(e && e.message).slice(0, 200)); }
+  if (isObject(r) && isObject(r.data) && r.content === undefined) r = r.data;
+  const encoded = typeof r === "string" ? r : (isObject(r) && typeof r.content === "string" ? r.content : null);
+  if (encoded === null) fail("storage_read_failed", path);
+  const clean = encoded.replace(/\s+/g, "");
+  if (clean.length > Math.ceil(MAX_PDF_BYTES / 3) * 4) fail("pdf_too_large", "au plus 5 Mio");
+  const bytes = b64ToBytes(clean);
+  if (bytes.length > MAX_PDF_BYTES) fail("pdf_too_large", "au plus 5 Mio");
+  const sha = await sha256Hex(bytes);
+  if (sha !== item.data.sha256) fail("pdf_integrity_failed", "l'empreinte du PDF lu ne correspond pas au record partagé");
+  out.pdf_base64 = clean; out.pdf_sha256 = sha; out.pdf_bytes = bytes.length;
+}
+return out;
 """
 
 
@@ -1101,13 +1129,16 @@ def build():
     workflow('document-read', 'Read shared documents',
              'Reads, through the native application data broker, the reference of one shared document (with the permissions of the '
              'caller), or lists the references the caller may read when doc_id is empty. Only the rights of the caller apply.',
-             schema([], doc_id=text('Document identifier; empty (or absent) lists the references the caller may read', pattern='^([a-z0-9][a-z0-9-]{0,47})?$')),
-             [node('read', code(IMPORT, lib(), BROKER_LIB, READ_CODE), 'result', tools=[BROKER])],
+             schema([], include_pdf={'type': ['boolean', 'string'], 'description': 'oui to also return the issued PDF (base64, 5 MiB at most, checked against the shared sha256); default non'}, doc_id=text('Document identifier; empty (or absent) lists the references the caller may read', pattern='^([a-z0-9][a-z0-9-]{0,47})?$')),
+             [node('read', code(IMPORT, lib(), BROKER_LIB, READ_CODE), 'result', tools=['read_file', BROKER])],
              {'record': '{{ result.record }}', 'revision': '{{ result.revision }}', 'owner_user_id': '{{ result.owner_user_id }}',
               'permissions': '{{ result.permissions }}', 'permissions_summary': '{{ result.permissions_summary }}',
               'shares': '{{ result.shares }}', 'share_count': '{{ result.share_count }}', 'items': '{{ result.items }}',
-              'total': '{{ result.total }}'},
-             forms=[form('document-read', 'Relire un document partagé', [field('doc_id', 'Identifiant du document (vide pour la liste)', 'string', False)], ['read'])])
+              'total': '{{ result.total }}', 'pdf_base64': '{{ result.pdf_base64 }}', 'pdf_sha256': '{{ result.pdf_sha256 }}',
+              'pdf_bytes': '{{ result.pdf_bytes }}'},
+             forms=[form('document-read', 'Relire un document partagé', [
+                 field('doc_id', 'Identifiant du document (vide pour la liste)', 'string', False),
+                 field('include_pdf', 'Joindre le PDF', 'select', False, options=[{'value': 'non', 'label': 'Non'}, {'value': 'oui', 'label': 'Oui'}], default='non')], ['read'])])
 
     miniapp()
     manifest()
