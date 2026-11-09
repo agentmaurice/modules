@@ -18,13 +18,16 @@ ROOT = Path(__file__).resolve().parent
 MODULE = ROOT.parents[1] / 'document-studio'
 DEST = MODULE / 'agents/main'
 TEMPLATES_DIR = MODULE / 'examples/templates'
-VERSION = '0.2.0'
+VERSION = '0.3.0'
 RENDER_TOOL = 'artifact_render_v1'
 STORAGE_TOOLS = ['read_file', 'write_file', 'list_files']
 RENDER_TOOLS = STORAGE_TOOLS + [RENDER_TOOL]
 BROKER = 'recipe--application_data_v1'
 SHARE_TOOLS = ['read_file', BROKER]
 NAMESPACE = 'cib-documents'
+COMPARE_TOOL = 'office_compare_v1'
+INSPECT_TOOL = 'office_inspect_v1'
+VERSION_TOOLS = STORAGE_TOOLS + [COMPARE_TOOL, INSPECT_TOOL]
 I18N = json.loads((ROOT / 'contract/i18n.fr.json').read_text(encoding='utf-8'))
 
 # Draft data of a quote: numbers, never formatted amounts and never totals.
@@ -570,6 +573,259 @@ async function reserveNumber(rec) {
 }
 '''
 
+VERSIONS = r'''
+// DOCX versions of a document. Everything lives in Storage under docs/<doc_id>/versions/: one immutable file per version
+// (name carries the version number and 12 characters of the SHA-256), one redline per version (office_compare_v1 between
+// the previous version and this one) and ONE manifest. The record of the document (record.json) is never written here.
+const MAX_DOCX_BYTES = 20 * 1024 * 1024;
+const SHA_RE = /^[0-9a-f]{64}$/;
+const MANIFEST_SCHEMA = "document-studio.versions/v1";
+const VERSION_STATUSES = ["draft", "authoritative", "superseded"];
+function versionsDir(id) { return ROOT + "/docs/" + id + "/versions"; }
+function manifestPath(id) { return versionsDir(id) + "/manifest.json"; }
+function onlyInput(input, allowed) {
+  if (!isObject(input)) fail("input_invalid", "objet attendu");
+  for (const k of Object.keys(input)) if (!allowed.includes(k)) fail("input_unknown_field", k);
+}
+function optionalInteger(v, name, min) {
+  if (v === undefined || v === null || v === "") return undefined;
+  const n = typeof v === "string" && /^\d{1,9}$/.test(v.trim()) ? Number(v.trim()) : v;
+  if (!Number.isInteger(n) || n < min) fail(name + "_invalid", "entier attendu, " + min + " au minimum");
+  return n;
+}
+function optionalDigest(v, name) {
+  if (v === undefined || v === null || v === "") return undefined;
+  const d = typeof v === "string" ? v.trim().toLowerCase() : "";
+  if (!SHA_RE.test(d)) fail(name + "_invalid", "empreinte SHA-256 hexadécimale attendue");
+  return d;
+}
+function sourcePathOf(v) {
+  if (typeof v !== "string" || !v.startsWith("/") || v.length > 300 || v.includes("..") || v.includes("//") || /\s$/.test(v) || !/\.docx$/i.test(v)) fail("source_invalid", "chemin Storage absolu d'un fichier .docx attendu");
+  return v;
+}
+function lastVersion(m) { return m && m.versions.length ? m.versions[m.versions.length - 1] : null; }
+function authoritativeOf(m) { return m ? (m.versions.find((e) => e.status === "authoritative") || null) : null; }
+async function manifestSha(raw) { return raw === null ? null : sha256Hex(new TextEncoder().encode(raw)); }
+function checkManifest(m, id) {
+  if (!isObject(m) || m.schema !== MANIFEST_SCHEMA || m.doc_id !== id || !Array.isArray(m.versions) || !Array.isArray(m.history)) fail("manifest_corrupt", id);
+  let authoritative = 0;
+  m.versions.forEach((e, i) => {
+    if (!isObject(e) || e.version !== i + 1 || typeof e.sha256 !== "string" || !SHA_RE.test(e.sha256) || typeof e.storage_ref !== "string" || typeof e.author !== "string" || typeof e.created_at !== "string" || !VERSION_STATUSES.includes(e.status) || typeof e.request_sha256 !== "string") fail("manifest_corrupt", id + " : version " + (i + 1));
+    if (e.status === "authoritative") authoritative += 1;
+  });
+  if (authoritative > 1) fail("manifest_corrupt", id + " : plusieurs versions font foi");
+  return m;
+}
+// Reads the manifest and keeps its raw text: the fingerprint of that text is the optimistic-concurrency token.
+async function loadManifest(id) {
+  let raw = null;
+  try { raw = await readText(manifestPath(id)); } catch (e) {
+    if (!String(e && e.message).startsWith("storage_not_found")) throw e;
+  }
+  if (raw === null) return {raw: null, manifest: null, sha: null};
+  let parsed;
+  try { parsed = JSON.parse(raw); } catch (e) { fail("manifest_corrupt", id + " : JSON illisible"); }
+  try { rejectUnsafeKeys(parsed, "manifeste"); } catch (e) { fail("manifest_corrupt", id + " : " + String(e.message).slice(0, 120)); }
+  return {raw, manifest: checkManifest(parsed, id), sha: await manifestSha(raw)};
+}
+// Storage has no conditional write (no compare-and-swap): the manifest is read again just before the write and the write is
+// abandoned when its text changed since the first read. A first manifest is written without overwrite. The window between the
+// second read and the write is small, not null: one writer at a time per document.
+async function writeManifest(id, manifest, expectedRaw) {
+  let fresh = null;
+  try { fresh = await readText(manifestPath(id)); } catch (e) {
+    if (!String(e && e.message).startsWith("storage_not_found")) throw e;
+  }
+  if (fresh !== expectedRaw) fail("concurrent_update", "le manifeste de " + id + " a changé pendant l'opération ; rien n'a été écrit dans le manifeste");
+  const body = JSON.stringify(manifest, null, 2) + "\n";
+  try { await callTool("write_file", {path: manifestPath(id), content: body, overwrite: expectedRaw !== null}); } catch (e) {
+    if (expectedRaw === null) fail("concurrent_update", "le manifeste de " + id + " vient d'être créé par un autre acteur");
+    throw e;
+  }
+  return sha256Hex(new TextEncoder().encode(body));
+}
+// Structural check of the ZIP package, without a library: end-of-central-directory record, every central directory entry
+// and its local header must be readable, and the package must hold [Content_Types].xml and word/document.xml. Entry
+// contents are not inflated here; the comparison engine does the full parse on every version after the first.
+function docxProblem(bytes) {
+  const n = bytes.length;
+  if (n < 22) return "fichier trop court pour un paquet ZIP";
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, n);
+  let eocd = -1;
+  for (let i = n - 22; i >= Math.max(0, n - 22 - 65535); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) return "fin d'archive ZIP introuvable";
+  const count = dv.getUint16(eocd + 10, true), size = dv.getUint32(eocd + 12, true), offset = dv.getUint32(eocd + 16, true);
+  if (count === 0 || count === 0xffff || offset + size > eocd) return "répertoire central ZIP invalide";
+  const names = new Set();
+  let at = offset;
+  for (let k = 0; k < count; k++) {
+    if (at + 46 > eocd || dv.getUint32(at, true) !== 0x02014b50) return "entrée ZIP illisible";
+    const nameLen = dv.getUint16(at + 28, true), extraLen = dv.getUint16(at + 30, true), commentLen = dv.getUint16(at + 32, true), local = dv.getUint32(at + 42, true);
+    if (at + 46 + nameLen > eocd) return "nom d'entrée ZIP illisible";
+    if (local + 30 > offset || dv.getUint32(local, true) !== 0x04034b50) return "en-tête local ZIP illisible";
+    names.add(new TextDecoder().decode(bytes.subarray(at + 46, at + 46 + nameLen)));
+    at += 46 + nameLen + extraLen + commentLen;
+  }
+  if (!names.has("[Content_Types].xml") || !names.has("word/document.xml")) return "ce n'est pas un DOCX ([Content_Types].xml ou word/document.xml absent)";
+  return "";
+}
+async function readDocx(path, missingCode) {
+  let encoded;
+  try { encoded = (await readText(path, {encoding: "base64"})).replace(/\s+/g, ""); } catch (e) {
+    if (missingCode && String(e && e.message).startsWith("storage_not_found")) fail(missingCode, path);
+    throw e;
+  }
+  let bytes;
+  try { bytes = b64ToBytes(encoded); } catch (e) { fail("docx_invalid", path + " : contenu non lisible"); }
+  if (bytes.length > MAX_DOCX_BYTES) fail("docx_too_large", path + " : 20 Mio au plus");
+  const why = docxProblem(bytes);
+  if (why) fail("docx_invalid", path + " : " + why);
+  return {b64: encoded, bytes: bytes.length, sha: await sha256Hex(bytes)};
+}
+// Real validation by the document engine (office_inspect_v1): the structural check above is only a fast first filter. An error,
+// a refusal or an answer without a structure means the file is not a readable DOCX.
+async function inspectDocx(file, label) {
+  let raw;
+  try { raw = await callTool("office_inspect_v1", {format: "docx", file: {content_base64: file.b64}}); } catch (e) { fail("docx_invalid", label + " : " + String(e && e.message).slice(0, 200)); }
+  const res = unwrap(raw);
+  if (isObject(res) && res.error) fail("docx_invalid", label + " : " + res.error + (res.message ? " : " + String(res.message).slice(0, 200) : ""));
+  if (!isObject(res) || res.status !== "ok" || !isObject(res.structure) || !Number.isInteger(res.structure.blocks)) fail("docx_invalid", label + " : le moteur n'a pas pu lire le document");
+}
+// The version a manifest entry points at must still be the bytes it fingerprinted.
+async function readVersionFile(entry, withEngine) {
+  const f = await readDocx(entry.storage_ref, "version_integrity_failed");
+  if (f.sha !== entry.sha256) fail("version_integrity_failed", "v" + entry.version + " : l'empreinte du fichier ne correspond plus au manifeste");
+  if (withEngine) await inspectDocx(f, entry.storage_ref);
+  return f;
+}
+// File names carry the content: the same name can only ever hold the same bytes, so a retry may overwrite it safely.
+async function storeBytes(path, b64, expectedSha) {
+  await callTool("write_file", {path, content: b64, encoding: "base64", overwrite: true});
+  let back;
+  try { back = await sha256Hex(b64ToBytes((await readText(path, {encoding: "base64"})).replace(/\s+/g, ""))); } catch (e) { fail("version_integrity_failed", path + " : relecture impossible"); }
+  if (back !== expectedSha) fail("version_integrity_failed", path + " : empreinte relue différente de celle écrite");
+}
+function countOf(v, name) { if (!Number.isInteger(v) || v < 0) fail("compare_invalid", "décompte " + name + " invalide"); return v; }
+async function compareVersions(prev, next, author, n) {
+  let raw;
+  try { raw = await callTool("office_compare_v1", {before: {content_base64: prev.b64}, after: {content_base64: next.b64}, author, filename: "redline-v" + n + ".docx"}); } catch (e) { fail("compare_failed", String(e && e.message).slice(0, 300)); }
+  const res = unwrap(raw);
+  if (isObject(res) && res.error) fail("compare_failed", res.error + (res.message ? " : " + res.message : ""));
+  rejectUnsafeKeys(res, "réponse office");
+  if (!isObject(res) || res.status !== "ok" || !isObject(res.file) || !isObject(res.changes)) fail("compare_invalid", "réponse inattendue de office_compare_v1");
+  const changes = {insertions: countOf(res.changes.insertions, "insertions"), deletions: countOf(res.changes.deletions, "deletions"),
+    changed_paragraphs: res.changes.changed_paragraphs === undefined || res.changes.changed_paragraphs === null ? null : countOf(res.changes.changed_paragraphs, "changed_paragraphs")};
+  return {file: res.file, changes};
+}
+// The redline is stored from the buffer reference when the tool gives one, else from base64; its fingerprint is checked.
+async function storeRedline(dir, n, short, f) {
+  let b64, sha = typeof f.sha256 === "string" ? f.sha256.toLowerCase() : "";
+  const path = dir + "/v" + n + "-redline-" + short + ".docx";
+  if (f.ref !== undefined && f.ref !== null && f.ref !== "") {
+    await callTool("write_file", {path, buffer_ref: f.ref, overwrite: true});
+    let stored;
+    try { stored = b64ToBytes((await readText(path, {encoding: "base64"})).replace(/\s+/g, "")); } catch (e) { fail("version_integrity_failed", path + " : relecture impossible"); }
+    const actual = await sha256Hex(stored);
+    if (sha && sha !== actual) fail("version_integrity_failed", path + " : empreinte différente de celle annoncée");
+    return {path, sha256: actual};
+  }
+  if (typeof f.content_base64 !== "string") fail("compare_invalid", "le comparateur n'a rendu ni référence ni contenu");
+  b64 = f.content_base64.replace(/\s+/g, "");
+  let bytes;
+  try { bytes = b64ToBytes(b64); } catch (e) { fail("compare_invalid", "contenu base64 illisible"); }
+  const computed = await sha256Hex(bytes);
+  if (sha && sha !== computed) fail("version_integrity_failed", path + " : empreinte annoncée différente du contenu");
+  await storeBytes(path, b64, computed);
+  return {path, sha256: computed};
+}
+function versionSummary(doc, entry, manifest, msha, replayed) {
+  const auth = authoritativeOf(manifest);
+  return {doc_id: doc, version: entry.version, status: entry.status, supersedes: entry.supersedes === undefined ? null : entry.supersedes, sha256: entry.sha256, storage_ref: entry.storage_ref,
+    redline_ref: entry.redline_ref === undefined ? null : entry.redline_ref, changes: entry.changes === undefined ? null : entry.changes,
+    authoritative_version: auth ? auth.version : null, versions: manifest.versions.length, manifest_ref: manifestPath(doc), manifest_sha256: msha, replayed};
+}
+'''
+
+NEW_VERSION_CODE = r'''
+const input = {{ json . }};
+rejectUnsafeKeys(input, "demande");
+onlyInput(input, ["doc_id", "source_path", "author", "base_version", "base_manifest_sha256"]);
+const id = docIdOf(input.doc_id);
+const source = sourcePathOf(input.source_path);
+const author = text(input.author, "author", 200, true);
+const baseVersion = optionalInteger(input.base_version, "base_version", 0);
+const baseSha = optionalDigest(input.base_manifest_sha256, "base_manifest_sha256");
+if (source.startsWith(versionsDir(id) + "/")) fail("source_invalid", "la source ne peut pas être un fichier du dossier des versions");
+const rec = await loadRecord(id);
+if (rec.status === "cancelled") fail("document_cancelled", "un document annulé n'accepte plus de version");
+const {raw, manifest, sha: msha} = await loadManifest(id);
+const latest = lastVersion(manifest);
+const latestN = latest ? latest.version : 0;
+const file = await readDocx(source, "source_not_found");
+// The request fingerprint covers what the caller decided (document, bytes, author), never the base: a replay of ANY earlier
+// write is recognised whatever the manifest became since, and writes nothing.
+const request = await fingerprint({action: "new-version", doc_id: id, sha256: file.sha, author});
+const replayed = manifest ? manifest.versions.find((e) => e.request_sha256 === request && (baseVersion === undefined || baseVersion === e.version - 1)) : undefined;
+if (replayed) return versionSummary(id, replayed, manifest, msha, true);
+if (baseVersion !== undefined && baseVersion !== latestN) fail("base_version_conflict", "la dernière version est " + latestN + ", la demande part de " + baseVersion + " ; rien n'a été écrit");
+if (baseSha !== undefined && baseSha !== msha) fail("base_version_conflict", "le manifeste a changé depuis sa lecture (empreinte " + (msha || "absente") + ") ; rien n'a été écrit");
+if (latest && latest.sha256 === file.sha) fail("version_unchanged", "le fichier est identique à la version " + latest.version);
+// The first version never goes through office_compare_v1: the engine reads it here, before any write.
+if (!latest) await inspectDocx(file, source);
+const n = latestN + 1;
+const dir = versionsDir(id);
+const short = file.sha.slice(0, 12);
+let redline = null, changes = null;
+if (latest) {
+  const prev = await readVersionFile(latest);
+  const cmp = await compareVersions(prev, file, author, n);
+  redline = await storeRedline(dir, n, short, cmp.file);
+  changes = cmp.changes;
+}
+const path = dir + "/v" + n + "-" + short + ".docx";
+await storeBytes(path, file.b64, file.sha);
+const entry = {version: n, sha256: file.sha, bytes: file.bytes, storage_ref: path, redline_ref: redline ? redline.path : null, redline_sha256: redline ? redline.sha256 : null,
+  changes, author, created_at: nowIso(), status: "draft", supersedes: null, base_version: latest ? latest.version : null, request_sha256: request};
+const next = {schema: MANIFEST_SCHEMA, doc_id: id, versions: (manifest ? manifest.versions : []).concat([entry]),
+  history: (manifest ? manifest.history : []).concat([{at: entry.created_at, action: "version_added", version: n, author, note: latest ? "comparée à la version " + latest.version : "première version"}])};
+const written = await writeManifest(id, next, raw);
+return versionSummary(id, entry, next, written, false);
+'''
+
+MARK_AUTHORITATIVE_CODE = r'''
+const input = {{ json . }};
+requireConfirmation(input);
+rejectUnsafeKeys(input, "demande");
+onlyInput(input, ["doc_id", "version", "confirmation_manuelle", "approved_by", "base_manifest_sha256"]);
+const id = docIdOf(input.doc_id);
+const version = optionalInteger(input.version, "version", 1);
+if (version === undefined) fail("version_required");
+const approvedBy = text(input.approved_by, "approved_by", 200, false);
+const baseSha = optionalDigest(input.base_manifest_sha256, "base_manifest_sha256");
+const rec = await loadRecord(id);
+if (rec.status === "cancelled") fail("document_cancelled", "un document annulé n'accepte plus de version qui fait foi");
+const {raw, manifest, sha: msha} = await loadManifest(id);
+if (!manifest) fail("manifest_not_found", "aucune version enregistrée pour " + id);
+const entry = manifest.versions.find((e) => e.version === version);
+if (!entry) fail("version_not_found", "version " + version);
+// Replay: the version already is authoritative, nothing is written.
+if (entry.status === "authoritative") return versionSummary(id, entry, manifest, msha, true);
+if (baseSha !== undefined && baseSha !== msha) fail("base_version_conflict", "le manifeste a changé depuis sa lecture (empreinte " + msha + ") ; rien n'a été écrit");
+if (entry.status !== "draft") fail("status_invalid", "la version " + version + " est " + entry.status + " : ajoutez une nouvelle version au lieu de la rétablir");
+const current = authoritativeOf(manifest);
+if (current && current.version > version) fail("status_invalid", "la version " + current.version + " fait foi et est plus récente : ajoutez une nouvelle version");
+await readVersionFile(entry, true);
+const at = nowIso();
+const versions = manifest.versions.map((e) => {
+  if (e.version === version) return {...e, status: "authoritative", supersedes: current ? current.version : null, authoritative_at: at, ...(approvedBy ? {approved_by: approvedBy} : {})};
+  if (current && e.version === current.version) return {...e, status: "superseded", superseded_by: version, superseded_at: at};
+  return e;
+});
+const next = {schema: MANIFEST_SCHEMA, doc_id: id, versions, history: manifest.history.concat([{at, action: "marked_authoritative", version, supersedes: current ? current.version : null, ...(approvedBy ? {approved_by: approvedBy} : {}), note: "confirmation manuelle donnée"}])};
+const written = await writeManifest(id, next, raw);
+return versionSummary(id, versions[version - 1], next, written, false);
+'''
+
 
 BROKER_LIB = r"""
 const NAMESPACE = "cib-documents";
@@ -701,7 +957,7 @@ def node(action_id, source, output_key, tools=None):
     return data
 
 
-def lib(*, templates=None, io=False, profile=False, render=False, numbering=False, load_profile=False):
+def lib(*, templates=None, io=False, profile=False, render=False, numbering=False, load_profile=False, versions=False):
     parts = [IMPORT if io else '']
     if templates is not None:
         parts.append('const TEMPLATES = ' + js_embed(load_templates(templates == 'full')) + ';\nObject.setPrototypeOf(TEMPLATES, null);\n')
@@ -718,6 +974,8 @@ def lib(*, templates=None, io=False, profile=False, render=False, numbering=Fals
         parts.append(RENDER)
     if numbering:
         parts.append(NUMBERING)
+    if versions:
+        parts.append(VERSIONS)
     return ''.join(parts)
 
 
@@ -1077,6 +1335,38 @@ def build():
              forms=[form('export', 'Exporter un document', [field('doc_id', 'Identifiant du document', 'string', True),
                                                             field('destination_path', 'Chemin de destination', 'string', True)], ['export'])])
 
+    VERSION_OUT = {k: '{{ result.%s }}' % k for k in ('doc_id', 'version', 'status', 'supersedes', 'sha256', 'storage_ref', 'redline_ref', 'changes',
+                                                       'authoritative_version', 'versions', 'manifest_ref', 'manifest_sha256', 'replayed')}
+    INT_OR_STRING = {'type': ['integer', 'string'], 'description': ''}
+    workflow('document-studio-new-version', 'Add a DOCX version',
+             'Adds a new DOCX version of a document from a Storage file: fingerprints it, compares it with the previous version through '
+             'office_compare_v1 (a redline DOCX of tracked changes is stored) and appends it to the per-document versions manifest. '
+             'Never modifies an existing version. Not atomic: one writer at a time per document; the write is refused when the base version '
+             'or the manifest read is no longer the latest.',
+             schema(['doc_id', 'source_path', 'author'], doc_id=DOC_ID,
+                    source_path=text('Absolute Storage path of the new DOCX version'),
+                    author=text('Author of the version, recorded on the tracked changes'),
+                    base_version={**INT_OR_STRING, 'description': 'Version number the request starts from (0 for the first version); refused when it is no longer the latest'},
+                    base_manifest_sha256=text('SHA-256 of the manifest as read by the caller; refused when the manifest changed since')),
+             [node('new-version', code(lib(io=True, versions=True), NEW_VERSION_CODE), 'result', tools=VERSION_TOOLS)],
+             VERSION_OUT,
+             forms=[form('new-version', 'Ajouter une version DOCX', [field('doc_id', 'Identifiant du document', 'string', True),
+                                                                       field('source_path', 'Chemin Storage du DOCX', 'string', True),
+                                                                       field('author', 'Auteur', 'string', True)], ['new-version'])])
+
+    workflow('document-studio-mark-authoritative', 'Mark a version authoritative',
+             'Makes a DOCX version the authoritative one (the previous authoritative version becomes superseded). Requires a manual '
+             'confirmation. No version is modified or deleted; only the status in the manifest changes.',
+             schema(['doc_id', 'version', 'confirmation_manuelle'], doc_id=DOC_ID,
+                    version={**INT_OR_STRING, 'description': 'Version number to make authoritative'}, confirmation_manuelle=CONFIRM,
+                    approved_by=text('Person who gave the confirmation, recorded as stated (not attested)'),
+                    base_manifest_sha256=text('SHA-256 of the manifest as read by the caller; refused when the manifest changed since')),
+             [node('mark', code(lib(io=True, versions=True), MARK_AUTHORITATIVE_CODE), 'result', tools=VERSION_TOOLS)],
+             VERSION_OUT,
+             forms=[form('mark-authoritative', 'Faire foi', [field('doc_id', 'Identifiant du document', 'string', True),
+                                                              field('version', 'Numéro de version', 'string', True),
+                                                              field('approved_by', 'Confirmé par (facultatif)', 'string', False), CONFIRM_FIELD], ['mark'])])
+
     workflow('document-studio-profile-save', 'Save the company profile',
              'Validates the profile (company identity and brand tokens of the template contract) and stores it as '
              '/document-studio/profile.json. Requires a manual confirmation.',
@@ -1195,7 +1485,8 @@ def manifest():
                         ref('document-studio-render', 'Render a document preview'), ref('document-studio-finalize', 'Approve a document'),
                         ref('document-studio-publish', 'Issue a document'), ref('document-studio-cancel', 'Cancel a document'),
                         ref('document-studio-export', 'Export a document'), ref('document-studio-profile-save', 'Save the company profile'),
-                        ref('document-share', 'Share an issued document')],
+                        ref('document-share', 'Share an issued document'),
+                        ref('document-studio-new-version', 'Add a DOCX version'), ref('document-studio-mark-authoritative', 'Mark a version authoritative')],
             'queries': [ref('document-studio-list', 'List documents'), ref('document-studio-review-read', 'Read a document for review'),
                         ref('document-studio-template-read', 'Read the templates'), ref('document-read', 'Read shared documents')],
             'apps': [{'key': 'document-studio-review', 'name': 'Document studio', 'miniapp_id': 'document-studio-review',

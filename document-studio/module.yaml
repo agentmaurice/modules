@@ -3,7 +3,7 @@
   "schema_version": 2,
   "key": "document-studio",
   "name": "Document studio",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "provides": {
     "actions": [
       {
@@ -58,6 +58,18 @@
         "key": "document-share",
         "name": "Share an issued document",
         "workflow_id": "document-share",
+        "workflow_version": "1"
+      },
+      {
+        "key": "document-studio-new-version",
+        "name": "Add a DOCX version",
+        "workflow_id": "document-studio-new-version",
+        "workflow_version": "1"
+      },
+      {
+        "key": "document-studio-mark-authoritative",
+        "name": "Mark a version authoritative",
+        "workflow_id": "document-studio-mark-authoritative",
         "workflow_version": "1"
       }
     ],

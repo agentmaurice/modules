@@ -26,7 +26,7 @@ MODULE_VERSION = "0.2.4"
 OPTIONAL_SERVICES = {
     "documents": {
         "module_dir": "document-studio",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "role": "cib_documents",
         # document-read carries no required_role, like contenu-read: any member of the Application may call it
         # and the ACL of each shared record decides what it returns. None = no role.

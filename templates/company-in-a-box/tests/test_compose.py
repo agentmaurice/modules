@@ -157,7 +157,7 @@ class TemplateComposeTests(unittest.TestCase):
             self.assertTrue((consumer / "agents/documents/tests/test-plan.json").is_file())
             draft = json.loads((consumer / "surface-drafts/cib-documents.surface-draft.json").read_text(encoding="utf-8"))
             roles = {w["workflow_id"]: w.get("required_role") for w in draft["public_surface"]["workflows"]}
-            self.assertEqual(len(roles), 13)
+            self.assertEqual(len(roles), 15)
             self.assertEqual(roles["document-studio-profile-save"], "cib_admin")
             self.assertIsNone(roles["document-read"], "ACL of the record protects the read, as for contenu-read")
             self.assertNotIn("required_role", next(w for w in draft["public_surface"]["workflows"] if w["workflow_id"] == "document-read"))

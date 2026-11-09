@@ -1205,9 +1205,9 @@
     },
     {
       "key": "document-studio",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "manifest": "document-studio/module.yaml",
-      "workflows": 13,
+      "workflows": 15,
       "miniapps": 1,
       "source": {
         "repository": "github.com/agentmaurice/modules",
@@ -1225,6 +1225,8 @@
           "document-studio/agents/main/workflows/document-studio-export.json",
           "document-studio/agents/main/workflows/document-studio-finalize.json",
           "document-studio/agents/main/workflows/document-studio-list.json",
+          "document-studio/agents/main/workflows/document-studio-mark-authoritative.json",
+          "document-studio/agents/main/workflows/document-studio-new-version.json",
           "document-studio/agents/main/workflows/document-studio-plan.json",
           "document-studio/agents/main/workflows/document-studio-profile-save.json",
           "document-studio/agents/main/workflows/document-studio-publish.json",
@@ -1236,7 +1238,7 @@
           "document-studio/agents/main/miniapps/document-studio-review.json"
         ],
         "sha256": {
-          "document-studio/module.yaml": "64bb28f928d537ff486519146022efab8cc1e2edbe5bbc898a96012ccfe602eb",
+          "document-studio/module.yaml": "f31b391b04ecf28700efb19584a020a2e72ddcb5c7ade5c5b6f6f3113f4562db",
           "document-studio/agents/main/workflows/document-read.json": "732f3f29d3ba2a0b8d11b70f3ec26f34c08e3f80f0106156f9357936e1db333a",
           "document-studio/agents/main/workflows/document-share.json": "f7755cb4f6049b97e8ca9b762929e5b51fd8b98dc8c2d8ec7dec9588449acf8d",
           "document-studio/agents/main/workflows/document-studio-cancel.json": "a23e2f969ff387c63dd28614bb491cda5aaef9837c08f395e75bba3667ccd973",
@@ -1244,6 +1246,8 @@
           "document-studio/agents/main/workflows/document-studio-export.json": "231e46fecd19be8aa951b7e4f5862a7cec2b8edf79ee65ba001038150ac37dd4",
           "document-studio/agents/main/workflows/document-studio-finalize.json": "c97ae082c17494abb2106cf70ecc68cb4d597da4015ed7eae85f314b640891fe",
           "document-studio/agents/main/workflows/document-studio-list.json": "7319e6be4646a32166957ac122eb0bc8e9fc99ad2bd569d1345b373f344c9722",
+          "document-studio/agents/main/workflows/document-studio-mark-authoritative.json": "f5c484e13b1bc45b15c3106f7c6502e4ba168af9c1c283548171a02f12c25884",
+          "document-studio/agents/main/workflows/document-studio-new-version.json": "804c6e1f71c235e2d03a262d9da34cff1192a9cc85275b8d5cbafccd69492b41",
           "document-studio/agents/main/workflows/document-studio-plan.json": "47a1a75463b75cdfc287a56f80a23f3faef513ae46b6b980a0851579089eb99b",
           "document-studio/agents/main/workflows/document-studio-profile-save.json": "956421c2f7839ee05cf3b3419e3ad0cad08417e41b8a49a841da8911383be6fd",
           "document-studio/agents/main/workflows/document-studio-publish.json": "eda72900c1872fe05eed3b9025f2341032e2e18c5191b9657d6b18d496e78c64",
@@ -1355,6 +1359,32 @@
               "runtime": "deno",
               "runtime_source": "contract default",
               "code_sha256": "2d14a0e71bb6ad4807f9361fd379d4531025e37a027a3794463417739a2675da"
+            }
+          ]
+        },
+        "document-studio/agents/main/workflows/document-studio-mark-authoritative.json": {
+          "workflow_id": "document-studio-mark-authoritative",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "mark",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "e3b507ae9d6b3c93110843d486d946b3c60a57d3946d555b4913ad45ce0421d4"
+            }
+          ]
+        },
+        "document-studio/agents/main/workflows/document-studio-new-version.json": {
+          "workflow_id": "document-studio-new-version",
+          "actions": [
+            {
+              "path": "/actions/0",
+              "id": "new-version",
+              "type": "code_execution",
+              "runtime": "deno",
+              "runtime_source": "contract default",
+              "code_sha256": "f7962e164ada6d946cfcacaecdc0c9faf5a644f40d9dd59d838c8ba8eadafb75"
             }
           ]
         },
@@ -1504,6 +1534,18 @@
             "key": "document-share",
             "name": "Share an issued document",
             "workflow_id": "document-share",
+            "workflow_version": "1"
+          },
+          {
+            "key": "document-studio-new-version",
+            "name": "Add a DOCX version",
+            "workflow_id": "document-studio-new-version",
+            "workflow_version": "1"
+          },
+          {
+            "key": "document-studio-mark-authoritative",
+            "name": "Mark a version authoritative",
+            "workflow_id": "document-studio-mark-authoritative",
             "workflow_version": "1"
           }
         ],
