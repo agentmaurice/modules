@@ -1008,6 +1008,20 @@ class VersionsTest(unittest.TestCase):
         other = self.add('v2', fs, author='Bob Exemple')
         self.assertTrue(other['error'].startswith('version_unchanged'), other)
 
+    def test_replaying_an_older_request_writes_nothing(self):
+        _, _, fs = self.two_versions()
+        third = self.add('v3', fs)
+        self.assertEqual(ok(self, third)['version'], 3)
+        before = json.dumps(third['fs'], sort_keys=True)
+        for name, version in (('v1', 1), ('v2', 2)):
+            again = self.add(name, third['fs'])
+            replay = ok(self, again)
+            self.assertEqual((replay['replayed'], replay['version']), (True, version))
+            self.assertEqual(json.dumps(again['fs'], sort_keys=True), before)
+            self.assertFalse([c for c in again['calls'] if c['name'] in ('write_file', 'office_compare_v1')])
+        self.assertTrue(ok(self, self.add('v1', third['fs'], base_version=0))['replayed'])
+        self.assertEqual(ok(self, self.add('v1', third['fs'], author='Bob Exemple'))['version'], 4)
+
     def test_a_manifest_or_input_with_unsafe_keys_is_refused(self):
         literal = run_node('document-studio-new-version', 'new-version', {'doc_id': 'devis-test', 'source_path': '/inbox/v1.docx', 'author': json.loads('{"__proto__": {"x": 1}}')}, self.fs)
         self.assertTrue(literal['error'].startswith('data_invalid'), literal)

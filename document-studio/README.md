@@ -72,7 +72,7 @@ its PDF, and a new version is only added. `new-version` accepts a DOCX (ZIP pack
 older draft cannot take over from a newer authoritative one.
 
 The request fingerprint of `new-version` is the canonical hash of `{action, doc_id, sha256 of the file, author}`, stored in the
-manifest entry (`request_sha256`). The same request as the latest entry is a replay: it returns that entry and writes nothing.
+manifest entry (`request_sha256`). The same request as any entry of the manifest is a replay: it returns that entry and writes nothing, even after later versions were added. To bring old content back, send it under another author.
 The same bytes under another author are refused (`version_unchanged`).
 
 ## Templates

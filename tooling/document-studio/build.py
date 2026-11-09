@@ -700,10 +700,11 @@ const {raw, manifest, sha: msha} = await loadManifest(id);
 const latest = lastVersion(manifest);
 const latestN = latest ? latest.version : 0;
 const file = await readDocx(source, "source_not_found");
-// The request fingerprint covers what the caller decided (document, bytes, author), never the base: a replay of the last
+// The request fingerprint covers what the caller decided (document, bytes, author), never the base: a replay of ANY earlier
 // write is recognised whatever the manifest became since, and writes nothing.
 const request = await fingerprint({action: "new-version", doc_id: id, sha256: file.sha, author});
-if (latest && latest.request_sha256 === request && (baseVersion === undefined || baseVersion === latest.version - 1)) return versionSummary(id, latest, manifest, msha, true);
+const replayed = manifest ? manifest.versions.find((e) => e.request_sha256 === request && (baseVersion === undefined || baseVersion === e.version - 1)) : undefined;
+if (replayed) return versionSummary(id, replayed, manifest, msha, true);
 if (baseVersion !== undefined && baseVersion !== latestN) fail("base_version_conflict", "la dernière version est " + latestN + ", la demande part de " + baseVersion + " ; rien n'a été écrit");
 if (baseSha !== undefined && baseSha !== msha) fail("base_version_conflict", "le manifeste a changé depuis sa lecture (empreinte " + (msha || "absente") + ") ; rien n'a été écrit");
 if (latest && latest.sha256 === file.sha) fail("version_unchanged", "le fichier est identique à la version " + latest.version);
