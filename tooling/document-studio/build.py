@@ -618,6 +618,31 @@ async function writeManifest(id, manifest, expectedRaw) {
   }
   return sha256Hex(new TextEncoder().encode(body));
 }
+// Structural check of the ZIP package, without a library: end-of-central-directory record, every central directory entry
+// and its local header must be readable, and the package must hold [Content_Types].xml and word/document.xml. Entry
+// contents are not inflated here; the comparison engine does the full parse on every version after the first.
+function docxProblem(bytes) {
+  const n = bytes.length;
+  if (n < 22) return "fichier trop court pour un paquet ZIP";
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, n);
+  let eocd = -1;
+  for (let i = n - 22; i >= Math.max(0, n - 22 - 65535); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) return "fin d'archive ZIP introuvable";
+  const count = dv.getUint16(eocd + 10, true), size = dv.getUint32(eocd + 12, true), offset = dv.getUint32(eocd + 16, true);
+  if (count === 0 || count === 0xffff || offset + size > eocd) return "répertoire central ZIP invalide";
+  const names = new Set();
+  let at = offset;
+  for (let k = 0; k < count; k++) {
+    if (at + 46 > eocd || dv.getUint32(at, true) !== 0x02014b50) return "entrée ZIP illisible";
+    const nameLen = dv.getUint16(at + 28, true), extraLen = dv.getUint16(at + 30, true), commentLen = dv.getUint16(at + 32, true), local = dv.getUint32(at + 42, true);
+    if (at + 46 + nameLen > eocd) return "nom d'entrée ZIP illisible";
+    if (local + 30 > offset || dv.getUint32(local, true) !== 0x04034b50) return "en-tête local ZIP illisible";
+    names.add(new TextDecoder().decode(bytes.subarray(at + 46, at + 46 + nameLen)));
+    at += 46 + nameLen + extraLen + commentLen;
+  }
+  if (!names.has("[Content_Types].xml") || !names.has("word/document.xml")) return "ce n'est pas un DOCX ([Content_Types].xml ou word/document.xml absent)";
+  return "";
+}
 async function readDocx(path, missingCode) {
   let encoded;
   try { encoded = (await readText(path, {encoding: "base64"})).replace(/\s+/g, ""); } catch (e) {
@@ -626,8 +651,9 @@ async function readDocx(path, missingCode) {
   }
   let bytes;
   try { bytes = b64ToBytes(encoded); } catch (e) { fail("docx_invalid", path + " : contenu non lisible"); }
-  if (bytes.length < 4 || bytes[0] !== 0x50 || bytes[1] !== 0x4b || bytes[2] !== 3 || bytes[3] !== 4) fail("docx_invalid", path + " : ce n'est pas un paquet DOCX (ZIP)");
   if (bytes.length > MAX_DOCX_BYTES) fail("docx_too_large", path + " : 20 Mio au plus");
+  const why = docxProblem(bytes);
+  if (why) fail("docx_invalid", path + " : " + why);
   return {b64: encoded, bytes: bytes.length, sha: await sha256Hex(bytes)};
 }
 // The version a manifest entry points at must still be the bytes it fingerprinted.

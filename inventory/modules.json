@@ -1242,8 +1242,8 @@
           "document-studio/agents/main/workflows/document-studio-export.json": "52aa5bcc2ee64715be59fab234804fcebd3cc1cfec4e32dd5f9ea5d69c9371db",
           "document-studio/agents/main/workflows/document-studio-finalize.json": "07f6f1bce4cb549c1973b06b3523abefc77c253967711415d51bd499360ed020",
           "document-studio/agents/main/workflows/document-studio-list.json": "38daf2284f500b2e71d0bbd73dbfbd8d3c3ca1259f600384a6ce95c565ba5a33",
-          "document-studio/agents/main/workflows/document-studio-mark-authoritative.json": "862633e27a7999e8e8e12c57a707afee5c0a03cb4770fcddb2bd91dbbd59b989",
-          "document-studio/agents/main/workflows/document-studio-new-version.json": "3e4ff27304cb527bc208e0feac7a3c9067f575099c88b0099ba9282d53115f57",
+          "document-studio/agents/main/workflows/document-studio-mark-authoritative.json": "5347ed5e4a730506c59bce1564a13fb0c57ab5662aedca512a5010e5b6ee5739",
+          "document-studio/agents/main/workflows/document-studio-new-version.json": "804c1a62b8291314fb538f09a970b8a5295a67a658429adad57d528178589b11",
           "document-studio/agents/main/workflows/document-studio-plan.json": "47a1a75463b75cdfc287a56f80a23f3faef513ae46b6b980a0851579089eb99b",
           "document-studio/agents/main/workflows/document-studio-profile-save.json": "686d4ccf1265c6b3990a0fdec57b7ddc3e3252bcc66025f25d640f12c7f9454e",
           "document-studio/agents/main/workflows/document-studio-publish.json": "350a0c4318d39c76b907891181c8abb66c6d21ce372f03548c013e7e3653a8b1",
@@ -1341,7 +1341,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "6563fac6db85c18ad0a4ca6536fcbf83581304912c0eba47469295d0c2b53a26"
+              "code_sha256": "ccde809b97486c85ab4423ea4e759ccacf93a98a84078a157f27d83b251cf576"
             }
           ]
         },
@@ -1354,7 +1354,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "56f1605589ea262a99a4b2ed57a689e2f02172ddc8e4f1031a6fb33a146fb5fd"
+              "code_sha256": "945d009470372daf58c5ec1d7e10c0ba7f743bfb3426f0cd7f2a3b278851fa91"
             }
           ]
         },

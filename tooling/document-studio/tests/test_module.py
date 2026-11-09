@@ -7,6 +7,8 @@ import base64
 import datetime
 import hashlib
 import importlib.util
+import io
+import zipfile
 import json
 import re
 import subprocess
@@ -885,8 +887,12 @@ class LifecycleTest(unittest.TestCase):
 DIR = '/document-studio/docs/devis-test/versions'
 
 
-def docx(label):
-    return b'PK\x03\x04 docx ' + label.encode()
+def docx(label, names=('[Content_Types].xml', 'word/document.xml')):
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as z:
+        for name in names:
+            z.writestr(name, '<x>' + label + '</x>')
+    return buf.getvalue()
 
 
 def put(fs, path, data):
@@ -1040,7 +1046,10 @@ class VersionsTest(unittest.TestCase):
 
     def test_inputs_are_checked_before_anything_is_written(self):
         put(self.fs, '/inbox/bad.docx', b'not a zip')
-        for patch, code in (({'source_path': '/inbox/bad.docx'}, 'docx_invalid'), ({'source_path': '/inbox/absent.docx'}, 'source_not_found'),
+        put(self.fs, '/inbox/faux.docx', base64.b64decode('UEsDBA=='))
+        put(self.fs, '/inbox/truncated.docx', docx('x')[:-10])
+        put(self.fs, '/inbox/other-zip.docx', docx('x', ('readme.txt',)))
+        for patch, code in (({'source_path': '/inbox/bad.docx'}, 'docx_invalid'), ({'source_path': '/inbox/faux.docx'}, 'docx_invalid'), ({'source_path': '/inbox/truncated.docx'}, 'docx_invalid'), ({'source_path': '/inbox/other-zip.docx'}, 'docx_invalid'), ({'source_path': '/inbox/absent.docx'}, 'source_not_found'),
                             ({'source_path': '/inbox/../x.docx'}, 'source_invalid'), ({'source_path': '/inbox/v1.pdf'}, 'source_invalid'),
                             ({'source_path': f'{DIR}/x.docx'}, 'source_invalid'), ({'author': ''}, 'author_required'), ({'doc_id': 'Mauvais'}, 'doc_id_invalid'),
                             ({'doc_id': 'inconnu'}, 'document_not_found'), ({'base_version': -1}, 'base_version_invalid'), ({'base_manifest_sha256': 'xyz'}, 'base_manifest_sha256_invalid')):
@@ -1115,6 +1124,19 @@ class VersionsTest(unittest.TestCase):
         self.assertTrue(stale['error'].startswith('base_version_conflict'), stale)
         good = self.mark(fs, 2, base_manifest_sha256=sha_of(fs[f'{DIR}/manifest.json']['text'].encode()).upper())
         self.assertEqual(ok(self, good)['status'], 'authoritative')
+
+    def test_mark_authoritative_refuses_a_stored_version_that_is_not_a_docx(self):
+        first = self.add('v1')
+        fs = first['fs']
+        fake = base64.b64decode('UEsDBA==')
+        entry = manifest_of(fs)['versions'][0]
+        put(fs, entry['storage_ref'], fake)
+        manifest = manifest_of(fs)
+        manifest['versions'][0]['sha256'] = sha_of(fake)
+        fs[f'{DIR}/manifest.json'] = {'text': json.dumps(manifest)}
+        out = self.mark(fs, 1)
+        self.assertTrue(out['error'].startswith('docx_invalid'), out)
+        self.assertEqual(manifest_of(out['fs'])['versions'][0]['status'], 'draft')
 
     def test_mark_authoritative_refuses_unsafe_input(self):
         _, _, fs = self.two_versions()
