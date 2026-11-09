@@ -658,7 +658,7 @@ if (input.doc_id === undefined || input.doc_id === null || input.doc_id === "") 
     const d = isObject(view.data) ? view.data : (isObject(view.record) ? view.record : {});
     return {doc_id: key, title: d.title === undefined ? "" : d.title, template_key: d.template_key === undefined ? "" : d.template_key, number: d.number === undefined ? "" : d.number, version: d.version === undefined ? null : d.version, path: d.path === undefined ? "" : d.path, sha256: d.sha256 === undefined ? "" : d.sha256, revision: view.revision, owner_user_id: typeof view.owner_user_id === "string" ? view.owner_user_id : "", permissions: isObject(view.permissions) ? view.permissions : {}};
   });
-  return {items, total: payload.total, record: null, revision: null, owner_user_id: "", permissions: null, permissions_summary: "", shares: [], share_count: 0};
+  return {items, total: payload.total, record: null, revision: null, owner_user_id: "", permissions: null, permissions_summary: "", shares: [], share_count: 0, pdf_base64: null, pdf_sha256: null, pdf_bytes: null};
 }
 const id = docIdOf(input.doc_id);
 const item = brokerItem(await callTool("recipe--application_data_v1", {operation: "read", namespace: NAMESPACE, record_key: id}), id);

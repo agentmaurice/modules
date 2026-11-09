@@ -1237,7 +1237,7 @@
         ],
         "sha256": {
           "document-studio/module.yaml": "64bb28f928d537ff486519146022efab8cc1e2edbe5bbc898a96012ccfe602eb",
-          "document-studio/agents/main/workflows/document-read.json": "73ddf49d2fef665dac560d67d32827fefc96c29cf3959b76f5cf7ad1416b0b5a",
+          "document-studio/agents/main/workflows/document-read.json": "732f3f29d3ba2a0b8d11b70f3ec26f34c08e3f80f0106156f9357936e1db333a",
           "document-studio/agents/main/workflows/document-share.json": "f7755cb4f6049b97e8ca9b762929e5b51fd8b98dc8c2d8ec7dec9588449acf8d",
           "document-studio/agents/main/workflows/document-studio-cancel.json": "a23e2f969ff387c63dd28614bb491cda5aaef9837c08f395e75bba3667ccd973",
           "document-studio/agents/main/workflows/document-studio-draft.json": "c6b0593f2ad8db5ecab9f17fa47019e94054b8e66c917e0bac6447695141454d",
@@ -1263,7 +1263,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "ea8b634997c92b811c879fe2de2354da9c1282ed34d164627d56dd74a422c624"
+              "code_sha256": "9b7bfbe9723c6ed11b2af8a504f5f5e0dbe27c1fd636f87ee65e552b0f229b37"
             }
           ]
         },

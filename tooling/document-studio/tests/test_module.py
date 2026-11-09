@@ -1055,6 +1055,27 @@ class SharingTest(unittest.TestCase):
             self.assertTrue(out['error'].startswith('invalid_path'), (wrong, out.get('error')))
             self.assertNotIn('read_file', [c['name'] for c in out['calls']])
 
+    def declared_keys(self, name):
+        wf = load(WORKFLOWS / f'{name}.json')
+        return {m for v in wf['output'].values() if isinstance(v, str) for m in re.findall(r'\{\{ result\.(\w+) \}\}', v)}
+
+    def test_every_declared_output_exists_on_every_branch(self):
+        # The runtime resolves each declared output path and fails when a key is absent, whatever the branch.
+        fs, _ = self.shared()
+        read_keys = self.declared_keys('document-read')
+        self.assertLessEqual({'pdf_base64', 'pdf_sha256', 'pdf_bytes', 'items', 'total', 'record'}, read_keys)
+        for label, ctx in (('list', {'doc_id': ''}), ('list-absent', {}), ('read', {'doc_id': 'devis-test'}),
+                           ('read-pdf-non', {'doc_id': 'devis-test', 'include_pdf': 'non'}), ('read-pdf', {'doc_id': 'devis-test', 'include_pdf': 'oui'})):
+            result = ok(self, run_node('document-read', 'read', ctx, fs))
+            self.assertLessEqual(read_keys, set(result), (label, read_keys - set(result)))
+        share_keys = self.declared_keys('document-share')
+        issued = self.issued()
+        for label, ctx in (('publish', {}), ('share', {'share_subject_user_id': 'member-b'})):
+            result = ok(self, self.share(issued, **ctx))
+            self.assertLessEqual(share_keys, set(result), (label, share_keys - set(result)))
+        removal = ok(self, run_node('document-share', 'share', {'doc_id': 'devis-test', 'confirmation_manuelle': 'oui', 'expected_revision': '2', 'share_subject_user_id': 'member-b', 'share_permission': 'none'}, self.share(issued, share_subject_user_id='member-b')['fs']))
+        self.assertLessEqual(share_keys, set(removal), share_keys - set(removal))
+
 
 class ProfileSourceTest(unittest.TestCase):
     BROKER_PROFILE = json.loads(json.dumps(PROFILE)) | {}
