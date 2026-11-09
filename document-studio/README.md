@@ -66,7 +66,7 @@ store the brand with `document-studio-profile-save`.
 ## DOCX versions
 
 Versions live in Storage, next to the record, which they never write: an issued or signed document keeps its record and
-its PDF, and a new version is only added. `new-version` accepts a DOCX (ZIP package, 20 MiB at most) and numbers it N+1.
+its PDF, and a new version is only added. `new-version` accepts a DOCX (ZIP package, 20 MiB at most) and numbers it N+1. A DOCX is checked twice before anything is written: a fast structural filter (readable ZIP holding `[Content_Types].xml` and `word/document.xml`), then the document engine. The first version goes through `office_inspect_v1` (it has nothing to compare with), the next ones through `office_compare_v1`; `mark-authoritative` inspects the version again before it makes it authoritative. An engine error or an unreadable document is `docx_invalid`.
 `mark-authoritative` is the only action that changes a status, with the manual confirmation, and never on a person's behalf
 (`approved_by` is recorded as stated, not attested). A superseded version is never restored: add a new version instead, and an
 older draft cannot take over from a newer authoritative one.

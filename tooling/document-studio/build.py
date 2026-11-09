@@ -23,7 +23,8 @@ RENDER_TOOL = 'artifact_render_v1'
 STORAGE_TOOLS = ['read_file', 'write_file', 'list_files']
 RENDER_TOOLS = STORAGE_TOOLS + [RENDER_TOOL]
 COMPARE_TOOL = 'office_compare_v1'
-VERSION_TOOLS = STORAGE_TOOLS + [COMPARE_TOOL]
+INSPECT_TOOL = 'office_inspect_v1'
+VERSION_TOOLS = STORAGE_TOOLS + [COMPARE_TOOL, INSPECT_TOOL]
 I18N = json.loads((ROOT / 'contract/i18n.fr.json').read_text(encoding='utf-8'))
 
 # Draft data of a quote: numbers, never formatted amounts and never totals.
@@ -656,10 +657,20 @@ async function readDocx(path, missingCode) {
   if (why) fail("docx_invalid", path + " : " + why);
   return {b64: encoded, bytes: bytes.length, sha: await sha256Hex(bytes)};
 }
+// Real validation by the document engine (office_inspect_v1): the structural check above is only a fast first filter. An error,
+// a refusal or an answer without a structure means the file is not a readable DOCX.
+async function inspectDocx(file, label) {
+  let raw;
+  try { raw = await callTool("office_inspect_v1", {format: "docx", file: {content_base64: file.b64}}); } catch (e) { fail("docx_invalid", label + " : " + String(e && e.message).slice(0, 200)); }
+  const res = unwrap(raw);
+  if (isObject(res) && res.error) fail("docx_invalid", label + " : " + res.error + (res.message ? " : " + String(res.message).slice(0, 200) : ""));
+  if (!isObject(res) || res.status !== "ok" || !isObject(res.structure) || !Number.isInteger(res.structure.blocks)) fail("docx_invalid", label + " : le moteur n'a pas pu lire le document");
+}
 // The version a manifest entry points at must still be the bytes it fingerprinted.
-async function readVersionFile(entry) {
+async function readVersionFile(entry, withEngine) {
   const f = await readDocx(entry.storage_ref, "version_integrity_failed");
   if (f.sha !== entry.sha256) fail("version_integrity_failed", "v" + entry.version + " : l'empreinte du fichier ne correspond plus au manifeste");
+  if (withEngine) await inspectDocx(f, entry.storage_ref);
   return f;
 }
 // File names carry the content: the same name can only ever hold the same bytes, so a retry may overwrite it safely.
@@ -734,6 +745,8 @@ if (replayed) return versionSummary(id, replayed, manifest, msha, true);
 if (baseVersion !== undefined && baseVersion !== latestN) fail("base_version_conflict", "la dernière version est " + latestN + ", la demande part de " + baseVersion + " ; rien n'a été écrit");
 if (baseSha !== undefined && baseSha !== msha) fail("base_version_conflict", "le manifeste a changé depuis sa lecture (empreinte " + (msha || "absente") + ") ; rien n'a été écrit");
 if (latest && latest.sha256 === file.sha) fail("version_unchanged", "le fichier est identique à la version " + latest.version);
+// The first version never goes through office_compare_v1: the engine reads it here, before any write.
+if (!latest) await inspectDocx(file, source);
 const n = latestN + 1;
 const dir = versionsDir(id);
 const short = file.sha.slice(0, 12);
@@ -776,7 +789,7 @@ if (baseSha !== undefined && baseSha !== msha) fail("base_version_conflict", "le
 if (entry.status !== "draft") fail("status_invalid", "la version " + version + " est " + entry.status + " : ajoutez une nouvelle version au lieu de la rétablir");
 const current = authoritativeOf(manifest);
 if (current && current.version > version) fail("status_invalid", "la version " + current.version + " fait foi et est plus récente : ajoutez une nouvelle version");
-await readVersionFile(entry);
+await readVersionFile(entry, true);
 const at = nowIso();
 const versions = manifest.versions.map((e) => {
   if (e.version === version) return {...e, status: "authoritative", supersedes: current ? current.version : null, authoritative_at: at, ...(approvedBy ? {approved_by: approvedBy} : {})};

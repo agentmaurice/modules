@@ -66,6 +66,13 @@ async function callTool(name, args) {
     if (opts.bad_page) previews.push({...prev, page: opts.bad_page});
     return {status: "ok", mode: args.mode, output: "pdf", file, pages: opts.pages || 1, previews: opts.no_previews ? undefined : previews, provenance: {engine: "mock"}};
   }
+  if (name === "office_inspect_v1") {
+    const data = Buffer.from(args.file.content_base64, "base64");
+    if (opts.inspect_error) throw new Error(opts.inspect_error);
+    if (opts.inspect_reject_sha && sha(data) === opts.inspect_reject_sha) return {error: "invalid_document", message: "the engine cannot read the document"};
+    if (opts.inspect_result) return opts.inspect_result;
+    return {status: "ok", text: "x", structure: {format: "docx", blocks: 1, block_types: {}, headings: []}, issues: []};
+  }
   if (name === "office_compare_v1") {
     calls[calls.length - 1].args = {...calls[calls.length - 1].args, before: {sha: sha(Buffer.from(args.before.content_base64, "base64"))}, after: {sha: sha(Buffer.from(args.after.content_base64, "base64"))}};
     if (opts.compare_error) throw new Error(opts.compare_error);
@@ -1138,6 +1145,35 @@ class VersionsTest(unittest.TestCase):
         self.assertTrue(out['error'].startswith('docx_invalid'), out)
         self.assertEqual(manifest_of(out['fs'])['versions'][0]['status'], 'draft')
 
+    def test_the_engine_has_the_last_word_on_a_docx_that_passes_the_structural_filter(self):
+        empty = docx('', names=('[Content_Types].xml', 'word/document.xml'))
+        put(self.fs, '/inbox/vide.docx', empty)
+        ctx = {'doc_id': 'devis-test', 'source_path': '/inbox/vide.docx', 'author': 'Alice'}
+        for opts in ({'inspect_reject_sha': sha_of(empty)}, {'inspect_error': 'engine_unavailable'}, {'inspect_result': {'status': 'ok'}}):
+            out = run_node('document-studio-new-version', 'new-version', ctx, self.fs, **opts)
+            self.assertTrue(out['error'].startswith('docx_invalid'), (opts, out))
+            self.assertFalse([c for c in out['calls'] if c['name'] == 'write_file'], opts)
+            self.assertEqual(out['fs'], self.fs)
+        accepted = run_node('document-studio-new-version', 'new-version', ctx, self.fs)
+        self.assertEqual(ok(self, accepted)['version'], 1, 'without the engine refusal the same file is accepted: the engine decides')
+        inspected = [c for c in accepted['calls'] if c['name'] == 'office_inspect_v1']
+        self.assertEqual(len(inspected), 1)
+        self.assertEqual(inspected[0]['args']['format'], 'docx')
+        # later versions are read by office_compare_v1, not inspected again
+        second = self.add('v2', ok_fs(self, self.add('v1')))
+        self.assertFalse([c for c in second['calls'] if c['name'] == 'office_inspect_v1'])
+
+    def test_mark_authoritative_asks_the_engine_before_declaring_a_version_authoritative(self):
+        _, _, fs = self.two_versions()
+        for opts in ({'inspect_reject_sha': sha_of(self.v2)}, {'inspect_error': 'engine_busy'}):
+            out = run_node('document-studio-mark-authoritative', 'mark', {'doc_id': 'devis-test', 'version': 2, 'confirmation_manuelle': 'oui'}, fs, **opts)
+            self.assertTrue(out['error'].startswith('docx_invalid'), (opts, out))
+            self.assertFalse([c for c in out['calls'] if c['name'] == 'write_file'])
+            self.assertEqual(out['fs'], fs)
+        good = self.mark(fs, 2)
+        self.assertEqual(ok(self, good)['status'], 'authoritative')
+        self.assertEqual(len([c for c in good['calls'] if c['name'] == 'office_inspect_v1']), 1)
+
     def test_mark_authoritative_refuses_unsafe_input(self):
         _, _, fs = self.two_versions()
         out = run_node('document-studio-mark-authoritative', 'mark', {'doc_id': 'devis-test', 'version': 2, 'confirmation_manuelle': 'oui', 'approved_by': json.loads('{"__proto__": 1}')}, fs)
@@ -1151,9 +1187,14 @@ class VersionsTest(unittest.TestCase):
         for name in ('document-studio-new-version', 'document-studio-mark-authoritative'):
             wf = load(WORKFLOWS / f'{name}.json')
             self.assertIs(wf['input_schema']['additionalProperties'], False)
-            self.assertEqual(set(wf['actions'][0]['context']['allowed_tools']), {'read_file', 'write_file', 'list_files', 'office_compare_v1'})
+            self.assertEqual(set(wf['actions'][0]['context']['allowed_tools']), {'read_file', 'write_file', 'list_files', 'office_compare_v1', 'office_inspect_v1'})
             self.assertNotIn('artifact_render_v1', wf['actions'][0]['code'])
             self.assertIn('doc_id', wf['input_schema']['required'])
+
+
+def ok_fs(case, out):
+    ok(case, out)
+    return out['fs']
 
 
 def run_node_with_race(fs):
