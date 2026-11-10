@@ -1758,7 +1758,7 @@ class MessageTest(unittest.TestCase):
         self.assertIn('engine unavailable', out['error'])
         self.assertEqual(without_broker(out['fs']), without_broker(fs))
         # a wrong type, an empty or a content-less output is refused before any write
-        for opt, output in (('msg_empty', 'eml'), ('msg_mime_suffix', 'txt'), ('msg_no_content', 'eml'), ('msg_mime_absent', 'html')):
+        for opt, output in (('msg_empty', 'eml'), ('msg_mime_suffix', 'txt'), ('msg_no_content', 'eml'), ('msg_mime_absent', 'html'), ('msg_bad_sha', 'eml'), ('msg_bad_bytes', 'eml')):
             with self.subTest(before_storage=opt, output=output):
                 out = self.render('support-reply', fs, **{opt: output})
                 self.assertIn('error', out)

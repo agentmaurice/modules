@@ -545,7 +545,8 @@ async function renderDocument(rec, data, profile, mode, number, status, revision
 }
 
 // Message profile (e-mail, read from the manifest, never from the key): one engine call per declared output, then
-// the three files are stored, read back and fingerprinted. Nothing is stored when one render fails, and nothing is sent.
+// the three files are stored, read back and fingerprinted. Nothing is stored when one render fails or when an inline output
+// is invalid; nothing is sent.
 const MESSAGE_FILES = {html: "text/html", txt: "text/plain", eml: "message/rfc822"};
 function messageOutputs(key) {
   const outputs = TEMPLATES[key].manifest.outputs.filter((o) => own(MESSAGE_FILES, o));
@@ -569,6 +570,13 @@ async function renderMessage(rec, data, profile, mode, number, status, revision)
     if (media !== MESSAGE_FILES[output]) fail("render_invalid", "sortie " + output + " : type " + (media || "absent") + " inattendu");
     const hasContent = typeof res.file.content_base64 === "string" && res.file.content_base64.replace(/\s+/g, "") !== "";
     if (res.file.bytes === 0 || (!hasContent && !(typeof res.file.ref === "string" && res.file.ref !== ""))) fail("render_output_missing", "sortie " + output + " vide");
+    if (hasContent) {
+      // Inline content: fingerprint and size checked before any write (a buffer reference is checked at read-back).
+      const bytes = b64ToBytes(res.file.content_base64.replace(/\s+/g, ""));
+      if (bytes.length === 0) fail("render_output_missing", "sortie " + output + " vide");
+      if (typeof res.file.sha256 === "string" && res.file.sha256 !== await sha256Hex(bytes)) fail("render_integrity_failed", "sortie " + output + " : empreinte différente de celle annoncée");
+      if (typeof res.file.bytes === "number" && res.file.bytes !== bytes.length) fail("render_integrity_failed", "sortie " + output + " : taille différente de celle annoncée");
+    }
     results[output] = res;
   }
   return results;

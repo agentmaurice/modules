@@ -138,7 +138,10 @@ which becomes the `Subject` header of the eml; the document title is the subject
 
 The render calls `artifact_render_v1` three times (`html`, `txt`, `eml`, in `preview` then `final` mode), stores each file in the
 attempt folder, reads it back and checks its SHA-256 and size, with the same rigour as a PDF. Nothing is stored when one of the
-three renders fails. An incomplete render fails with a stable code: `render_output_missing` (output absent or empty),
+three renders fails, nor when an inline output has a wrong type, size or fingerprint (all three are checked
+before the first write). An output given by buffer reference is checked when it is read back: if it is wrong, the
+render fails and the document record is left unchanged, but the files already written stay in their own attempt folder
+(never reused, never overwritten). An incomplete render fails with a stable code: `render_output_missing` (output absent or empty),
 `render_integrity_failed` (fingerprint or size differ), `render_failed` (engine error), `render_invalid` (wrong output or MIME type).
 A message has no page preview: `previews` is empty and `pages` is 0.
 
