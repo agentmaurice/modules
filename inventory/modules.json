@@ -1250,8 +1250,8 @@
           "document-studio/agents/main/workflows/document-studio-new-version.json": "c570b42cdc8e7418453993ec3066139c13c5670e1be0724c46c0d90ddba2133f",
           "document-studio/agents/main/workflows/document-studio-plan.json": "bcef0fae91517b58e123cb537d4124146d01959598854642277a7f7758231306",
           "document-studio/agents/main/workflows/document-studio-profile-save.json": "b5eccebc2f749e804b7b97a835d47c16a655f4f011f320386f52fb10aa531de0",
-          "document-studio/agents/main/workflows/document-studio-publish.json": "a6adce278ccfd825f9dd09701704b23ad4dd22e1d67910368a07920bfd8322c4",
-          "document-studio/agents/main/workflows/document-studio-render.json": "4e8870a5de95f341260855562c280e3741feb7bbc11342d26595c6276f790b83",
+          "document-studio/agents/main/workflows/document-studio-publish.json": "c30d3e0b343573cddc9a79ff8a599522eda5d8c955f5146fbde87a192830c00b",
+          "document-studio/agents/main/workflows/document-studio-render.json": "64811740bc029c504e9428a5df6bafc6ece9971a8ab63b6959ce9d69e08d0f04",
           "document-studio/agents/main/workflows/document-studio-review-read.json": "17f247bb06a047cc6c72e7dbd75585f1bc7c4ade4235a153f034a41a195f7dfc",
           "document-studio/agents/main/workflows/document-studio-template-read.json": "f92d9d36d3be8ef12bae06ba98f7c3f2fe370936603559108cc0e9f1ef37d7eb",
           "document-studio/agents/main/miniapps/document-studio-review.json": "f64892b80ae220cfc5718946c5be32974a9db0c7bb0c2bc3ae3f167a6bec1eb8"
@@ -1436,7 +1436,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "c50b0ca161e640547679499f33b2243a67d8f4fa9c4dccf2374ddf9523d8a082"
+              "code_sha256": "b03a3c15002d6f396569c9c38bb7ded73bd6037be9efa1bdec2b4f1202de5021"
             }
           ]
         },
@@ -1449,7 +1449,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "68469caca28f30d6bc9f7e7f5dcc5934a8cc66c3696ad99b523dbe33eb1dad79"
+              "code_sha256": "5c2dc8101c61afb65225c79151c8af3dafd10c927a108a0c76f1a03a50bc7e1e"
             }
           ]
         },

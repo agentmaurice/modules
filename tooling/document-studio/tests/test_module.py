@@ -57,7 +57,7 @@ function messageRender(args) {
   if (opts.msg_throw === output) throw new Error("engine unavailable");
   const label = args.context.doc.title + " | " + args.mode + ":" + args.context.doc.number + (opts.nonce || "");
   const bytes = Buffer.from(opts.msg_empty === output ? "" : output === "txt" ? "Texte du message : " + label + "\n" : output === "eml" ? "MIME-Version: 1.0\r\n\r\n" + label + "\r\n" : "<html><body>" + label + "</body></html>");
-  const file = {filename: "main." + output, mime_type: opts.msg_mime === output ? "application/pdf" : MESSAGE_MIME[output], bytes: bytes.length + (opts.msg_bad_bytes === output ? 1 : 0), sha256: opts.msg_bad_sha === output ? "0000" : sha(bytes)};
+  const file = {filename: "main." + output, mime_type: opts.msg_mime === output ? "application/pdf" : opts.msg_mime_suffix === output ? MESSAGE_MIME[output].split(";")[0] + "-invalide" : opts.msg_mime_absent === output ? undefined : opts.msg_mime_params === output ? MESSAGE_MIME[output].split(";")[0].toUpperCase() + "; charset=UTF-8" : MESSAGE_MIME[output], bytes: bytes.length + (opts.msg_bad_bytes === output ? 1 : 0), sha256: opts.msg_bad_sha === output ? "0000" : sha(bytes)};
   if (opts.render_mode === "ref") { file.ref = "buf-msg-" + calls.length; buffers[file.ref] = bytes.toString("base64"); }
   else file.content_base64 = bytes.toString("base64");
   if (opts.msg_no_content === output) { delete file.content_base64; delete file.ref; }
@@ -1729,11 +1729,18 @@ class MessageTest(unittest.TestCase):
         for output, entry in record['renders'][0]['files'].items():
             self.assertEqual(hashlib.sha256(stored_bytes(out['fs'], entry['path'])).hexdigest(), entry['sha256'])
 
+    def test_the_mime_type_is_compared_without_its_parameters_and_case(self):
+        # "TEXT/HTML; charset=utf-8" is the same media type as text/html: it is accepted
+        _, fs = self.draft('support-reply')
+        out = self.render('support-reply', fs, msg_mime_params='html')
+        record = json.loads(ok(self, out) and out['fs']['/document-studio/docs/rep-test/record.json']['text'])
+        self.assertEqual(len(record['renders']), 1)
+
     def test_an_incomplete_message_render_fails_with_a_stable_code_and_stores_nothing(self):
         cases = [('msg_missing', 'txt', 'render_output_missing'), ('msg_missing', 'eml', 'render_output_missing'), ('msg_no_content', 'html', 'render_output_missing'),
                  ('msg_empty', 'eml', 'render_output_missing'), ('msg_bad_sha', 'eml', 'render_integrity_failed'), ('msg_bad_sha', 'html', 'render_integrity_failed'),
                  ('msg_bad_bytes', 'txt', 'render_integrity_failed'), ('msg_error', 'html', 'render_failed'), ('msg_error', 'eml', 'render_failed'),
-                 ('msg_wrong_output', 'txt', 'render_invalid'), ('msg_mime', 'html', 'render_invalid')]
+                 ('msg_wrong_output', 'txt', 'render_invalid'), ('msg_mime', 'html', 'render_invalid'), ('msg_mime_suffix', 'html', 'render_invalid'), ('msg_mime_absent', 'txt', 'render_invalid')]
         for opt, output, code in cases:
             with self.subTest(case=opt, output=output):
                 _, fs = self.draft('support-reply')

@@ -570,7 +570,8 @@ async function storeMessage(base, results) {
   const files = {};
   for (const output of Object.keys(results)) {
     const f = results[output].file;
-    if (typeof f.mime_type === "string" && !f.mime_type.startsWith(MESSAGE_FILES[output])) fail("render_invalid", "sortie " + output + " : type " + f.mime_type + " inattendu");
+    const media = typeof f.mime_type === "string" ? f.mime_type.split(";")[0].trim().toLowerCase() : "";
+    if (media !== MESSAGE_FILES[output]) fail("render_invalid", "sortie " + output + " : type " + (media || "absent") + " inattendu");
     const stored = await storeFile(base + "." + output, f);
     if (stored.bytes === 0) fail("render_output_missing", "sortie " + output + " vide");
     files[output] = stored;
