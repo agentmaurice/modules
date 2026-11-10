@@ -1595,6 +1595,11 @@ def stored_bytes(fs, path):
     return base64.b64decode(entry['b64']) if 'b64' in entry else entry['text'].encode('utf-8')
 
 
+def message_tag(files):
+    """Attempt tag of a message: SHA-256 of the sorted output fingerprints (document-studio messageAttemptTag)."""
+    return hashlib.sha256("\n".join(f"{o}:{files[o]['sha256']}" for o in sorted(files)).encode()).hexdigest()[:12]
+
+
 class MessageTest(unittest.TestCase):
     """The message profile (e-mail, AGENT-1614 lot 4): html, txt and eml rendered, stored, read back, numbered and exported. Nothing is sent."""
 
@@ -1702,7 +1707,7 @@ class MessageTest(unittest.TestCase):
                 self.assertEqual((result['status'], result['revision'], result['renders']), ('draft', 2, 1))
                 record = json.loads(out['fs'][f'/document-studio/docs/{info["id"]}/record.json']['text'])
                 render = record['renders'][0]
-                tag = render['file']['sha256'][:12]
+                tag = message_tag(render['files'])
                 base = f'/document-studio/docs/{info["id"]}/r2-{tag}/document'
                 self.assertEqual(sorted(render['files']), ['eml', 'html', 'txt'])
                 for output in ('html', 'txt', 'eml'):
@@ -1728,6 +1733,15 @@ class MessageTest(unittest.TestCase):
         self.assertEqual(len(writes), 3)
         for output, entry in record['renders'][0]['files'].items():
             self.assertEqual(hashlib.sha256(stored_bytes(out['fs'], entry['path'])).hexdigest(), entry['sha256'])
+
+    def test_the_attempt_folder_is_named_after_all_three_outputs(self):
+        _, fs = self.draft('support-reply')
+        out = self.render('support-reply', fs)
+        record = json.loads(ok(self, out) and out['fs']['/document-studio/docs/rep-test/record.json']['text'])
+        files = record['renders'][0]['files']
+        tag = message_tag(files)
+        for o, entry in files.items():
+            self.assertIn(f"/r2-{tag}/document.{o}", entry['path'], (o, entry['path']))
 
     def test_the_mime_type_is_compared_without_its_parameters_and_case(self):
         # "TEXT/HTML; charset=utf-8" is the same media type as text/html: it is accepted
@@ -1776,7 +1790,7 @@ class MessageTest(unittest.TestCase):
                 self.assertEqual([(c['output'], c['mode']) for c in final], [('html', 'final'), ('txt', 'final'), ('eml', 'final')])
                 self.assertEqual({c['context']['doc']['number'] for c in final}, {record['number']})
                 self.assertEqual({c['context']['doc']['status'] for c in final}, {'issued'})
-                tag = record['renders'][-1]['file']['sha256'][:12]
+                tag = message_tag(record['issued']['files'])
                 self.assertEqual(sorted(record['issued']['files']), ['eml', 'html', 'txt'])
                 for output, entry in record['issued']['files'].items():
                     self.assertEqual(entry['path'], f'/document-studio/docs/{info["id"]}/issued/{record["number"]}-{tag}.{output}')

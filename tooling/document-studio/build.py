@@ -519,6 +519,17 @@ async function loadProfile() {
 
 RENDER = r'''
 // A folder per attempt: a render that loses a race never overwrites the file of another attempt.
+// A message attempt folder is named after the fingerprints of all its outputs, so two attempts that differ in any
+// one output (not only in the html) never share a folder.
+async function messageAttemptTag(results) {
+  const parts = [];
+  for (const output of Object.keys(results).sort()) {
+    const sha = typeof results[output].file.sha256 === "string" ? results[output].file.sha256.toLowerCase().replace(/[^0-9a-f]/g, "") : "";
+    if (sha.length !== 64) return shortSuffix();
+    parts.push(output + ":" + sha);
+  }
+  return (await sha256Hex(new TextEncoder().encode(parts.join("\n")))).slice(0, 12);
+}
 function attemptTag(f) { const sha = typeof f.sha256 === "string" ? f.sha256.toLowerCase().replace(/[^0-9a-f]/g, "").slice(0, 12) : ""; return sha || shortSuffix(); }
 
 function renderContext(rec, profile, number, status, revision) {
@@ -1194,7 +1205,7 @@ let res, file, files = null, previews, what;
 if (MESSAGE_KEYS.includes(rec.template_key)) {
   const results = await renderMessage(rec, data, profile, "preview", null, "draft", revision);
   res = results[messagePrimary(rec.template_key)];
-  files = await storeMessage(ROOT + "/docs/" + id + "/r" + revision + "-" + attemptTag(res.file) + "/document", results);
+  files = await storeMessage(ROOT + "/docs/" + id + "/r" + revision + "-" + (await messageAttemptTag(results)) + "/document", results);
   file = files[messagePrimary(rec.template_key)];
   previews = [];
   what = Object.keys(files).join("+");
@@ -1277,7 +1288,7 @@ if (MESSAGE_KEYS.includes(rec.template_key)) {
   // Issuing a message numbers and freezes its files; it sends nothing.
   const results = await renderMessage(rec, data, profile, "final", rec.number, "issued", revision);
   res = results[messagePrimary(rec.template_key)];
-  files = await storeMessage(dir + "/issued/" + rec.number + "-" + attemptTag(res.file), results);
+  files = await storeMessage(dir + "/issued/" + rec.number + "-" + (await messageAttemptTag(results)), results);
   file = files[messagePrimary(rec.template_key)];
   previews = [];
 } else {
