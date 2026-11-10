@@ -2,8 +2,8 @@
 """Generate the document-studio Module resources (manifest, Workflows, MiniApp).
 
 No rendering engine lives in the Module: rendering goes through the MCP tool
-`artifact_render_v1`. The two reference templates (quote and
-meeting-minutes) are embedded as text in the Workflows that render; they are
+`artifact_render_v1`. The three reference templates (quote,
+meeting-minutes and dashboard) are embedded as text in the Workflows that render; they are
 the files of document-studio/examples/templates, pinned by contract/PIN.json.
 Code steps are plain JavaScript (code_execution). The code never contains a
 double-brace sequence: the Workflow engine would read it as a template action,
@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parent
 MODULE = ROOT.parents[1] / 'document-studio'
 DEST = MODULE / 'agents/main'
 TEMPLATES_DIR = MODULE / 'examples/templates'
-VERSION = '0.3.0'
+VERSION = '0.4.0'
 RENDER_TOOL = 'artifact_render_v1'
 STORAGE_TOOLS = ['read_file', 'write_file', 'list_files']
 RENDER_TOOLS = STORAGE_TOOLS + [RENDER_TOOL]
@@ -57,10 +57,12 @@ QUOTE_DRAFT_SCHEMA = {
         'payment_terms': {'type': 'string'}},
 }
 TEMPLATE_META = {
-    'quote': {'prefix': 'DEV', 'draft_schema': QUOTE_DRAFT_SCHEMA,
+    'quote': {'prefix': 'DEV', 'label': 'Devis', 'draft_schema': QUOTE_DRAFT_SCHEMA,
               'summary': 'Devis : client, lignes (description, quantité, unité, prix unitaire HT, taux de TVA), validité, conditions, règlement. Les montants et les totaux sont calculés, jamais saisis.'},
-    'meeting-minutes': {'prefix': 'CR', 'draft_schema': None,
+    'meeting-minutes': {'prefix': 'CR', 'label': 'Compte rendu de réunion', 'draft_schema': None,
                         'summary': 'Compte rendu de réunion : réunion, participants, ordre du jour, décisions, actions (responsable, échéance).'},
+    'dashboard': {'prefix': 'TB', 'label': 'Tableau de bord', 'draft_schema': None,
+                  'summary': 'Tableau de bord : six graphiques (barres, lignes, camembert, Gantt, organigramme, processus) à partir de données chart/v1 ; le moteur les trace, rien n\'est calculé par le modèle.'},
 }
 
 
@@ -165,7 +167,7 @@ function parseJsonValue(v) {
 }
 
 // Subset of JSON Schema: $ref (#/$defs), type, enum, required, properties, additionalProperties false,
-// items, minItems, maxItems, minLength, pattern, format date, minimum, maximum, exclusiveMinimum.
+// items, minItems, maxItems, minLength, pattern, format date, minimum, maximum, exclusiveMinimum, const, anyOf.
 function checkSchema(schema, value, path, root, errors) {
   if (errors.length >= 8) return;
   if (schema.$ref) {
@@ -186,6 +188,8 @@ function checkSchema(schema, value, path, root, errors) {
     if (!ok) { errors.push(path + " : type " + types.join("|") + " attendu"); return; }
   }
   if (schema.enum && !schema.enum.includes(value)) errors.push(path + " : valeur hors liste");
+  if (schema.const !== undefined && value !== schema.const) errors.push(path + " : valeur attendue " + JSON.stringify(schema.const));
+  if (Array.isArray(schema.anyOf) && !schema.anyOf.some((alt) => { const sub = []; checkSchema(alt, value, path, root, sub); return sub.length === 0; })) errors.push(path + " : aucune des variantes admises");
   if (typeof value === "string") {
     if (schema.minLength !== undefined && value.length < schema.minLength) errors.push(path + " : vide ou trop court");
     if (schema.maxLength !== undefined && value.length > schema.maxLength) errors.push(path + " : trop long");
@@ -293,6 +297,13 @@ function quoteData(d) {
   const lines = a.lines.map(({l, unit, total, rate}) => ({description: l.description, quantity: fmtNumber(l.quantity) + (l.unit ? " " + l.unit : ""), unit_price_ht: fmtMoney(unit), vat_rate: fmtRate(Number(rate) / 100), total_ht: fmtMoney(total)}));
   const customer = d.customer;
   return {reference: d.reference, customer: {name: customer.name, address_lines: customer.address_lines || [], contact: customer.contact || ""}, lines, totals: {total_ht: fmtMoney(a.ht), vat: a.vat.map((v) => ({rate: fmtRate(Number(v.rate) / 100), amount: fmtMoney(v.cents)})), total_ttc: fmtMoney(a.ttc)}, valid_until: d.valid_until, terms: d.terms || [], payment_terms: d.payment_terms || ""};
+}
+// Title of a document from its (validated) data; fallbackTitle is the same on raw model output, before validation.
+function documentTitle(key, d) { return key === "quote" ? "Devis " + d.customer.name : key === "meeting-minutes" ? d.meeting.title : d.title; }
+function fallbackTitle(key, d) {
+  if (key === "quote") return "devis " + (isObject(d.customer) ? d.customer.name : "");
+  if (key === "meeting-minutes") return isObject(d.meeting) ? d.meeting.title : key;
+  return typeof d.title === "string" && d.title ? d.title : key;
 }
 function templateData(key, data) { return key === "quote" ? quoteData(data) : data; }
 
@@ -990,7 +1001,8 @@ def schema(required, **props):
 DOC_ID = text('Document identifier: lowercase letters, digits and hyphens', pattern='^[a-z0-9][a-z0-9-]{0,47}$')
 CONFIRM = {'type': ['boolean', 'string'], 'description': 'Manual confirmation: oui (or true) to proceed'}
 LOCALE = text('Document language; fr only in V0', enum=['fr'])
-TEMPLATE_KEY = text('Template key', enum=['quote', 'meeting-minutes'])
+TEMPLATE_KEY = text('Template key', enum=list(TEMPLATE_META))
+TEMPLATE_OPTIONS = [{'value': key, 'label': meta['label']} for key, meta in TEMPLATE_META.items()]
 SUMMARY_OUT = {'doc_id': '{{ result.doc_id }}', 'template_key': '{{ result.template_key }}', 'title': '{{ result.title }}',
                'status': '{{ result.status }}', 'number': '{{ result.number }}', 'revision': '{{ result.revision }}',
                'renders': '{{ result.renders }}', 'last_render': '{{ result.last_render }}', 'issued': '{{ result.issued }}'}
@@ -1075,9 +1087,9 @@ if (!isObject(data)) fail("llm_output_invalid", "objet attendu");
 if (Array.isArray(data.missing) && data.missing.length) fail("data_missing", data.missing.filter((x) => typeof x === "string").join(" ; "));
 let title = typeof input.title === "string" && input.title.trim() ? input.title.trim().slice(0, 120) : "";
 const given = input.doc_id !== undefined && input.doc_id !== null && input.doc_id !== "";
-const id = given ? docIdOf(input.doc_id) : slugify(title || (key === "quote" ? "devis " + (isObject(data.customer) ? data.customer.name : "") : (isObject(data.meeting) ? data.meeting.title : key))) + "-" + shortSuffix();
+const id = given ? docIdOf(input.doc_id) : slugify(title || fallbackTitle(key, data)) + "-" + shortSuffix();
 data = normalizeData(key, data, id);
-if (!title) title = key === "quote" ? "Devis " + data.customer.name : data.meeting.title;
+if (!title) title = documentTitle(key, data);
 title = title.slice(0, 120);
 const at = nowIso();
 const rec = {schema: "document-studio.record/v1", doc_id: id, template_key: key, template_version: TEMPLATES[key].manifest.version, title, locale: prep.locale, status: "draft", number: null, revision: 1, data, history: [{at, action: "created", note: "brouillon créé depuis un brief"}], renders: [], issued: null};
@@ -1273,8 +1285,7 @@ def build():
              {'template_key': '{{ result.template_key }}', 'title': '{{ result.title }}', 'missing': '{{ result.missing }}',
               'questions': '{{ result.questions }}'},
              forms=[form('plan', 'Planifier un document', [
-                 field('brief', 'Brief', 'text', True), field('template_key', 'Gabarit (facultatif)', 'select', False, options=[
-                     {'value': 'quote', 'label': 'Devis'}, {'value': 'meeting-minutes', 'label': 'Compte rendu de réunion'}])],
+                 field('brief', 'Brief', 'text', True), field('template_key', 'Gabarit (facultatif)', 'select', False, options=TEMPLATE_OPTIONS)],
                  ['prepare', 'plan-llm', 'normalize'])])
 
     workflow('document-studio-draft', 'Draft a document',
@@ -1289,8 +1300,7 @@ def build():
              {**out_summary, 'data': '{{ result.data }}', 'computed': '{{ result.computed }}'},
              forms=[form('draft', 'Rédiger un brouillon', [
                  field('brief', 'Brief', 'text', True),
-                 field('template_key', 'Gabarit', 'select', True, options=[
-                     {'value': 'quote', 'label': 'Devis'}, {'value': 'meeting-minutes', 'label': 'Compte rendu de réunion'}]),
+                 field('template_key', 'Gabarit', 'select', True, options=TEMPLATE_OPTIONS),
                  field('title', 'Titre (facultatif)', 'string', False), field('doc_id', 'Identifiant (facultatif)', 'string', False)],
                  ['prepare', 'draft-llm', 'create'])])
 
