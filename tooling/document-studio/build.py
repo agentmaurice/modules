@@ -526,7 +526,9 @@ function renderContext(rec, profile, number, status, revision) {
   return {company: profile.company, brand: profile.brand, doc, i18n: I18N};
 }
 async function callRender(tpl, tdata, context, output, mode) {
-  const raw = await callTool("artifact_render_v1", {template: {manifest: tpl.manifest, files: tpl.files}, data: tdata, context, output, mode});
+  let raw;
+  try { raw = await callTool("artifact_render_v1", {template: {manifest: tpl.manifest, files: tpl.files}, data: tdata, context, output, mode}); }
+  catch (e) { fail("render_failed", "le moteur de rendu a échoué : " + String((e && e.message) || e).slice(0, 300)); }
   const res = unwrap(raw);
   if (isObject(res) && res.error) fail("render_failed", res.error + (res.message ? " : " + res.message : ""));
   if (!isObject(res) || res.status !== "ok") fail("render_failed", "réponse inattendue du moteur de rendu");
@@ -562,6 +564,11 @@ async function renderMessage(rec, data, profile, mode, number, status, revision)
     const res = await callRender(tpl, tdata, context, output, mode);
     if (res.output !== undefined && res.output !== output) fail("render_invalid", "sortie " + output + " demandée, " + String(res.output) + " rendue");
     if (!isObject(res.file)) fail("render_output_missing", "sortie " + output + " absente de la réponse du moteur");
+    // Checked before anything is stored: a wrong type or an announced empty file stores nothing.
+    const media = typeof res.file.mime_type === "string" ? res.file.mime_type.split(";")[0].trim().toLowerCase() : "";
+    if (media !== MESSAGE_FILES[output]) fail("render_invalid", "sortie " + output + " : type " + (media || "absent") + " inattendu");
+    const hasContent = typeof res.file.content_base64 === "string" && res.file.content_base64.replace(/\s+/g, "") !== "";
+    if (res.file.bytes === 0 || (!hasContent && !(typeof res.file.ref === "string" && res.file.ref !== ""))) fail("render_output_missing", "sortie " + output + " vide");
     results[output] = res;
   }
   return results;

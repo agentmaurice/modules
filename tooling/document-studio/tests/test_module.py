@@ -1754,8 +1754,16 @@ class MessageTest(unittest.TestCase):
         self.assertEqual(without_broker(out['fs']), without_broker(fs))
         self.assertFalse([c for c in out['calls'] if c['name'] == 'write_file'])
         out = self.render('support-reply', fs, msg_throw='txt')
+        self.assertTrue(out['error'].startswith('render_failed:'), out['error'])
         self.assertIn('engine unavailable', out['error'])
         self.assertEqual(without_broker(out['fs']), without_broker(fs))
+        # a wrong type, an empty or a content-less output is refused before any write
+        for opt, output in (('msg_empty', 'eml'), ('msg_mime_suffix', 'txt'), ('msg_no_content', 'eml'), ('msg_mime_absent', 'html')):
+            with self.subTest(before_storage=opt, output=output):
+                out = self.render('support-reply', fs, **{opt: output})
+                self.assertIn('error', out)
+                self.assertFalse([c for c in out['calls'] if c['name'] == 'write_file'], opt)
+                self.assertEqual(without_broker(out['fs']), without_broker(fs))
 
     def test_approval_issue_numbering_and_freeze_send_nothing(self):
         for key, info in MESSAGES.items():
