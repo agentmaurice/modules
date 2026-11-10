@@ -1,7 +1,7 @@
 {
   "contract": "agentmaurice.template/v1",
   "source_path": "contracts/template/v1",
-  "source_commit": "fcd263d6348e373f9292b176051ec4c000ec3bfb",
+  "source_commit": "42752828875293640fff64f575ce077d492ffd29",
   "note": "Frozen copies of the reference templates and their shared fragments. \"sha256\" is the hash of the file in this Module, \"source_sha256\" the hash of the file in the contract at source_commit; a file with \"modified\": true was changed here on purpose. Refresh with a new commit only through a reviewed change.",
   "templates": {
     "quote": {
@@ -169,8 +169,8 @@
       },
       "input.schema.json": {
         "source": "golden/valid/support-reply/input.schema.json",
-        "sha256": "80b96e7461f5c766a59465414f0dc05a1a127f5c8a2023cb06a906aed36a124e",
-        "source_sha256": "80b96e7461f5c766a59465414f0dc05a1a127f5c8a2023cb06a906aed36a124e",
+        "sha256": "27c89fd83059353532e1aaccdda8e2c0d9997ea25c9f515b27a0495e8780110d",
+        "source_sha256": "27c89fd83059353532e1aaccdda8e2c0d9997ea25c9f515b27a0495e8780110d",
         "modified": false
       },
       "main.mjml": {
@@ -213,8 +213,8 @@
       },
       "input.schema.json": {
         "source": "golden/valid/launch-newsletter/input.schema.json",
-        "sha256": "a9c95621876a4d0ac5f2f11d3112f07d780b2b529a08b7dd33e4842a662f079b",
-        "source_sha256": "a9c95621876a4d0ac5f2f11d3112f07d780b2b529a08b7dd33e4842a662f079b",
+        "sha256": "d959dd0ab4d995c4a4b349a8b6b3501ba1c3cae9ffc61c9137c21b4f7ecf14d1",
+        "source_sha256": "d959dd0ab4d995c4a4b349a8b6b3501ba1c3cae9ffc61c9137c21b4f7ecf14d1",
         "modified": false
       },
       "main.mjml": {

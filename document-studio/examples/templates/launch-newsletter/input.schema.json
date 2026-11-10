@@ -10,7 +10,7 @@
     "preheader": { "type": "string", "maxLength": 140, "description": "Texte d'aperçu affiché par la messagerie." },
     "headline": { "type": "string", "minLength": 1, "maxLength": 120 },
     "intro": { "type": "string", "minLength": 1 },
-    "hero_image_url": { "type": "string", "pattern": "^https://[^\\s]+$" },
+    "hero_image_url": { "type": "string", "pattern": "^https://[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*(?::[0-9]{1,5})?(?:[/?#][^\\s]*)?$", "not": { "pattern": "\\s" } },
     "hero_image_alt": { "type": "string", "minLength": 1 },
     "features_title": { "type": "string" },
     "features": {
@@ -28,7 +28,7 @@
       }
     },
     "cta_label": { "type": "string", "minLength": 1, "maxLength": 60 },
-    "cta_url": { "type": "string", "pattern": "^https://[^\\s]+$" },
-    "unsubscribe_url": { "type": "string", "pattern": "^https://[^\\s]+$" }
+    "cta_url": { "type": "string", "pattern": "^https://[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*(?::[0-9]{1,5})?(?:[/?#][^\\s]*)?$", "not": { "pattern": "\\s" } },
+    "unsubscribe_url": { "type": "string", "pattern": "^https://[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*(?::[0-9]{1,5})?(?:[/?#][^\\s]*)?$", "not": { "pattern": "\\s" } }
   }
 }
