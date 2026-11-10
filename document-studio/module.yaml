@@ -3,7 +3,7 @@
   "schema_version": 2,
   "key": "document-studio",
   "name": "Document studio",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "provides": {
     "actions": [
       {

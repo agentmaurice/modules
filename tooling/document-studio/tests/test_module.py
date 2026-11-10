@@ -11,6 +11,7 @@ import io
 import zipfile
 import json
 import re
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -295,7 +296,7 @@ class TemplatesTest(unittest.TestCase):
     def test_pin_matches_the_local_files(self):
         pin = load(TOOLING / 'contract/PIN.json')
         self.assertRegex(pin['source_commit'], r'^[0-9a-f]{40}$')
-        self.assertEqual(sorted(pin['templates']), ['meeting-minutes', 'quote'])
+        self.assertEqual(sorted(pin['templates']), ['dashboard', 'meeting-minutes', 'quote'])
         for key, files in pin['templates'].items():
             local = {p.relative_to(TEMPLATES / key).as_posix() for p in (TEMPLATES / key).rglob('*') if p.is_file()}
             self.assertEqual(local, set(files), key)
@@ -311,13 +312,13 @@ class TemplatesTest(unittest.TestCase):
         self.assertIn("ce n'est pas une facture", (TEMPLATES / 'quote/main.typ').read_text(encoding='utf-8'))
 
     @unittest.skipUnless(CONTRACT_CHECK.exists(), 'the contract checkout is not next to this repository')
-    def test_contract_checker_accepts_both_templates(self):
-        for key in ('quote', 'meeting-minutes'):
+    def test_contract_checker_accepts_the_three_templates(self):
+        for key in ('quote', 'meeting-minutes', 'dashboard'):
             proc = subprocess.run(['python3', str(CONTRACT_CHECK), 'check', str(TEMPLATES / key)], capture_output=True, text=True)
             self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
 
     def test_example_data_matches_the_input_schema(self):
-        for key in ('quote', 'meeting-minutes'):
+        for key in ('quote', 'meeting-minutes', 'dashboard'):
             manifest = load(TEMPLATES / key / 'manifest.json')
             self.assertEqual(manifest['source']['engine'], 'typst')
             for example in manifest['examples']:
@@ -337,6 +338,92 @@ class TemplatesTest(unittest.TestCase):
         self.assertEqual(call['context']['doc']['number'], 'BROUILLON')
         self.assertEqual(call['context']['company']['trade_name'], 'Atelier Exemple')
         self.assertEqual(call['context']['company']['phone'], '')
+
+
+DASHBOARD_DRAFT = load(TEMPLATES / 'dashboard/examples/default.json')
+CHARTS = ('bar', 'line', 'pie', 'gantt', 'org', 'process')
+
+
+class DashboardTest(unittest.TestCase):
+    """The third reference template: six chart/v1 charts, drawn by the engine from its pinned contract."""
+
+    def create(self, fs=None, **extra):
+        ctx = {'prep': {'template_key': 'dashboard', 'locale': 'fr'}, 'draft': DASHBOARD_DRAFT, 'doc_id': 'tb-test', **extra}
+        out = run_node('document-studio-draft', 'create', ctx, fs if fs is not None else seeded())
+        return ok(self, out), out['fs']
+
+    def test_the_template_is_embedded_pinned_and_declared(self):
+        self.assertEqual(sorted(build.load_templates(False)), ['dashboard', 'meeting-minutes', 'quote'])
+        pin = load(TOOLING / 'contract/PIN.json')
+        self.assertEqual(sorted(pin['templates']['dashboard']), ['examples/default.json', 'fragments/charts.typ', 'input.schema.json', 'main.typ', 'manifest.json'])
+        self.assertFalse(any(e['modified'] for e in pin['templates']['dashboard'].values()))
+        manifest = load(TEMPLATES / 'dashboard/manifest.json')
+        self.assertEqual((manifest['key'], manifest['fragments']), ('dashboard', ['fragments/charts.typ']))
+        for workflow in ('document-studio-plan', 'document-studio-draft'):
+            self.assertIn('dashboard', load(WORKFLOWS / f'{workflow}.json')['input_schema']['properties']['template_key']['enum'])
+        self.assertEqual(build.TEMPLATE_META['dashboard']['prefix'], 'TB')
+
+    def test_the_example_data_validates_the_input_schema(self):
+        summary, _ = self.create()
+        self.assertEqual((summary['template_key'], summary['title'], summary['status']), ('dashboard', 'Tableau de bord Activité 2026', 'draft'))
+        self.assertEqual(summary['computed'], DASHBOARD_DRAFT)
+        for chart in CHARTS:
+            self.assertEqual(summary['data'][chart]['type'], chart)
+        bad = json.loads(json.dumps(DASHBOARD_DRAFT))
+        del bad['pie']
+        out = run_node('document-studio-draft', 'create', {'prep': {'template_key': 'dashboard', 'locale': 'fr'}, 'draft': bad, 'doc_id': 'tb-test'}, {})
+        self.assertTrue(out['error'].startswith('data_invalid'), out)
+        bad = json.loads(json.dumps(DASHBOARD_DRAFT))
+        bad['bar']['type'] = 'pie'
+        self.assertTrue(run_node('document-studio-draft', 'create', {'prep': {'template_key': 'dashboard', 'locale': 'fr'}, 'draft': bad, 'doc_id': 'tb-test'}, {})['error'].startswith('data_invalid'))
+        bad = json.loads(json.dumps(DASHBOARD_DRAFT))
+        bad['pie']['parts'][0]['value'] = 0.001  # chart/v1 number: 0 or at least 0.01
+        self.assertTrue(run_node('document-studio-draft', 'create', {'prep': {'template_key': 'dashboard', 'locale': 'fr'}, 'draft': bad, 'doc_id': 'tb-test'}, {})['error'].startswith('data_invalid'))
+
+    def test_the_title_comes_from_the_data_and_the_id_is_derived_from_it(self):
+        out = run_node('document-studio-draft', 'create', {'prep': {'template_key': 'dashboard', 'locale': 'fr'}, 'draft': DASHBOARD_DRAFT}, {})
+        summary = ok(self, out)
+        self.assertEqual(summary['title'], 'Tableau de bord Activité 2026')
+        self.assertRegex(summary['doc_id'], r'^tableau-de-bord-activite-2026-[a-z0-9]+$')
+
+    def test_render_sends_the_template_without_fragments_and_publish_numbers_it(self):
+        _, fs = self.create()
+        out = run_node('document-studio-render', 'render', {'doc_id': 'tb-test'}, fs)
+        rendered = ok(self, out)
+        call = next(c for c in out['calls'] if c['name'] == 'artifact_render_v1')['full']
+        directory = TEMPLATES / 'dashboard'
+        self.assertEqual(sorted(call['template']['files']), ['examples/default.json', 'input.schema.json', 'main.typ', 'manifest.json'])
+        self.assertEqual(call['template']['files']['main.typ'], (directory / 'main.typ').read_text(encoding='utf-8'))
+        self.assertEqual(call['template']['manifest'], load(directory / 'manifest.json'))
+        self.assertEqual(call['data'], DASHBOARD_DRAFT)
+        self.assertEqual((call['output'], call['mode']), ('pdf', 'preview'))
+        self.assertEqual((rendered['status'], rendered['renders']), ('draft', 1))
+        approved = run_node('document-studio-finalize', 'finalize', {'doc_id': 'tb-test', 'confirmation_manuelle': 'oui'}, out['fs'])
+        self.assertEqual(ok(self, approved)['status'], 'approved')
+        published = ok(self, run_node('document-studio-publish', 'publish', {'doc_id': 'tb-test', 'confirmation_manuelle': True}, approved['fs']))
+        self.assertEqual((published['status'], published['number']), ('issued', f'TB-{YEAR}-0001'))
+
+    def test_the_other_actions_handle_the_third_template(self):
+        _, fs = self.create()
+        listing = ok(self, run_node('document-studio-list', 'list', {'template_key': 'dashboard'}, fs))
+        self.assertEqual([d['doc_id'] for d in listing['items']], ['tb-test'])
+        one = ok(self, run_node('document-studio-template-read', 'read', {'template_key': 'dashboard'}))
+        self.assertEqual((one['template']['prefix'], one['template']['title']), ('TB', 'Tableau de bord'))
+        rendered = run_node('document-studio-render', 'render', {'doc_id': 'tb-test'}, fs)
+        exported = ok(self, run_node('document-studio-export', 'export', {'doc_id': 'tb-test', 'destination_path': '/envois/tb.pdf'}, rendered['fs']))
+        self.assertIn('/envois/tb.pdf', json.dumps(exported))
+        plan = run_node('document-studio-plan', 'prepare', {'brief': 'Un tableau de bord', 'template_key': 'dashboard'})
+        self.assertEqual(ok(self, plan)['template_key'], 'dashboard')
+
+    def test_the_reference_renderer_compiles_the_template_when_the_contract_is_next_to_it(self):
+        tool = CONTRACT_CHECK.parent / 'render_reference/main.go'
+        if not tool.exists() or not shutil.which('go'):
+            self.skipTest('the contract checkout or the go toolchain is not available')
+        with tempfile.TemporaryDirectory() as out:
+            proc = subprocess.run(['go', 'run', str(tool), '-template', str(TEMPLATES / 'dashboard'), '-out', out], cwd=tool.parents[2], capture_output=True, text=True)
+            if proc.returncode != 0 and 'typst' in (proc.stdout + proc.stderr).lower() and 'not found' in (proc.stdout + proc.stderr).lower():
+                self.skipTest('no Typst compiler available to the reference renderer')
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
 
 
 class MiniAppTest(unittest.TestCase):
@@ -582,7 +669,7 @@ class DraftTest(unittest.TestCase):
 
     def test_template_read(self):
         listing = ok(self, run_node('document-studio-template-read', 'read', {}))
-        self.assertEqual({t['template_key'] for t in listing['templates']}, {'quote', 'meeting-minutes'})
+        self.assertEqual({t['template_key'] for t in listing['templates']}, {'quote', 'meeting-minutes', 'dashboard'})
         one = ok(self, run_node('document-studio-template-read', 'read', {'template_key': 'quote'}))
         self.assertEqual(one['template']['prefix'], 'DEV')
         self.assertIn('required', one['template']['input_schema'])

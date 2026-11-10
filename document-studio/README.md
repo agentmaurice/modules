@@ -1,7 +1,7 @@
 # Document studio
 
 Reusable Module that turns a brief into a business document (quote, meeting
-minutes): draft, PDF render from a template and the company profile, review,
+minutes, chart dashboard): draft, PDF render from a template and the company profile, review,
 approval and issue with a number. Everything lives in Storage; nothing is sent
 outside.
 
@@ -85,7 +85,7 @@ The Module never approves on a person's behalf.
 
 `doc_id`: `^[a-z0-9][a-z0-9-]{0,47}$`, chosen by the caller or derived from the
 title with a short suffix. Number: `<PREFIX>-<year>-<seq>` (`DEV` for the
-quote, `CR` for the minutes).
+quote, `CR` for the minutes, `TB` for the dashboard).
 
 The company profile is read from the `cib-profile` record of the `profile` Module through
 `recipe--application_data_v1` (`operation: read`, `namespace: cib-profile`, `record_key: company-profile`, the call of
@@ -107,12 +107,13 @@ The same bytes under another author are refused (`version_unchanged`).
 
 ## Templates
 
-`examples/templates/quote` and `examples/templates/meeting-minutes` are copies
-of the reference templates of the `agentmaurice.template/v1` contract, with the
-shared fragments they import. `tooling/document-studio/contract/PIN.json`
-records the origin commit of the contract and the hash of every file. One file
-differs from the original: `quote/main.typ`, which adds the notice « Ce
-document est un devis, ce n'est pas une facture ». The contract check runs with
+`examples/templates/quote`, `examples/templates/meeting-minutes` and
+`examples/templates/dashboard` are copies of the reference templates of the
+`agentmaurice.template/v1` contract, with the shared fragments they import.
+`tooling/document-studio/contract/PIN.json` records the origin commit of the
+contract and the hash of every file. One file differs from the original:
+`quote/main.typ`, which adds the notice « Ce document est un devis, ce n'est
+pas une facture ». The contract check runs with
 that contract's `template_check.py` (`check <folder>`); the CI of this
 repository is offline and does not depend on it.
 
@@ -121,6 +122,28 @@ The templates are embedded as text in the rendering Workflows, without
 from its pinned contract and refuses them from the caller
 (`reserved_file_name`). Their braces are written as escape sequences, because
 the Workflow engine would read a double brace in the code as a template action.
+
+### Dashboard template (charts)
+
+The `dashboard` template (number prefix `TB`) draws six charts, one page each,
+from `chart/v1` data (`fragments/charts.typ` of the contract, pure vector
+Typst, deterministic): `bar` (grouped bars), `line`, `pie`, `gantt`
+(phases and tasks over weeks), `org` (organisation chart) and `process`
+(process flow with start, step, decision and end). The draft holds one chart
+object per property (`bar`, `line`, `pie`, `gantt`, `org`, `process`) plus a
+`title` and the `titles` of the six pages; the model only provides the data,
+the engine draws it and nothing is computed by the Workflow (the draft schema
+is the template input schema). The bounds of `chart/v1` apply (for example 24
+categories, 5 series, 10 pie parts, 25 Gantt tasks, 30 organisation nodes); a
+violation fails the render.
+
+Dependency: this template needs the MCP `artifact` engine **v0.2.5 or later**,
+which embeds `charts.typ`. The Workflow never sends `fragments/`: the engine
+writes them from its pinned contract, so a One whose artifact is older than
+v0.2.5 fails the render of this template (the quote and the minutes are not
+affected). The Module manifest has no field for a minimum MCP version
+(`requires.mcp` only lists a name and tools), so the constraint is stated
+here only.
 
 Quote data: the draft holds numbers (`quantity`, `unit_price_ht`, `vat_rate`),
 never formatted amounts nor totals. At render time the Workflow produces the

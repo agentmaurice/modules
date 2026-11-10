@@ -1,7 +1,7 @@
 {
   "contract": "agentmaurice.template/v1",
   "source_path": "contracts/template/v1",
-  "source_commit": "b2133665efeb7ed8b3358d0aafed8914587526d6",
+  "source_commit": "00d4ef2541d77af8da6cf699e29e9c5e0855d220",
   "note": "Frozen copies of the reference templates and their shared fragments. \"sha256\" is the hash of the file in this Module, \"source_sha256\" the hash of the file in the contract at source_commit; a file with \"modified\": true was changed here on purpose. Refresh with a new commit only through a reviewed change.",
   "templates": {
     "quote": {
@@ -107,6 +107,38 @@
         "source": "golden/valid/meeting-minutes/manifest.json",
         "sha256": "a7bf1b08964d4cb0569daad0e2da9b117fe7029f3db21fa1c189898449897180",
         "source_sha256": "a7bf1b08964d4cb0569daad0e2da9b117fe7029f3db21fa1c189898449897180",
+        "modified": false
+      }
+    },
+    "dashboard": {
+      "examples/default.json": {
+        "source": "golden/valid/dashboard/examples/default.json",
+        "sha256": "7950ec5d0c0b0704e674cb0200b05217e10e3b14fe723055eda1668293e292c6",
+        "source_sha256": "7950ec5d0c0b0704e674cb0200b05217e10e3b14fe723055eda1668293e292c6",
+        "modified": false
+      },
+      "fragments/charts.typ": {
+        "source": "fragments/charts.typ",
+        "sha256": "0676f89646954801d6cdfdba31f23774e1352c66dcf257e750b2944ab41a396d",
+        "source_sha256": "0676f89646954801d6cdfdba31f23774e1352c66dcf257e750b2944ab41a396d",
+        "modified": false
+      },
+      "input.schema.json": {
+        "source": "golden/valid/dashboard/input.schema.json",
+        "sha256": "f43e7fd87f4297e3bca099e5f00bd8573e52b3ef85869b92d09b04d71c44084e",
+        "source_sha256": "f43e7fd87f4297e3bca099e5f00bd8573e52b3ef85869b92d09b04d71c44084e",
+        "modified": false
+      },
+      "main.typ": {
+        "source": "golden/valid/dashboard/main.typ",
+        "sha256": "c59f167bfe4ccceb83313c7d0e0179e5bed58994001410192e89892114c28f12",
+        "source_sha256": "c59f167bfe4ccceb83313c7d0e0179e5bed58994001410192e89892114c28f12",
+        "modified": false
+      },
+      "manifest.json": {
+        "source": "golden/valid/dashboard/manifest.json",
+        "sha256": "2c3bfd69870c0dcfe04c851e232e7629bcef82fb919ea10e0490f10a473072c5",
+        "source_sha256": "2c3bfd69870c0dcfe04c851e232e7629bcef82fb919ea10e0490f10a473072c5",
         "modified": false
       }
     }
