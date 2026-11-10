@@ -1,9 +1,10 @@
 # Document studio
 
 Reusable Module that turns a brief into a business document (quote, meeting
-minutes, chart dashboard): draft, PDF render from a template and the company profile, review,
+minutes, chart dashboard) or an e-mail message (support reply, launch newsletter): draft, render from a
+template and the company profile (PDF for a document; html, txt and eml for a message), review,
 approval and issue with a number. Everything lives in Storage; nothing is sent
-outside.
+outside, a message included.
 
 The Module contains no rendering engine. Rendering goes through the MCP tool
 `artifact_render_v1` (mode `preview` for drafts, `final` for the issue). Code
@@ -17,16 +18,16 @@ messages) is French; `fr` is the only locale in V0.
 |---|---|
 | `document-studio-plan` | picks the template from a brief, proposes a title, lists the missing data and the questions to ask. Writes nothing |
 | `document-studio-draft` | fills the template data (model call, then strict validation) and creates the document record with status `draft`. For a quote, amounts and totals are computed here, in integer cents, from the lines: the model only provides quantities and prices |
-| `document-studio-render` | renders the current state (PDF and PNG previews) and adds a revision. `data_patch` merges (shallow) corrections into the data, which is revalidated. An issued or cancelled document no longer renders (`document_locked`) |
+| `document-studio-render` | renders the current state (PDF and PNG previews; for a message, the three files html, txt and eml, no preview) and adds a revision. `data_patch` merges (shallow) corrections into the data, which is revalidated. An issued or cancelled document no longer renders (`document_locked`) |
 | `document-studio-finalize` | `draft` to `approved`. Requires a render of the current revision and `confirmation_manuelle` |
-| `document-studio-publish` | requires `approved` and `confirmation_manuelle`. Reserves the next number, renders in `final` mode, stores the issued PDF, moves to `issued` |
+| `document-studio-publish` | requires `approved` and `confirmation_manuelle`. Reserves the next number, renders in `final` mode, stores the issued PDF (a message: its html, txt and eml files), moves to `issued`. Nothing is sent |
 | `document-studio-cancel` | moves to `cancelled` with a reason. An issued number is never reused |
-| `document-studio-export` | refuses a cancelled document (`document_cancelled`); otherwise copies the issued PDF (or the latest render, flagged as a draft) to a Storage path outside `/document-studio/`, with its SHA-256. Mail and SFTP are out of V0 |
+| `document-studio-export` | refuses a cancelled document (`document_cancelled`); otherwise copies the issued PDF (or the latest render, flagged as a draft) to a Storage path outside `/document-studio/`, with its SHA-256. A message exports its `eml` (default), `html` or `txt` through the optional `format`; `format` on a PDF document is `format_not_applicable`. Mail and SFTP are out of V0 |
 | `document-studio-new-version` | adds a DOCX version of an existing document from a Storage file (`source_path`, `author`): fingerprints it, compares it with the previous version through the MCP tool `office_compare_v1`, stores the redline (tracked changes) and appends the version to the versions manifest. Refuses a stale `base_version` or `base_manifest_sha256` (`base_version_conflict`) and a cancelled document. Same request again: nothing is written (`replayed`) |
 | `document-studio-mark-authoritative` | makes one version the authoritative one (`confirmation_manuelle` required, refused before any read otherwise); the previously authoritative version becomes `superseded`. No version file is modified |
 | `document-studio-profile-save` | validates and stores the company profile and brand (`/document-studio/profile.json`), with manual confirmation |
 | `document-studio-list` | lists the documents (identifier, title, status, number, revision, latest hash) |
-| `document-studio-review-read` | full record of a document and previews of its latest render, for the MiniApp |
+| `document-studio-review-read` | full record of a document and previews of its latest render, for the MiniApp. For a message: `text` (the plain text, read back and checked against its SHA-256) and `files` (path, SHA-256 and size of html, txt and eml), never the HTML |
 | `document-studio-template-read` | lists the templates, or the manifest and data schemas of one template |
 | `document-share` | publishes the reference of an **issued** document as a record of the native application data broker (`recipe--application_data_v1`, namespace `cib-documents`, key `doc_id`), then grants or removes `read` for one member. Requires `confirmation_manuelle`. The PDF stays in Storage |
 | `document-read` | reads one shared reference through the broker (with the caller's permissions), or lists the references the caller may read when `doc_id` is empty or absent (`"doc_id": ""` is valid, so the form can be submitted blank) |
@@ -34,9 +35,10 @@ messages) is French; `fr` is the only locale in V0.
 The `document-studio-review` MiniApp has no input component of its own (the
 MiniApp vocabulary has none): the document identifier (`doc_id`) is typed in
 the form "Relire un document" of `document-studio-review-read`, which loads
-the document. The MiniApp then shows status, revision, number, pages and the
+the document. The MiniApp then shows status, revision, number, pages, the title,
+the plain text of a message (empty for a PDF document) and the
 table of renders (revision, mode, hash, path), refreshes it, and triggers a
-new render. Approval and issue go through the
+new render. It displays no HTML. Approval and issue go through the
 Workflow forms, with the manual confirmation.
 
 ## Sharing with the company
@@ -79,13 +81,14 @@ The Module never approves on a person's behalf.
 - `/document-studio/docs/<doc_id>/record.json`: the record (`document-studio.record/v1`): status, number, revision (+1 at every write), data, history, renders (path, SHA-256, previews, provenance), issue.
 - `/document-studio/docs/<doc_id>/r<revision>-<sha12>/`: PDF and previews of one render attempt (12 first characters of the PDF SHA-256, so a losing attempt never overwrites another attempt's file).
 - `/document-studio/docs/<doc_id>/issued/<number>-<sha12>.pdf`: the issued PDF.
+- Message: `r<revision>-<sha12>/document.html`, `document.txt` and `document.eml` for a render (the 12 characters are those of the SHA-256 of the three outputs' fingerprints, so two attempts that differ in any one output never share a folder), and `issued/<number>-<sha12>.html`, `.txt` and `.eml` for the issue. See "Messages (e-mail)".
 - `/document-studio/numbers/<template>/<year>/<4-digit seq>.json`: number token.
 - `/document-studio/docs/<doc_id>/versions/manifest.json`: the versions manifest (`document-studio.versions/v1`): `versions` is the list of `{version, sha256, bytes, storage_ref, redline_ref, redline_sha256, changes: {insertions, deletions, changed_paragraphs}, author, created_at, status: draft|authoritative|superseded, supersedes, base_version, request_sha256}` (plus `superseded_by`, `authoritative_at`, `approved_by` when set), and `history` is its journal. At most one version is authoritative.
 - `/document-studio/docs/<doc_id>/versions/v<N>-<sha12>.docx` and `v<N>-redline-<sha12>.docx`: one immutable file per version and its redline against version N-1 (the first version has none). The file name carries the content, so a retry rewrites the same bytes.
 
 `doc_id`: `^[a-z0-9][a-z0-9-]{0,47}$`, chosen by the caller or derived from the
 title with a short suffix. Number: `<PREFIX>-<year>-<seq>` (`DEV` for the
-quote, `CR` for the minutes, `TB` for the dashboard).
+quote, `CR` for the minutes, `TB` for the dashboard, `REP` for the support reply, `NL` for the newsletter).
 
 The company profile is read from the `cib-profile` record of the `profile` Module through
 `recipe--application_data_v1` (`operation: read`, `namespace: cib-profile`, `record_key: company-profile`, the call of
@@ -107,8 +110,9 @@ The same bytes under another author are refused (`version_unchanged`).
 
 ## Templates
 
-`examples/templates/quote`, `examples/templates/meeting-minutes` and
-`examples/templates/dashboard` are copies of the reference templates of the
+`examples/templates/quote`, `examples/templates/meeting-minutes`,
+`examples/templates/dashboard`, `examples/templates/support-reply` and
+`examples/templates/launch-newsletter` are copies of the reference templates of the
 `agentmaurice.template/v1` contract, with the shared fragments they import.
 `tooling/document-studio/contract/PIN.json` records the origin commit of the
 contract and the hash of every file. One file differs from the original:
@@ -122,6 +126,35 @@ The templates are embedded as text in the rendering Workflows, without
 from its pinned contract and refuses them from the caller
 (`reserved_file_name`). Their braces are written as escape sequences, because
 the Workflow engine would read a double brace in the code as a template action.
+
+### Messages (e-mail)
+
+`support-reply` (prefix `REP`, transactional) and `launch-newsletter` (prefix `NL`, `message.category: marketing`, with the
+unsubscribe footer and an absolute https link for the button, the image and the unsubscribe URL) declare the `message` profile
+of the contract (engine `mjml`, outputs `html`, `txt`, `eml`). The profile is read from the manifest, never from the template key:
+any template that declares `profile: message` is rendered this way. Their fragments (`fragments/message/header.mjml`,
+`footer-unsubscribe.mjml`) are pinned like the other fragments and never sent to the engine. The data carries an optional `subject`,
+which becomes the `Subject` header of the eml; the document title is the subject, else the headline, else the template title.
+
+The render calls `artifact_render_v1` three times (`html`, `txt`, `eml`, in `preview` then `final` mode), stores each file in the
+attempt folder, reads it back and checks its SHA-256 and size, with the same rigour as a PDF. Nothing is stored when one of the
+three renders fails, nor when an inline output has a wrong type, size or fingerprint (all three are checked
+before the first write). An output given by buffer reference is checked when it is read back: if it is wrong, the
+render fails and the document record is left unchanged, but the files already written stay in their own attempt folder
+(never reused, never overwritten). An incomplete render fails with a stable code: `render_output_missing` (output absent or empty),
+`render_integrity_failed` (fingerprint or size differ), `render_failed` (engine error), `render_invalid` (wrong output or MIME type).
+A message has no page preview: `previews` is empty and `pages` is 0.
+
+Record shape (`document-studio.record/v1`, additive): a render entry keeps `file` (the html, as for a PDF document) and, for a
+message only, `files`: `{html, txt, eml}` each with `path`, `sha256`, `bytes` and `mime`, with `previews: []`. `provenance` is that of the html (the three outputs share the template,
+data and context digests). The issue keeps `issued.file` (the html) and `issued.files` (`path` and `sha256` per output). Issuing numbers
+and freezes the files; it sends nothing, the module has no sending tool.
+
+Not applicable to a message, refused with `not_applicable_to_message` before any write: `document-studio-new-version` and
+`document-studio-mark-authoritative` (DOCX versions) and `document-share` (the shared reference designates a PDF, so `document-read`
+`include_pdf` never concerns a message). `document-studio-export` with a PDF-only `format` is `format_not_applicable`, and `format` on a PDF document too.
+
+Dependency: the message templates need the MCP `artifact` engine **v0.2.7 or later** (MJML). The Viewer does not preview HTML yet: that is a separate ticket, the MiniApp shows the text only.
 
 ### Dashboard template (charts)
 
@@ -156,7 +189,7 @@ decimals; VAT rate among 0, 2.1, 5.5, 10 and 20 (`data_invalid` otherwise). The
 quantity is displayed with its real decimals and the line total is
 quantity x price rounded to the cent.
 
-Every stored file (PDF and previews) is read back after the write: its SHA-256
+Every stored file (PDF, previews, message files) is read back after the write: its SHA-256
 and size must match what the renderer announced, else `render_integrity_failed`
 and the record is not updated.
 
@@ -186,7 +219,7 @@ renderer, on synthetic data. They do not prove the behavior on a One.
 - Versions are DOCX only (XLSX and PDF are out of this lot), the comparison and its 20 MiB input limit are those of `office_compare_v1`, and there is no review MiniApp for versions yet.
 - The logo is a reference (`storage://…`); this Module does not resolve it to a file before rendering.
 - Number reservation is not atomic: it lists, writes without overwrite, reads back and checks the owner, at most 5 attempts (`number_conflict`). A number reserved then lost (failed render) stays reserved: it is taken again on the next attempt, never reused by another document. Atomic sequences are a platform follow-up.
-- No sending (mail, SFTP), no DOCX rendering (DOCX files are only versioned), one locale (`fr`).
+- No sending (mail, SFTP; a message is only rendered, numbered and exported as files), no HTML preview of a message in the Viewer, no DOCX rendering (DOCX files are only versioned), one locale (`fr`).
 - `document-studio-export` reads the PDF in base64 through `read_file`; if the runtime does not allow it, the export fails on the hash (`export_integrity_failed`).
 - No Viewer `document` card for a preview in the chat yet.
 - Concurrent updates: Storage has no conditional write. Before each record write, `render`, `finalize`, `publish` and `cancel` read the record again and abandon with `concurrent_update` if its revision or status changed (for example a cancel during a render). Files already rendered stay orphaned in `r<revision>-<sha12>/`. The window is small but not null until Storage offers conditional writes.

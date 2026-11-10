@@ -2,9 +2,12 @@
 """Generate the document-studio Module resources (manifest, Workflows, MiniApp).
 
 No rendering engine lives in the Module: rendering goes through the MCP tool
-`artifact_render_v1`. The three reference templates (quote,
-meeting-minutes and dashboard) are embedded as text in the Workflows that render; they are
+`artifact_render_v1`. The five reference templates (quote,
+meeting-minutes, dashboard, support-reply and launch-newsletter) are embedded as text in the Workflows that render; they are
 the files of document-studio/examples/templates, pinned by contract/PIN.json.
+A template whose manifest declares the `message` profile (e-mail, engine mjml) is rendered
+to its declared outputs (html, txt, eml), one engine call each, with no page preview and no
+sending; every other template renders to a PDF with page previews.
 Code steps are plain JavaScript (code_execution). The code never contains a
 double-brace sequence: the Workflow engine would read it as a template action,
 so template files are embedded with escaped braces (see js_embed).
@@ -18,7 +21,7 @@ ROOT = Path(__file__).resolve().parent
 MODULE = ROOT.parents[1] / 'document-studio'
 DEST = MODULE / 'agents/main'
 TEMPLATES_DIR = MODULE / 'examples/templates'
-VERSION = '0.4.0'
+VERSION = '0.5.0'
 RENDER_TOOL = 'artifact_render_v1'
 STORAGE_TOOLS = ['read_file', 'write_file', 'list_files']
 RENDER_TOOLS = STORAGE_TOOLS + [RENDER_TOOL]
@@ -63,6 +66,10 @@ TEMPLATE_META = {
                         'summary': 'Compte rendu de réunion : réunion, participants, ordre du jour, décisions, actions (responsable, échéance).'},
     'dashboard': {'prefix': 'TB', 'label': 'Tableau de bord', 'draft_schema': None,
                   'summary': 'Tableau de bord : six graphiques (barres, lignes, camembert, Gantt, organigramme, processus) à partir de données chart/v1 ; le moteur les trace, rien n\'est calculé par le modèle.'},
+    'support-reply': {'prefix': 'REP', 'label': 'Réponse du support', 'draft_schema': None,
+                      'summary': 'E-mail transactionnel de réponse à un ticket de support : client, paragraphes, étapes à suivre, lien vers le ticket, signature. Rendu html, txt et eml, sans envoi.'},
+    'launch-newsletter': {'prefix': 'NL', 'label': 'Newsletter de lancement', 'draft_schema': None,
+                          'summary': 'E-mail marketing de lancement de produit : visuel, annonce, points forts, bouton d\'appel à l\'action, lien de désabonnement. URL absolues en https. Rendu html, txt et eml, sans envoi.'},
 }
 
 
@@ -99,6 +106,10 @@ def load_templates(with_files):
                               if p.is_file() and not is_platform_file(p.relative_to(directory).as_posix())}
         templates[key] = entry
     return templates
+
+
+def message_keys():
+    return [key for key, entry in load_templates(False).items() if entry['manifest'].get('profile') == 'message']
 
 
 # ---------------------------------------------------------------------------
@@ -299,8 +310,11 @@ function quoteData(d) {
   return {reference: d.reference, customer: {name: customer.name, address_lines: customer.address_lines || [], contact: customer.contact || ""}, lines, totals: {total_ht: fmtMoney(a.ht), vat: a.vat.map((v) => ({rate: fmtRate(Number(v.rate) / 100), amount: fmtMoney(v.cents)})), total_ttc: fmtMoney(a.ttc)}, valid_until: d.valid_until, terms: d.terms || [], payment_terms: d.payment_terms || ""};
 }
 // Title of a document from its (validated) data; fallbackTitle is the same on raw model output, before validation.
-function documentTitle(key, d) { return key === "quote" ? "Devis " + d.customer.name : key === "meeting-minutes" ? d.meeting.title : d.title; }
+// An e-mail has no title field: its subject, else its headline, else the template title.
+function messageTitle(key, d) { for (const k of ["subject", "headline"]) if (isObject(d) && typeof d[k] === "string" && d[k].trim()) return d[k].trim(); return TEMPLATES[key].title; }
+function documentTitle(key, d) { return MESSAGE_KEYS.includes(key) ? messageTitle(key, d) : key === "quote" ? "Devis " + d.customer.name : key === "meeting-minutes" ? d.meeting.title : d.title; }
 function fallbackTitle(key, d) {
+  if (MESSAGE_KEYS.includes(key)) return messageTitle(key, d);
   if (key === "quote") return "devis " + (isObject(d.customer) ? d.customer.name : "");
   if (key === "meeting-minutes") return isObject(d.meeting) ? d.meeting.title : key;
   return typeof d.title === "string" && d.title ? d.title : key;
@@ -322,7 +336,7 @@ function normalizeData(key, data, id) {
 
 function summarize(rec) {
   const last = rec.renders.length ? rec.renders[rec.renders.length - 1] : null;
-  return {doc_id: rec.doc_id, template_key: rec.template_key, title: rec.title, locale: rec.locale, status: rec.status, number: rec.number, revision: rec.revision, renders: rec.renders.length, last_render: last ? {revision: last.revision, mode: last.mode, path: last.file.path, sha256: last.file.sha256, pages: last.previews.length} : null, issued: rec.issued};
+  return {doc_id: rec.doc_id, template_key: rec.template_key, title: rec.title, locale: rec.locale, status: rec.status, number: rec.number, revision: rec.revision, renders: rec.renders.length, last_render: last ? {revision: last.revision, mode: last.mode, path: last.file.path, sha256: last.file.sha256, pages: last.previews.length, outputs: isObject(last.files) ? Object.keys(last.files) : undefined} : null, issued: rec.issued};
 }
 function checkRecord(rec, id) {
   if (!isObject(rec) || rec.schema !== "document-studio.record/v1" || rec.doc_id !== id || !STATUSES.includes(rec.status) || !Number.isInteger(rec.revision) || !Array.isArray(rec.renders) || !Array.isArray(rec.history) || typeof rec.template_key !== "string" || !isObject(rec.data)) fail("record_invalid", id);
@@ -505,19 +519,90 @@ async function loadProfile() {
 
 RENDER = r'''
 // A folder per attempt: a render that loses a race never overwrites the file of another attempt.
+// A message attempt folder is named after the fingerprints of all its outputs, so two attempts that differ in any
+// one output (not only in the html) never share a folder.
+async function messageAttemptTag(results) {
+  const parts = [];
+  for (const output of Object.keys(results).sort()) {
+    const sha = typeof results[output].file.sha256 === "string" ? results[output].file.sha256.toLowerCase().replace(/[^0-9a-f]/g, "") : "";
+    if (sha.length !== 64) return shortSuffix();
+    parts.push(output + ":" + sha);
+  }
+  return (await sha256Hex(new TextEncoder().encode(parts.join("\n")))).slice(0, 12);
+}
 function attemptTag(f) { const sha = typeof f.sha256 === "string" ? f.sha256.toLowerCase().replace(/[^0-9a-f]/g, "").slice(0, 12) : ""; return sha || shortSuffix(); }
 
+function renderContext(rec, profile, number, status, revision) {
+  const doc = {number: number || "BROUILLON", title: rec.title, date: today(), version: String(revision), status, locale: rec.locale};
+  return {company: profile.company, brand: profile.brand, doc, i18n: I18N};
+}
+async function callRender(tpl, tdata, context, output, mode) {
+  let raw;
+  try { raw = await callTool("artifact_render_v1", {template: {manifest: tpl.manifest, files: tpl.files}, data: tdata, context, output, mode}); }
+  catch (e) { fail("render_failed", "le moteur de rendu a échoué : " + String((e && e.message) || e).slice(0, 300)); }
+  const res = unwrap(raw);
+  if (isObject(res) && res.error) fail("render_failed", res.error + (res.message ? " : " + res.message : ""));
+  if (!isObject(res) || res.status !== "ok") fail("render_failed", "réponse inattendue du moteur de rendu");
+  return res;
+}
 async function renderDocument(rec, data, profile, mode, number, status, revision) {
   const tpl = TEMPLATES[rec.template_key];
   if (!tpl) fail("template_unknown", rec.template_key);
   const tdata = templateData(rec.template_key, data);
   validateSchema(tpl.input_schema, tdata, "gabarit " + rec.template_key);
-  const doc = {number: number || "BROUILLON", title: rec.title, date: today(), version: String(revision), status, locale: rec.locale};
-  const raw = await callTool("artifact_render_v1", {template: {manifest: tpl.manifest, files: tpl.files}, data: tdata, context: {company: profile.company, brand: profile.brand, doc, i18n: I18N}, output: "pdf", mode});
-  const res = unwrap(raw);
-  if (isObject(res) && res.error) fail("render_failed", res.error + (res.message ? " : " + res.message : ""));
-  if (!isObject(res) || res.status !== "ok" || !isObject(res.file)) fail("render_failed", "réponse inattendue du moteur de rendu");
+  const res = await callRender(tpl, tdata, renderContext(rec, profile, number, status, revision), "pdf", mode);
+  if (!isObject(res.file)) fail("render_failed", "réponse inattendue du moteur de rendu");
   return res;
+}
+
+// Message profile (e-mail, read from the manifest, never from the key): one engine call per declared output, then
+// the three files are stored, read back and fingerprinted. Nothing is stored when one render fails or when an inline output
+// is invalid; nothing is sent.
+const MESSAGE_FILES = {html: "text/html", txt: "text/plain", eml: "message/rfc822"};
+function messageOutputs(key) {
+  const outputs = TEMPLATES[key].manifest.outputs.filter((o) => own(MESSAGE_FILES, o));
+  if (!outputs.length) fail("template_invalid", key + " : aucune sortie html, txt ou eml");
+  return outputs;
+}
+function messagePrimary(key) { const outputs = messageOutputs(key); return outputs.includes("html") ? "html" : outputs[0]; }
+async function renderMessage(rec, data, profile, mode, number, status, revision) {
+  const tpl = TEMPLATES[rec.template_key];
+  if (!tpl) fail("template_unknown", rec.template_key);
+  const tdata = templateData(rec.template_key, data);
+  validateSchema(tpl.input_schema, tdata, "gabarit " + rec.template_key);
+  const context = renderContext(rec, profile, number, status, revision);
+  const results = {};
+  for (const output of messageOutputs(rec.template_key)) {
+    const res = await callRender(tpl, tdata, context, output, mode);
+    if (res.output !== undefined && res.output !== output) fail("render_invalid", "sortie " + output + " demandée, " + String(res.output) + " rendue");
+    if (!isObject(res.file)) fail("render_output_missing", "sortie " + output + " absente de la réponse du moteur");
+    // Checked before anything is stored: a wrong type or an announced empty file stores nothing.
+    const media = typeof res.file.mime_type === "string" ? res.file.mime_type.split(";")[0].trim().toLowerCase() : "";
+    if (media !== MESSAGE_FILES[output]) fail("render_invalid", "sortie " + output + " : type " + (media || "absent") + " inattendu");
+    const hasContent = typeof res.file.content_base64 === "string" && res.file.content_base64.replace(/\s+/g, "") !== "";
+    if (res.file.bytes === 0 || (!hasContent && !(typeof res.file.ref === "string" && res.file.ref !== ""))) fail("render_output_missing", "sortie " + output + " vide");
+    if (hasContent) {
+      // Inline content: fingerprint and size checked before any write (a buffer reference is checked at read-back).
+      const bytes = b64ToBytes(res.file.content_base64.replace(/\s+/g, ""));
+      if (bytes.length === 0) fail("render_output_missing", "sortie " + output + " vide");
+      if (typeof res.file.sha256 === "string" && res.file.sha256 !== await sha256Hex(bytes)) fail("render_integrity_failed", "sortie " + output + " : empreinte différente de celle annoncée");
+      if (typeof res.file.bytes === "number" && res.file.bytes !== bytes.length) fail("render_integrity_failed", "sortie " + output + " : taille différente de celle annoncée");
+    }
+    results[output] = res;
+  }
+  return results;
+}
+async function storeMessage(base, results) {
+  const files = {};
+  for (const output of Object.keys(results)) {
+    const f = results[output].file;
+    const media = typeof f.mime_type === "string" ? f.mime_type.split(";")[0].trim().toLowerCase() : "";
+    if (media !== MESSAGE_FILES[output]) fail("render_invalid", "sortie " + output + " : type " + (media || "absent") + " inattendu");
+    const stored = await storeFile(base + "." + output, f);
+    if (stored.bytes === 0) fail("render_output_missing", "sortie " + output + " vide");
+    files[output] = stored;
+  }
+  return files;
 }
 
 // Stores one rendered file: by buffer reference when the engine gives one, else from base64.
@@ -768,6 +853,7 @@ const baseVersion = optionalInteger(input.base_version, "base_version", 0);
 const baseSha = optionalDigest(input.base_manifest_sha256, "base_manifest_sha256");
 if (source.startsWith(versionsDir(id) + "/")) fail("source_invalid", "la source ne peut pas être un fichier du dossier des versions");
 const rec = await loadRecord(id);
+if (MESSAGE_KEYS.includes(rec.template_key)) fail("not_applicable_to_message", "un message n'a pas de version DOCX");
 if (rec.status === "cancelled") fail("document_cancelled", "un document annulé n'accepte plus de version");
 const {raw, manifest, sha: msha} = await loadManifest(id);
 const latest = lastVersion(manifest);
@@ -814,6 +900,7 @@ if (version === undefined) fail("version_required");
 const approvedBy = text(input.approved_by, "approved_by", 200, false);
 const baseSha = optionalDigest(input.base_manifest_sha256, "base_manifest_sha256");
 const rec = await loadRecord(id);
+if (MESSAGE_KEYS.includes(rec.template_key)) fail("not_applicable_to_message", "un message n'a pas de version DOCX");
 if (rec.status === "cancelled") fail("document_cancelled", "un document annulé n'accepte plus de version qui fait foi");
 const {raw, manifest, sha: msha} = await loadManifest(id);
 if (!manifest) fail("manifest_not_found", "aucune version enregistrée pour " + id);
@@ -892,6 +979,7 @@ let revision = expected;
 let item = null;
 if (permission !== "none") {
   const rec = await readIssuedRecord(id);
+  if (MESSAGE_KEYS.includes(rec.template_key)) fail("not_applicable_to_message", "la référence partagée désigne un PDF : un message émis ne se partage pas");
   if (rec.status !== "issued" || !isObject(rec.issued) || !isObject(rec.issued.file) || typeof rec.issued.file.path !== "string" || typeof rec.issued.file.sha256 !== "string") fail("status_invalid", "seul un document émis se partage (statut actuel : " + rec.status + ")");
   const data = {schema: "document-studio.shared/v1", doc_id: rec.doc_id, title: String(rec.title || ""), template_key: rec.template_key, number: rec.number, version: rec.revision, path: rec.issued.file.path, sha256: rec.issued.file.sha256, issued_at: rec.issued.at};
   item = brokerItem(await callTool("recipe--application_data_v1", {operation: "save", namespace: NAMESPACE, record_key: id, data, expected_revision: expected}), id);
@@ -974,6 +1062,8 @@ def lib(*, templates=None, io=False, profile=False, render=False, numbering=Fals
         parts.append('const TEMPLATES = ' + js_embed(load_templates(templates == 'full')) + ';\nObject.setPrototypeOf(TEMPLATES, null);\n')
     if render:
         parts.append('const I18N = ' + js_embed(I18N) + ';\n')
+    # Keys of the templates that declare the message profile (e-mail), read from their manifests by this generator.
+    parts.append('const MESSAGE_KEYS = ' + json.dumps(message_keys()) + ';\n')
     parts.append(CORE)
     if profile:
         parts.append(PROFILE)
@@ -1111,17 +1201,30 @@ if (input.data_patch !== undefined && input.data_patch !== null) {
 data = normalizeData(rec.template_key, data, id);
 const profile = await loadProfile();
 const revision = rec.revision + 1;
-const res = await renderDocument(rec, data, profile, "preview", null, "draft", revision);
-const dir = ROOT + "/docs/" + id + "/r" + revision + "-" + attemptTag(res.file);
-const file = await storeFile(dir + "/document.pdf", res.file);
-const previews = await storePreviews(dir, res);
+let res, file, files = null, previews, what;
+if (MESSAGE_KEYS.includes(rec.template_key)) {
+  const results = await renderMessage(rec, data, profile, "preview", null, "draft", revision);
+  res = results[messagePrimary(rec.template_key)];
+  files = await storeMessage(ROOT + "/docs/" + id + "/r" + revision + "-" + (await messageAttemptTag(results)) + "/document", results);
+  file = files[messagePrimary(rec.template_key)];
+  previews = [];
+  what = Object.keys(files).join("+");
+} else {
+  res = await renderDocument(rec, data, profile, "preview", null, "draft", revision);
+  const dir = ROOT + "/docs/" + id + "/r" + revision + "-" + attemptTag(res.file);
+  file = await storeFile(dir + "/document.pdf", res.file);
+  previews = await storePreviews(dir, res);
+  what = (Number.isInteger(res.pages) ? res.pages : previews.length) + " page(s)";
+}
 const at = nowIso();
 if (rec.status === "approved") rec.history.push({at, action: "reopened", note: "nouveau rendu : l'approbation est à renouveler"});
-rec.history.push({at, action: "rendered", note: "r" + revision + ", " + (Number.isInteger(res.pages) ? res.pages : previews.length) + " page(s)"});
+rec.history.push({at, action: "rendered", note: "r" + revision + ", " + what});
 rec.status = "draft";
 rec.data = data;
 rec.revision = revision;
-rec.renders.push({revision, mode: "preview", profile_sha256: await fingerprint(profile), data_sha256: await fingerprint(data), file, previews, provenance: res.provenance === undefined ? null : res.provenance});
+const entry = {revision, mode: "preview", profile_sha256: await fingerprint(profile), data_sha256: await fingerprint(data), file, previews, provenance: res.provenance === undefined ? null : res.provenance};
+if (files) entry.files = files;
+rec.renders.push(entry);
 await saveRecord(rec);
 return {...summarize(rec), profile_source: PROFILE_SOURCE};
 '''
@@ -1179,15 +1282,28 @@ if (!rec.number) {
 }
 const data = normalizeData(rec.template_key, rec.data, id);
 const revision = rec.revision + 1;
-const res = await renderDocument(rec, data, profile, "final", rec.number, "issued", revision);
 const dir = ROOT + "/docs/" + id;
-const file = await storeFile(dir + "/issued/" + rec.number + "-" + attemptTag(res.file) + ".pdf", res.file);
-const previews = await storePreviews(dir + "/r" + revision + "-" + attemptTag(res.file), res);
+let res, file, files = null, previews;
+if (MESSAGE_KEYS.includes(rec.template_key)) {
+  // Issuing a message numbers and freezes its files; it sends nothing.
+  const results = await renderMessage(rec, data, profile, "final", rec.number, "issued", revision);
+  res = results[messagePrimary(rec.template_key)];
+  files = await storeMessage(dir + "/issued/" + rec.number + "-" + (await messageAttemptTag(results)), results);
+  file = files[messagePrimary(rec.template_key)];
+  previews = [];
+} else {
+  res = await renderDocument(rec, data, profile, "final", rec.number, "issued", revision);
+  file = await storeFile(dir + "/issued/" + rec.number + "-" + attemptTag(res.file) + ".pdf", res.file);
+  previews = await storePreviews(dir + "/r" + revision + "-" + attemptTag(res.file), res);
+}
 const at = nowIso();
 rec.status = "issued";
 rec.revision = revision;
-rec.renders.push({revision, mode: "final", profile_sha256: approved.profile_sha256, data_sha256: approved.data_sha256, file, previews, provenance: res.provenance === undefined ? null : res.provenance});
+const entry = {revision, mode: "final", profile_sha256: approved.profile_sha256, data_sha256: approved.data_sha256, file, previews, provenance: res.provenance === undefined ? null : res.provenance};
+if (files) entry.files = files;
+rec.renders.push(entry);
 rec.issued = {number: rec.number, file: {path: file.path, sha256: file.sha256}, at};
+if (files) rec.issued.files = Object.fromEntries(Object.entries(files).map(([o, f]) => [o, {path: f.path, sha256: f.sha256}]));
 rec.history.push({at, action: "issued", note: rec.number});
 await saveRecord(rec);
 return {...summarize(rec), profile_source: PROFILE_SOURCE};
@@ -1216,14 +1332,21 @@ if (dest === ROOT || dest.startsWith(ROOT + "/")) fail("destination_invalid", "l
 const rec = await loadRecord(id);
 if (rec.status === "cancelled") fail("document_cancelled", "un document annulé ne s'exporte pas");
 const last = rec.renders.length ? rec.renders[rec.renders.length - 1] : null;
-const source = rec.issued ? rec.issued.file : (last ? last.file : null);
+// A message record carries one file per output (html, txt, eml); any other record carries one PDF.
+const files = rec.issued && isObject(rec.issued.files) ? rec.issued.files : (!rec.issued && last && isObject(last.files) ? last.files : null);
+const format = input.format === undefined || input.format === null || input.format === "" ? (files ? "eml" : "pdf") : input.format;
+if (!["pdf", "html", "txt", "eml"].includes(format)) fail("format_invalid", String(format));
+if (!files && format !== "pdf") fail("format_not_applicable", "seul un message s'exporte en html, txt ou eml");
+if (files && format === "pdf") fail("format_not_applicable", "un message n'a pas de PDF : html, txt ou eml");
+if (files && !isObject(files[format])) fail("format_unavailable", "ce message n'a pas de fichier " + format);
+const source = files ? files[format] : (rec.issued ? rec.issued.file : (last ? last.file : null));
 if (!source) fail("no_render", "aucun rendu à exporter");
 const encoded = await readText(source.path, {encoding: "base64"});
 const bytes = b64ToBytes(encoded.replace(/\s+/g, ""));
 const sha = await sha256Hex(bytes);
 if (sha !== source.sha256) fail("export_integrity_failed", "l'empreinte du fichier lu ne correspond pas au rendu");
 await callTool("write_file", {path: dest, content: encoded.replace(/\s+/g, ""), encoding: "base64", overwrite: false});
-return {doc_id: id, destination_path: dest, source_path: source.path, sha256: sha, bytes: bytes.length, draft: !rec.issued, warning: rec.issued ? "" : "document non émis : copie du dernier rendu, marquée brouillon"};
+return {doc_id: id, destination_path: dest, source_path: source.path, format, sha256: sha, bytes: bytes.length, draft: !rec.issued, warning: rec.issued ? "" : "document non émis : copie du dernier rendu, marquée brouillon"};
 '''
 
 PROFILE_SAVE_CODE = r'''
@@ -1259,8 +1382,18 @@ const input = {{ json . }};
 const id = docIdOf(input.doc_id);
 const rec = await loadRecord(id);
 const last = rec.renders.length ? rec.renders[rec.renders.length - 1] : null;
-const s = summarize(rec);
-return {doc_id: id, title: rec.title, template_key: rec.template_key, status: rec.status, number: rec.number === null ? "" : rec.number, revision: rec.revision, pages: last ? last.previews.length : 0, previews: last ? last.previews : [], renders: rec.renders.map((r) => ({revision: r.revision, mode: r.mode, sha256: r.file.sha256, path: r.file.path})), history: rec.history, issued: rec.issued, record: rec};
+// A message shows its plain text (txt, read back and checked against the fingerprint) and the paths of its files, never its HTML.
+let body = "", files = {};
+if (last && isObject(last.files)) {
+  files = Object.fromEntries(Object.entries(last.files).map(([o, f]) => [o, {path: f.path, sha256: f.sha256, bytes: f.bytes}]));
+  if (isObject(last.files.txt)) {
+    const bytes = b64ToBytes((await readText(last.files.txt.path, {encoding: "base64"})).replace(/\s+/g, ""));
+    if (bytes.length > 1048576) fail("message_text_too_large", "1 Mio au plus");
+    if (await sha256Hex(bytes) !== last.files.txt.sha256) fail("render_integrity_failed", last.files.txt.path + " : empreinte différente de celle enregistrée");
+    body = new TextDecoder().decode(bytes);
+  }
+}
+return {doc_id: id, title: rec.title, template_key: rec.template_key, status: rec.status, number: rec.number === null ? "" : rec.number, revision: rec.revision, pages: last ? last.previews.length : 0, previews: last ? last.previews : [], files, text: body, renders: rec.renders.map((r) => ({revision: r.revision, mode: r.mode, sha256: r.file.sha256, path: r.file.path})), history: rec.history, issued: rec.issued, record: rec};
 '''
 
 TEMPLATE_READ_CODE = r'''
@@ -1306,7 +1439,8 @@ def build():
 
     workflow('document-studio-render', 'Render a document preview',
              'Renders the current data with the company profile through the artifact tool (mode preview), stores the PDF '
-             'and its page previews in Storage and appends a revision. An issued or cancelled document is locked.',
+             'and its page previews in Storage and appends a revision. An e-mail template (message profile) renders html, txt and eml '
+             'instead (three engine calls, each file stored and read back, no page preview, nothing sent). An issued or cancelled document is locked.',
              schema(['doc_id'], doc_id=DOC_ID, data_patch={'type': 'object', 'description': 'Shallow merge into the draft data, then revalidated'}),
              [node('render', code(lib(templates='full', io=True, profile=True, render=True, load_profile=True), RENDER_CODE), 'result', tools=RENDER_TOOLS + [BROKER])],
              {**out_summary, 'profile_source': '{{ result.profile_source }}'},
@@ -1321,7 +1455,8 @@ def build():
 
     workflow('document-studio-publish', 'Issue a document',
              'Reserves the next number of the template for the year, renders the final PDF (mode final) and stores it as the '
-             'issued file. Requires an approved document and a manual confirmation. The reservation is not atomic.',
+             'issued file (an e-mail template issues its html, txt and eml files; nothing is sent). Requires an approved document '
+             'and a manual confirmation. The reservation is not atomic.',
              schema(['doc_id', 'confirmation_manuelle'], doc_id=DOC_ID, confirmation_manuelle=CONFIRM),
              [node('publish', code(lib(templates='full', io=True, profile=True, render=True, numbering=True, load_profile=True), PUBLISH_CODE), 'result', tools=RENDER_TOOLS + [BROKER])],
              {**out_summary, 'profile_source': '{{ result.profile_source }}'},
@@ -1337,13 +1472,16 @@ def build():
 
     workflow('document-studio-export', 'Export a document',
              'Copies the issued PDF (or the last render, flagged as a draft) to a Storage path outside /document-studio/. '
-             'Sending by mail or SFTP is out of scope.',
-             schema(['doc_id', 'destination_path'], doc_id=DOC_ID, destination_path=text('Absolute Storage path of the copy, outside /document-studio/')),
+             'An e-mail document exports its eml (default), html or txt file. Sending by mail or SFTP is out of scope.',
+             schema(['doc_id', 'destination_path'], doc_id=DOC_ID, destination_path=text('Absolute Storage path of the copy, outside /document-studio/'),
+                    format=text('E-mail documents only: file to copy, eml (default), html or txt', enum=['eml', 'html', 'txt'])),
              [node('export', code(lib(io=True), EXPORT_CODE), 'result', tools=STORAGE_TOOLS)],
-             {'doc_id': '{{ result.doc_id }}', 'destination_path': '{{ result.destination_path }}', 'source_path': '{{ result.source_path }}',
+             {'doc_id': '{{ result.doc_id }}', 'destination_path': '{{ result.destination_path }}', 'source_path': '{{ result.source_path }}', 'format': '{{ result.format }}',
               'sha256': '{{ result.sha256 }}', 'bytes': '{{ result.bytes }}', 'draft': '{{ result.draft }}', 'warning': '{{ result.warning }}'},
              forms=[form('export', 'Exporter un document', [field('doc_id', 'Identifiant du document', 'string', True),
-                                                            field('destination_path', 'Chemin de destination', 'string', True)], ['export'])])
+                                                            field('destination_path', 'Chemin de destination', 'string', True),
+                                                            field('format', 'Format (e-mail : eml, html ou txt)', 'select', False,
+                                                                  options=[{'value': 'eml', 'label': 'eml'}, {'value': 'html', 'label': 'html'}, {'value': 'txt', 'label': 'txt'}])], ['export'])])
 
     VERSION_OUT = {k: '{{ result.%s }}' % k for k in ('doc_id', 'version', 'status', 'supersedes', 'sha256', 'storage_ref', 'redline_ref', 'changes',
                                                        'authoritative_version', 'versions', 'manifest_ref', 'manifest_sha256', 'replayed')}
@@ -1392,10 +1530,11 @@ def build():
              {'count': '{{ result.count }}', 'total': '{{ result.total }}', 'truncated': '{{ result.truncated }}', 'items': '{{ result.items }}'})
 
     workflow('document-studio-review-read', 'Read a document for review',
-             'Returns the record of a document with the previews of its last render, for the review MiniApp.',
+             'Returns the record of a document with the previews of its last render, for the review MiniApp. For an e-mail document it '
+             'returns the plain text of the message (txt) and the paths of its html, txt and eml files, never the HTML.',
              schema(['doc_id'], doc_id=DOC_ID),
              [node('read', code(lib(io=True), REVIEW_CODE), 'result', tools=STORAGE_TOOLS)],
-             {k: '{{ result.%s }}' % k for k in ('doc_id', 'title', 'template_key', 'status', 'number', 'revision', 'pages', 'previews', 'renders', 'history', 'issued', 'record')},
+             {k: '{{ result.%s }}' % k for k in ('doc_id', 'title', 'template_key', 'status', 'number', 'revision', 'pages', 'previews', 'files', 'text', 'renders', 'history', 'issued', 'record')},
              forms=[form('review', 'Relire un document', [field('doc_id', 'Identifiant du document', 'string', True)], ['read'])])
 
     workflow('document-studio-template-read', 'Read the templates',
@@ -1406,7 +1545,7 @@ def build():
 
     workflow('document-share', 'Share an issued document',
              'Publishes the reference of an issued document (identifier, title, type, number, version, Storage path and SHA-256 of '
-             'the PDF) as a record of the native application data broker, then grants or removes read access for one member. '
+             'the PDF; an e-mail document is refused, it has no PDF) as a record of the native application data broker, then grants or removes read access for one member. '
              'The PDF stays in Storage. A record is private to its owner until shared; sharing never gives access to the service. '
              'expected_revision is 0 for the first publication, else the revision returned by the previous call.',
              schema(['doc_id', 'confirmation_manuelle'], doc_id=DOC_ID, confirmation_manuelle=CONFIRM,
@@ -1461,6 +1600,7 @@ def miniapp():
                     {'label': 'Numéro', 'value': {'state': 'review.number'}},
                     {'label': 'Pages', 'value': {'state': 'review.pages'}}]},
                 {'type': 'stat', 'label': 'Titre', 'value': {'state': 'review.title'}},
+                {'type': 'text', 'value': {'state': 'review.text'}},
                 {'type': 'table', 'columns': ['revision', 'mode', 'sha256', 'path'],
                  'column_labels': {'revision': 'Révision', 'mode': 'Mode', 'sha256': 'Empreinte SHA-256', 'path': 'Chemin'},
                  'rows': {'state': 'review.renders'}}]},
@@ -1472,7 +1612,7 @@ def miniapp():
         'state_schema': {'type': 'object', 'properties': {
             'doc_id': {'type': 'string'}, 'confirmation_manuelle': {'type': 'string'}, 'review': {'type': 'object'}, 'result': {'type': 'object'}}},
         'initial_state': {'doc_id': '', 'confirmation_manuelle': 'non',
-                          'review': {'status': '', 'revision': 0, 'number': '', 'pages': 0, 'title': '', 'renders': []},
+                          'review': {'status': '', 'revision': 0, 'number': '', 'pages': 0, 'title': '', 'text': '', 'renders': []},
                           'result': {'message': 'Aucune action.'}},
         'events': [
             {'event_id': 'load', 'trigger': 'action.click', 'workflow': {'workflow_id': 'document-studio-review-read', 'input': {'doc_id': '{{ state.doc_id }}'}}, 'result_to_state': 'review'},

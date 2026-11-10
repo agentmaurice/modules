@@ -1205,7 +1205,7 @@
     },
     {
       "key": "document-studio",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "manifest": "document-studio/module.yaml",
       "workflows": 15,
       "miniapps": 1,
@@ -1238,23 +1238,23 @@
           "document-studio/agents/main/miniapps/document-studio-review.json"
         ],
         "sha256": {
-          "document-studio/module.yaml": "958f6fca731e508d2e6ff3b9a01e322a0ff37b8ba41f3d223515e41452b5b145",
-          "document-studio/agents/main/workflows/document-read.json": "b0089b283027ab450ba9d9239b52c694a6c01a9407491576aa1f20c8549f3c3b",
-          "document-studio/agents/main/workflows/document-share.json": "6a9eae1d6157f6f1dec86019c732f6b4ea66857718306dbfcb49d86ac8ebd60d",
-          "document-studio/agents/main/workflows/document-studio-cancel.json": "af0bde5acb3c51d1e040c7b77a14b0ba673e2a3644d656980305e6918236415a",
-          "document-studio/agents/main/workflows/document-studio-draft.json": "9c4793353bd0c21b54edb487316ac02550ac27eb104a64b02bfc413ee3083776",
-          "document-studio/agents/main/workflows/document-studio-export.json": "2c2d4e3078b1539e8c94627c989c5bbca4f67e8caa9dfdad7cc88623a5c79130",
-          "document-studio/agents/main/workflows/document-studio-finalize.json": "9869f825b984f028076a31b4cdafe47708679359a5ffc0779f2ccba0bf80384e",
-          "document-studio/agents/main/workflows/document-studio-list.json": "48aa273340eff2b5b1e17c4a7ed40abe001444dc72b2ef3769825c4f36c88435",
-          "document-studio/agents/main/workflows/document-studio-mark-authoritative.json": "dc5413f703f6a478f74f16da5fb9a897ce6d76465cf9a55451ba9b668645fca9",
-          "document-studio/agents/main/workflows/document-studio-new-version.json": "8b4b136511001cc565439c6e9debd434af978af4600b081521332664041145bb",
-          "document-studio/agents/main/workflows/document-studio-plan.json": "633b923d19e0b28a7415a8087252b4d131ce2cdfd4404a2166c5fdc75736c641",
-          "document-studio/agents/main/workflows/document-studio-profile-save.json": "291e142bc8665e0ac342aa75c27f2bfdf6e9d132d1027d6b312d188fef45aacf",
-          "document-studio/agents/main/workflows/document-studio-publish.json": "69cedcbf4e18c4e3f9d267e6eca344740c921cc567e191a83d5c12d07af28bc9",
-          "document-studio/agents/main/workflows/document-studio-render.json": "8c205b2ac7d4479c102f08dbe17bfdba64ba0f88cbbc907f79f8834c3626cbe9",
-          "document-studio/agents/main/workflows/document-studio-review-read.json": "32911c2692fa7f5f164cf06ec7f56ed89b5d5d6d89880cb5790998b37ae26093",
-          "document-studio/agents/main/workflows/document-studio-template-read.json": "7e3069c3b3cf17b5ba561ff5c9215071036bf66aa89d5f2b0d0f3a160f8c69d4",
-          "document-studio/agents/main/miniapps/document-studio-review.json": "126750a2bcf33970f52a3e946381661136ec5cae9a918546cca289a268c1088c"
+          "document-studio/module.yaml": "faa8b5aacf910dc7d8f6c75b229715bdd0b9e25e18a583770c12a07dade7a739",
+          "document-studio/agents/main/workflows/document-read.json": "124bb06e94f35406aa14564eb086042852fddc1ade91ac98f76e0a093744483c",
+          "document-studio/agents/main/workflows/document-share.json": "6974f995f7076d987d77d69516520561b76e91ce5ffeffaf4d5dca6f0eef4e1e",
+          "document-studio/agents/main/workflows/document-studio-cancel.json": "41ac2cb531a816af0ce50bae0a885ad97f704d681d2c03288d27e45910f42f2a",
+          "document-studio/agents/main/workflows/document-studio-draft.json": "ce95d9a779d4f66f674c85e91a95096e308d4f02fe70fc7d343b34b5d0e03e99",
+          "document-studio/agents/main/workflows/document-studio-export.json": "105a3ae6d4fbf0bf89d8c4f2869a50ba124514b7af4108b94c6e6a7f1e8e4232",
+          "document-studio/agents/main/workflows/document-studio-finalize.json": "1c8d24cb169987d1a3e8f2ace4e054942709cd52c05d19262a45f637ce54980c",
+          "document-studio/agents/main/workflows/document-studio-list.json": "f9f2debaf0d51ddc238a42f178324d256782752b78d70414c0ad192c65d7bda2",
+          "document-studio/agents/main/workflows/document-studio-mark-authoritative.json": "3d9f24db147d930b3f6b4128baca18c7560184e304ff2dc335c6d4cb5a686eea",
+          "document-studio/agents/main/workflows/document-studio-new-version.json": "c570b42cdc8e7418453993ec3066139c13c5670e1be0724c46c0d90ddba2133f",
+          "document-studio/agents/main/workflows/document-studio-plan.json": "bcef0fae91517b58e123cb537d4124146d01959598854642277a7f7758231306",
+          "document-studio/agents/main/workflows/document-studio-profile-save.json": "b5eccebc2f749e804b7b97a835d47c16a655f4f011f320386f52fb10aa531de0",
+          "document-studio/agents/main/workflows/document-studio-publish.json": "cd1678b32930a39d7c409d95da776af1d99f123e8709c9b1545b74320ab4c02b",
+          "document-studio/agents/main/workflows/document-studio-render.json": "44ee8e45bdf057c1e28c12560780363ee22a64f9a20c88bc618280ebc61c02d1",
+          "document-studio/agents/main/workflows/document-studio-review-read.json": "17f247bb06a047cc6c72e7dbd75585f1bc7c4ade4235a153f034a41a195f7dfc",
+          "document-studio/agents/main/workflows/document-studio-template-read.json": "f92d9d36d3be8ef12bae06ba98f7c3f2fe370936603559108cc0e9f1ef37d7eb",
+          "document-studio/agents/main/miniapps/document-studio-review.json": "f64892b80ae220cfc5718946c5be32974a9db0c7bb0c2bc3ae3f167a6bec1eb8"
         }
       },
       "workflow_actions": {
@@ -1267,7 +1267,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "a1b2bbc2fbf583cad938625d6bdccf13b7b4088749972c3ed03ab460e45cdceb"
+              "code_sha256": "4312de1e678b26cbf933fa878b98a3e9096525613bc61a06240e1515717a7d23"
             }
           ]
         },
@@ -1280,7 +1280,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "29005adbdaad5e387f83f235d79b8345d4a4e84060e6ef628ae9c69f2ee386d4"
+              "code_sha256": "56e70e0bab265dc9571dd476f81d6412025cf7e219ac6d6fb643a9ca2c7fe7ab"
             }
           ]
         },
@@ -1293,7 +1293,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "aa092f983d44538da590e878e17619714214785438964836218fa46673036b32"
+              "code_sha256": "39d9104b81f6a9795247383c6d1d0e9d35bc6872547948c4d8b1dd3befd30027"
             }
           ]
         },
@@ -1306,7 +1306,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "3557552195e6944fa2653b52284e1c8b4b285e800a049e1724c87e374a51fb9a"
+              "code_sha256": "e63ff9fe6b5d3eb5510a9a5d5a4af2a20af84eacd9868940c933a99d906a8d46"
             },
             {
               "path": "/actions/1",
@@ -1319,7 +1319,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "480d37a1caf87be1ac0c99b6ecce5f7eb25e70ea7958eccfb53d9e484f1b352a"
+              "code_sha256": "5384a98b8a84c5163afb7624e88c3fa217a80d3a2b7e23c83f1e14d803e008c1"
             }
           ]
         },
@@ -1332,7 +1332,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "505e9eadce7c52a666f3b4a528d9f3dd035103e38d8d79eaca9abd5cfee00027"
+              "code_sha256": "cb370d825f2ae2c32b71668daa9ee3670e74c9cbd5d5a4c1a4c5db142c658746"
             }
           ]
         },
@@ -1345,7 +1345,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "21cd8b62aaa32ba5a95feb5c60533011e9e0cfd7cc630899f2e5c1e0bdc0e823"
+              "code_sha256": "3cf1e012e9358c4782870b8179eb8cb133c784fe7246970708267017f4f9260e"
             }
           ]
         },
@@ -1358,7 +1358,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "bf1449c75ac1c16a9c3feb4736e5dd40501078b8da8633077f81cd17096d5093"
+              "code_sha256": "ca038e044f5c219658e25d2f08771ff5221240e67acdef943a9f61520b3682c2"
             }
           ]
         },
@@ -1371,7 +1371,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "a74f33983a126299d7b43170422f0c65fb33b4290c511917034a6ca1bfa474c1"
+              "code_sha256": "2b35b4b7af8afedae5801899f3eaa04f704fd3fd7da52a5c1bda97d566321164"
             }
           ]
         },
@@ -1384,7 +1384,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "6c349935ac48af7a9ac88c62acbd068ce6f11b868980ae7ac242257e52411b86"
+              "code_sha256": "91421b29c7cf4f45c67ec81055c137e7e93c794a466089475c7b2e5acb703ac3"
             }
           ]
         },
@@ -1397,7 +1397,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "01ccd02cfb0ec3189219b9f40eecd1973fc578889a8673ab0e357d134b4d47d1"
+              "code_sha256": "edf02d72821b369a21cf841f6b0553020ccfc2684e9e7e13dec1ec9bcfbde576"
             },
             {
               "path": "/actions/1",
@@ -1410,7 +1410,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "835b159652ba41535061500f38d854d21ff1bf6248af20ef4eaeaf27e70140ff"
+              "code_sha256": "f0f5d1ca27de77fc788a47cc10b864cd0b32acb50bad6e45316f14e1d36bb16e"
             }
           ]
         },
@@ -1423,7 +1423,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "205f3ebf85af5424b170fa26041dc12ec9ec126db1e33e1fa85899adab49d341"
+              "code_sha256": "cf55e4a457e24acbd8da5fdeed30fb83c76b2bcf1f3876426d293eaaac59be6f"
             }
           ]
         },
@@ -1436,7 +1436,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "9859172a48c93fb4e1ffa32020def915af1d9a87403ac9f5008606e9723408d9"
+              "code_sha256": "6134e05b877d571d4a7eeb0565d38ff2339d01419b4400414d2495f55773ff1a"
             }
           ]
         },
@@ -1449,7 +1449,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "6d077b710db2a3e12d29491938db90a150e31cb56e5fc3970072a2a180ecbe9a"
+              "code_sha256": "44827e34982fab1ed73eb3f4bddf97b09a5ced54f456fa2f4d7beaadf8ca891c"
             }
           ]
         },
@@ -1462,7 +1462,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "cbe0c6d253728a2f92a8a385f3b50238c59e18b92491b8fbccd8b06f166df486"
+              "code_sha256": "0e9e0c652e6db5f5088defe366cfbc76e8afe4f86e277871bc7540d4ce26b9bc"
             }
           ]
         },
@@ -1475,7 +1475,7 @@
               "type": "code_execution",
               "runtime": "deno",
               "runtime_source": "contract default",
-              "code_sha256": "d8ff78728974ed18d0c2aad225dfb0a2db3934ea27c61a25ebbc7cf1c8af6fb6"
+              "code_sha256": "3ee65fb8031ce524f2e3d6a7ae79df273aa865a42f51195cf8d41d8df26760a8"
             }
           ]
         }

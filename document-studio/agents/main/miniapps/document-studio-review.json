@@ -63,6 +63,12 @@
               }
             },
             {
+              "type": "text",
+              "value": {
+                "state": "review.text"
+              }
+            },
+            {
               "type": "table",
               "columns": [
                 "revision",
@@ -132,6 +138,7 @@
       "number": "",
       "pages": 0,
       "title": "",
+      "text": "",
       "renders": []
     },
     "result": {

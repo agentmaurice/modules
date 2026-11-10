@@ -49,6 +49,22 @@ const RECORD = /\/record\.json$/;
 function cancelStored() {
   for (const path of Object.keys(store)) if (RECORD.test(path)) { const r = JSON.parse(store[path].text); r.status = "cancelled"; r.revision += 1; store[path] = {text: JSON.stringify(r)}; }
 }
+// Message profile (e-mail): one file per call, no page. opts.msg_* inject the failures of the tests.
+const MESSAGE_MIME = {html: "text/html; charset=utf-8", txt: "text/plain; charset=utf-8", eml: "message/rfc822"};
+function messageRender(args) {
+  const output = args.output;
+  if (opts.msg_error === output) return {error: "mjml_failed", message: "boom"};
+  if (opts.msg_throw === output) throw new Error("engine unavailable");
+  const label = args.context.doc.title + " | " + args.mode + ":" + args.context.doc.number + (opts.nonce || "");
+  const bytes = Buffer.from(opts.msg_empty === output ? "" : output === "txt" ? "Texte du message : " + label + "\n" : output === "eml" ? "MIME-Version: 1.0\r\n\r\n" + label + "\r\n" : "<html><body>" + label + "</body></html>");
+  const file = {filename: "main." + output, mime_type: opts.msg_mime === output ? "application/pdf" : opts.msg_mime_suffix === output ? MESSAGE_MIME[output].split(";")[0] + "-invalide" : opts.msg_mime_absent === output ? undefined : opts.msg_mime_params === output ? MESSAGE_MIME[output].split(";")[0].toUpperCase() + "; charset=UTF-8" : MESSAGE_MIME[output], bytes: bytes.length + (opts.msg_bad_bytes === output ? 1 : 0), sha256: opts.msg_bad_sha === output ? "0000" : sha(bytes)};
+  if (opts.render_mode === "ref") { file.ref = "buf-msg-" + calls.length; buffers[file.ref] = bytes.toString("base64"); }
+  else file.content_base64 = bytes.toString("base64");
+  if (opts.msg_no_content === output) { delete file.content_base64; delete file.ref; }
+  const out = {status: "ok", mode: args.mode, output: opts.msg_wrong_output === output ? "pdf" : output, pages: 0, previews: [], provenance: {engine: "mock", output}};
+  if (opts.msg_missing !== output) out.file = file;
+  return out;
+}
 let firstRead = true;
 async function callTool(name, args) {
   calls.push({name, args: JSON.parse(JSON.stringify(args, (k, v) => (k === "files" ? "[files]" : v)))});
@@ -56,6 +72,7 @@ async function callTool(name, args) {
     if (opts.render_error) throw new Error(opts.render_error);
     if (opts.concurrent === "render") cancelStored();
     calls[calls.length - 1].full = args;
+    if (args.output !== "pdf") return messageRender(args);
     const f = pdf(args.mode + ":" + args.context.doc.number + (opts.nonce || "")), p = pdf("png:" + args.mode);
     const file = {filename: "document.pdf", mime_type: "application/pdf", bytes: f.bytes.length + (opts.bad_bytes ? 1 : 0), sha256: opts.bad_sha ? "0000" : f.sha};
     const prev = {page: 1, filename: "page-1.png", mime_type: "image/png", bytes: p.bytes.length, sha256: p.sha};
@@ -296,7 +313,7 @@ class TemplatesTest(unittest.TestCase):
     def test_pin_matches_the_local_files(self):
         pin = load(TOOLING / 'contract/PIN.json')
         self.assertRegex(pin['source_commit'], r'^[0-9a-f]{40}$')
-        self.assertEqual(sorted(pin['templates']), ['dashboard', 'meeting-minutes', 'quote'])
+        self.assertEqual(sorted(pin['templates']), ['dashboard', 'launch-newsletter', 'meeting-minutes', 'quote', 'support-reply'])
         for key, files in pin['templates'].items():
             local = {p.relative_to(TEMPLATES / key).as_posix() for p in (TEMPLATES / key).rglob('*') if p.is_file()}
             self.assertEqual(local, set(files), key)
@@ -353,7 +370,7 @@ class DashboardTest(unittest.TestCase):
         return ok(self, out), out['fs']
 
     def test_the_template_is_embedded_pinned_and_declared(self):
-        self.assertEqual(sorted(build.load_templates(False)), ['dashboard', 'meeting-minutes', 'quote'])
+        self.assertEqual(sorted(build.load_templates(False)), ['dashboard', 'launch-newsletter', 'meeting-minutes', 'quote', 'support-reply'])
         pin = load(TOOLING / 'contract/PIN.json')
         self.assertEqual(sorted(pin['templates']['dashboard']), ['examples/default.json', 'fragments/charts.typ', 'input.schema.json', 'main.typ', 'manifest.json'])
         self.assertFalse(any(e['modified'] for e in pin['templates']['dashboard'].values()))
@@ -669,7 +686,7 @@ class DraftTest(unittest.TestCase):
 
     def test_template_read(self):
         listing = ok(self, run_node('document-studio-template-read', 'read', {}))
-        self.assertEqual({t['template_key'] for t in listing['templates']}, {'quote', 'meeting-minutes', 'dashboard'})
+        self.assertEqual({t['template_key'] for t in listing['templates']}, {'quote', 'meeting-minutes', 'dashboard', 'support-reply', 'launch-newsletter'})
         one = ok(self, run_node('document-studio-template-read', 'read', {'template_key': 'quote'}))
         self.assertEqual(one['template']['prefix'], 'DEV')
         self.assertIn('required', one['template']['input_schema'])
@@ -1559,6 +1576,338 @@ def run_node_with_race(fs):
         proc = subprocess.run(['node', str(harness)], input=payload, capture_output=True, text=True)
     assert proc.returncode == 0, proc.stderr
     return json.loads(proc.stdout)
+
+
+
+MESSAGES = {'support-reply': {'id': 'rep-test', 'prefix': 'REP', 'title': 'Réponse du support', 'category': 'transactional'},
+            'launch-newsletter': {'id': 'nl-test', 'prefix': 'NL', 'title': 'Atelier Flux est disponible', 'category': 'marketing'}}
+MESSAGE_PINNED = ['examples/default.json', 'examples/minimal.json', 'fragments/message/footer-unsubscribe.mjml',
+                  'fragments/message/header.mjml', 'input.schema.json', 'main.mjml', 'manifest.json']
+CONTRACT_REPO = ROOT.parent.parent / 'pilote-maurice'
+
+
+def without_broker(fs):
+    return {k: v for k, v in fs.items() if k != '__broker'}
+
+
+def stored_bytes(fs, path):
+    entry = fs[path]
+    return base64.b64decode(entry['b64']) if 'b64' in entry else entry['text'].encode('utf-8')
+
+
+def message_tag(files):
+    """Attempt tag of a message: SHA-256 of the sorted output fingerprints (document-studio messageAttemptTag)."""
+    return hashlib.sha256("\n".join(f"{o}:{files[o]['sha256']}" for o in sorted(files)).encode()).hexdigest()[:12]
+
+
+class MessageTest(unittest.TestCase):
+    """The message profile (e-mail, AGENT-1614 lot 4): html, txt and eml rendered, stored, read back, numbered and exported. Nothing is sent."""
+
+    def draft(self, key, fs=None):
+        info = MESSAGES[key]
+        ctx = {'prep': {'template_key': key, 'locale': 'fr'}, 'draft': load(TEMPLATES / key / 'examples/default.json'), 'doc_id': info['id']}
+        out = run_node('document-studio-draft', 'create', ctx, fs if fs is not None else seeded())
+        return ok(self, out), out['fs']
+
+    def render(self, key, fs, **opts):
+        return run_node('document-studio-render', 'render', {'doc_id': MESSAGES[key]['id']}, fs, **opts)
+
+    def issued(self, key, **opts):
+        _, fs = self.draft(key)
+        rendered = self.render(key, fs, **opts)
+        ok(self, rendered)
+        approved = run_node('document-studio-finalize', 'finalize', {'doc_id': MESSAGES[key]['id'], 'confirmation_manuelle': 'oui'}, rendered['fs'])
+        ok(self, approved)
+        published = run_node('document-studio-publish', 'publish', {'doc_id': MESSAGES[key]['id'], 'confirmation_manuelle': True}, approved['fs'], **opts)
+        return ok(self, published), published['fs'], published
+
+    def test_the_two_templates_are_embedded_pinned_and_declared_as_messages(self):
+        pin = load(TOOLING / 'contract/PIN.json')
+        for key, info in MESSAGES.items():
+            manifest = load(TEMPLATES / key / 'manifest.json')
+            self.assertEqual((manifest['key'], manifest['kind'], manifest['profile'], manifest['source']['engine']), (key, 'message', 'message', 'mjml'), key)
+            self.assertEqual(manifest['message']['category'], info['category'])
+            self.assertEqual(manifest['outputs'], ['html', 'txt', 'eml'])
+            self.assertEqual(sorted(pin['templates'][key]), MESSAGE_PINNED, key)
+            self.assertFalse(any(e['modified'] for e in pin['templates'][key].values()), key)
+            self.assertEqual(build.TEMPLATE_META[key]['prefix'], info['prefix'])
+            for workflow in ('document-studio-plan', 'document-studio-draft'):
+                self.assertIn(key, load(WORKFLOWS / f'{workflow}.json')['input_schema']['properties']['template_key']['enum'])
+        self.assertEqual(build.message_keys(), ['support-reply', 'launch-newsletter'])
+        # no key is written in the rendering code: the profile comes from the manifest
+        for workflow in ('document-studio-render', 'document-studio-publish'):
+            code = load(WORKFLOWS / f'{workflow}.json')['actions'][0]['code']
+            rendering = code.split('const MESSAGE_FILES')[1].split('async function storeMessage')[0]
+            for other in MESSAGES:
+                self.assertNotIn(other, rendering, workflow)
+            self.assertIn('MESSAGE_KEYS.includes(rec.template_key)', code)
+
+    def test_embedded_message_templates_send_no_platform_file(self):
+        for key, entry in build.load_templates(True).items():
+            if key not in MESSAGES:
+                continue
+            self.assertEqual(sorted(entry['files']), ['examples/default.json', 'examples/minimal.json', 'input.schema.json', 'main.mjml', 'manifest.json'], key)
+            self.assertFalse(any(rel.startswith('fragments/') for rel in entry['files']), key)
+        # the fragments stay in the repository, pinned, for the contract checker only
+        for key in MESSAGES:
+            for rel in ('fragments/message/header.mjml', 'fragments/message/footer-unsubscribe.mjml'):
+                self.assertTrue((TEMPLATES / key / rel).exists(), f'{key}/{rel}')
+
+    def test_pinned_copies_are_identical_to_the_contract_source(self):
+        pin = load(TOOLING / 'contract/PIN.json')
+        for key in MESSAGES:
+            for rel, entry in pin['templates'][key].items():
+                self.assertEqual(entry['sha256'], entry['source_sha256'], f'{key}/{rel}')
+                self.assertTrue(entry['source'] in (f'golden/valid/{key}/{rel}', rel), f'{key}/{rel}')
+        commit = pin['source_commit']
+        probe = subprocess.run(['git', '-C', str(CONTRACT_REPO), 'cat-file', '-e', commit + '^{commit}'], capture_output=True) if CONTRACT_REPO.exists() else None
+        if probe is None or probe.returncode != 0:
+            self.skipTest('the pinned contract commit is not available in a checkout next to this repository')
+        for key in MESSAGES:
+            for rel, entry in pin['templates'][key].items():
+                shown = subprocess.run(['git', '-C', str(CONTRACT_REPO), 'show', f'{commit}:contracts/template/v1/{entry["source"]}'], capture_output=True)
+                self.assertEqual(shown.returncode, 0, f'{key}/{rel}')
+                self.assertEqual(shown.stdout, (TEMPLATES / key / rel).read_bytes(), f'{key}/{rel}')
+
+    @unittest.skipUnless(CONTRACT_CHECK.exists(), 'the contract checkout is not next to this repository')
+    def test_contract_checker_accepts_the_message_templates_when_it_knows_the_profile(self):
+        if 'message_text_missing' not in CONTRACT_CHECK.read_text(encoding='utf-8'):
+            self.skipTest('the contract checkout predates the message profile')
+        for key in MESSAGES:
+            proc = subprocess.run(['python3', str(CONTRACT_CHECK), 'check', str(TEMPLATES / key)], capture_output=True, text=True)
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+
+    def test_the_example_data_validates_and_gives_the_title(self):
+        for key, info in MESSAGES.items():
+            summary, _ = self.draft(key)
+            self.assertEqual((summary['template_key'], summary['title'], summary['status']), (key, info['title'], 'draft'), key)
+        out = run_node('document-studio-draft', 'create', {'prep': {'template_key': 'launch-newsletter', 'locale': 'fr'}, 'draft': {**load(TEMPLATES / 'launch-newsletter/examples/default.json'), 'cta_url': 'http://x.invalid/a'}, 'doc_id': 'nl-test'}, seeded())
+        self.assertTrue(out['error'].startswith('data_invalid'), out)
+        out = run_node('document-studio-draft', 'create', {'prep': {'template_key': 'launch-newsletter', 'locale': 'fr'}, 'draft': {**load(TEMPLATES / 'launch-newsletter/examples/default.json'), 'surprise': 1}, 'doc_id': 'nl-test'}, seeded())
+        self.assertTrue(out['error'].startswith('data_invalid'), out)
+
+    def test_render_calls_the_engine_three_times_and_stores_and_rereads_each_file(self):
+        for key, info in MESSAGES.items():
+            with self.subTest(key=key):
+                _, fs = self.draft(key)
+                out = self.render(key, fs)
+                result = ok(self, out)
+                renders = [c for c in out['calls'] if c['name'] == 'artifact_render_v1']
+                self.assertEqual([c['full']['output'] for c in renders], ['html', 'txt', 'eml'])
+                directory = TEMPLATES / key
+                for call in renders:
+                    full = call['full']
+                    self.assertEqual(full['mode'], 'preview')
+                    self.assertEqual(sorted(full['template']['files']), ['examples/default.json', 'examples/minimal.json', 'input.schema.json', 'main.mjml', 'manifest.json'])
+                    self.assertEqual(full['template']['files']['main.mjml'], (directory / 'main.mjml').read_text(encoding='utf-8'))
+                    self.assertEqual(full['template']['manifest'], load(directory / 'manifest.json'))
+                    self.assertEqual(full['data'], load(directory / 'examples/default.json'))
+                    self.assertEqual(full['context']['doc']['number'], 'BROUILLON')
+                    self.assertEqual(full['context']['i18n'], load(TOOLING / 'contract/i18n.fr.json'))
+                self.assertEqual((result['status'], result['revision'], result['renders']), ('draft', 2, 1))
+                record = json.loads(out['fs'][f'/document-studio/docs/{info["id"]}/record.json']['text'])
+                render = record['renders'][0]
+                tag = message_tag(render['files'])
+                base = f'/document-studio/docs/{info["id"]}/r2-{tag}/document'
+                self.assertEqual(sorted(render['files']), ['eml', 'html', 'txt'])
+                for output in ('html', 'txt', 'eml'):
+                    entry = render['files'][output]
+                    self.assertEqual(entry['path'], f'{base}.{output}')
+                    data = stored_bytes(out['fs'], entry['path'])
+                    self.assertEqual((entry['sha256'], entry['bytes']), (hashlib.sha256(data).hexdigest(), len(data)))
+                    self.assertTrue(entry['mime'].startswith({'html': 'text/html', 'txt': 'text/plain', 'eml': 'message/rfc822'}[output]))
+                    # written, then read back (base64) to check the fingerprint
+                    self.assertTrue(any(c['name'] == 'read_file' and c['args']['path'] == entry['path'] and c['args'].get('encoding') == 'base64' for c in out['calls']), output)
+                self.assertEqual(render['file'], render['files']['html'])
+                self.assertEqual(render['previews'], [])
+                self.assertEqual(result['last_render']['pages'], 0)
+                self.assertEqual(result['last_render']['outputs'], ['html', 'txt', 'eml'])
+                self.assertEqual(record['history'][-1]['note'], 'r2, html+txt+eml')
+                self.assertFalse([c for c in out['calls'] if not c['name'] in ('read_file', 'write_file', 'list_files', 'artifact_render_v1', 'recipe--application_data_v1')])
+
+    def test_the_files_can_be_stored_from_a_buffer_reference(self):
+        _, fs = self.draft('support-reply')
+        out = self.render('support-reply', fs, render_mode='ref')
+        record = json.loads(ok(self, out) and out['fs']['/document-studio/docs/rep-test/record.json']['text'])
+        writes = [c for c in out['calls'] if c['name'] == 'write_file' and 'buffer_ref' in c['args']]
+        self.assertEqual(len(writes), 3)
+        for output, entry in record['renders'][0]['files'].items():
+            self.assertEqual(hashlib.sha256(stored_bytes(out['fs'], entry['path'])).hexdigest(), entry['sha256'])
+
+    def test_the_attempt_folder_is_named_after_all_three_outputs(self):
+        _, fs = self.draft('support-reply')
+        out = self.render('support-reply', fs)
+        record = json.loads(ok(self, out) and out['fs']['/document-studio/docs/rep-test/record.json']['text'])
+        files = record['renders'][0]['files']
+        tag = message_tag(files)
+        for o, entry in files.items():
+            self.assertIn(f"/r2-{tag}/document.{o}", entry['path'], (o, entry['path']))
+
+    def test_the_mime_type_is_compared_without_its_parameters_and_case(self):
+        # "TEXT/HTML; charset=utf-8" is the same media type as text/html: it is accepted
+        _, fs = self.draft('support-reply')
+        out = self.render('support-reply', fs, msg_mime_params='html')
+        record = json.loads(ok(self, out) and out['fs']['/document-studio/docs/rep-test/record.json']['text'])
+        self.assertEqual(len(record['renders']), 1)
+
+    def test_an_incomplete_message_render_fails_with_a_stable_code_and_stores_nothing(self):
+        cases = [('msg_missing', 'txt', 'render_output_missing'), ('msg_missing', 'eml', 'render_output_missing'), ('msg_no_content', 'html', 'render_output_missing'),
+                 ('msg_empty', 'eml', 'render_output_missing'), ('msg_bad_sha', 'eml', 'render_integrity_failed'), ('msg_bad_sha', 'html', 'render_integrity_failed'),
+                 ('msg_bad_bytes', 'txt', 'render_integrity_failed'), ('msg_error', 'html', 'render_failed'), ('msg_error', 'eml', 'render_failed'),
+                 ('msg_wrong_output', 'txt', 'render_invalid'), ('msg_mime', 'html', 'render_invalid'), ('msg_mime_suffix', 'html', 'render_invalid'), ('msg_mime_absent', 'txt', 'render_invalid')]
+        for opt, output, code in cases:
+            with self.subTest(case=opt, output=output):
+                _, fs = self.draft('support-reply')
+                out = self.render('support-reply', fs, **{opt: output})
+                self.assertTrue(out['error'].startswith(code + ':'), out['error'])
+                record = json.loads(out['fs']['/document-studio/docs/rep-test/record.json']['text'])
+                self.assertEqual((record['status'], record['revision'], record['renders']), ('draft', 1, []))
+        # a failure while rendering (before any storage) leaves Storage untouched
+        _, fs = self.draft('support-reply')
+        out = self.render('support-reply', fs, msg_error='eml')
+        self.assertEqual(without_broker(out['fs']), without_broker(fs))
+        self.assertFalse([c for c in out['calls'] if c['name'] == 'write_file'])
+        out = self.render('support-reply', fs, msg_throw='txt')
+        self.assertTrue(out['error'].startswith('render_failed:'), out['error'])
+        self.assertIn('engine unavailable', out['error'])
+        self.assertEqual(without_broker(out['fs']), without_broker(fs))
+        # a wrong type, an empty or a content-less output is refused before any write
+        for opt, output in (('msg_empty', 'eml'), ('msg_mime_suffix', 'txt'), ('msg_no_content', 'eml'), ('msg_mime_absent', 'html'), ('msg_bad_sha', 'eml'), ('msg_bad_bytes', 'eml')):
+            with self.subTest(before_storage=opt, output=output):
+                out = self.render('support-reply', fs, **{opt: output})
+                self.assertIn('error', out)
+                self.assertFalse([c for c in out['calls'] if c['name'] == 'write_file'], opt)
+                self.assertEqual(without_broker(out['fs']), without_broker(fs))
+
+    def test_approval_issue_numbering_and_freeze_send_nothing(self):
+        for key, info in MESSAGES.items():
+            with self.subTest(key=key):
+                result, fs, out = self.issued(key)
+                self.assertEqual((result['status'], result['number']), ('issued', f'{info["prefix"]}-{YEAR}-0001'))
+                record = json.loads(fs[f'/document-studio/docs/{info["id"]}/record.json']['text'])
+                self.assertEqual(record['status'], 'issued')
+                final = [c['full'] for c in out['calls'] if c['name'] == 'artifact_render_v1']
+                self.assertEqual([(c['output'], c['mode']) for c in final], [('html', 'final'), ('txt', 'final'), ('eml', 'final')])
+                self.assertEqual({c['context']['doc']['number'] for c in final}, {record['number']})
+                self.assertEqual({c['context']['doc']['status'] for c in final}, {'issued'})
+                tag = message_tag(record['issued']['files'])
+                self.assertEqual(sorted(record['issued']['files']), ['eml', 'html', 'txt'])
+                for output, entry in record['issued']['files'].items():
+                    self.assertEqual(entry['path'], f'/document-studio/docs/{info["id"]}/issued/{record["number"]}-{tag}.{output}')
+                    self.assertEqual(hashlib.sha256(stored_bytes(fs, entry['path'])).hexdigest(), entry['sha256'])
+                self.assertEqual(record['issued']['file'], {k: record['issued']['files']['html'][k] for k in ('path', 'sha256')})
+                self.assertEqual(record['renders'][-1]['previews'], [])
+                self.assertEqual(sorted(record['renders'][-1]['files']), ['eml', 'html', 'txt'])
+                # no tool other than Storage, the engine and the profile broker was ever called
+                for step in ('render', 'finalize', 'publish'):
+                    action = load(WORKFLOWS / f'document-studio-{step}.json')['actions'][0]
+                    self.assertFalse(set(action['context']['allowed_tools']) - {'read_file', 'write_file', 'list_files', 'artifact_render_v1', 'recipe--application_data_v1'})
+                # the message is locked once issued; a second issue is refused
+                self.assertTrue(run_node('document-studio-publish', 'publish', {'doc_id': info['id'], 'confirmation_manuelle': True}, fs)['error'].startswith('status_invalid'))
+                self.assertTrue(self.render(key, fs)['error'].startswith('document_locked'))
+
+    def test_a_second_message_of_the_same_template_gets_the_next_number(self):
+        _, fs, _ = self.issued('support-reply')
+        ctx = {'prep': {'template_key': 'support-reply', 'locale': 'fr'}, 'draft': load(TEMPLATES / 'support-reply/examples/default.json'), 'doc_id': 'rep-trois'}
+        created = run_node('document-studio-draft', 'create', ctx, fs)
+        ok(self, created)
+        fs = created['fs']
+        rendered = run_node('document-studio-render', 'render', {'doc_id': 'rep-trois'}, fs)
+        approved = run_node('document-studio-finalize', 'finalize', {'doc_id': 'rep-trois', 'confirmation_manuelle': 'oui'}, rendered['fs'])
+        published = ok(self, run_node('document-studio-publish', 'publish', {'doc_id': 'rep-trois', 'confirmation_manuelle': True}, approved['fs']))
+        self.assertEqual(published['number'], f'REP-{YEAR}-0002')
+
+    def test_export_copies_one_file_of_the_message_and_checks_its_fingerprint(self):
+        for key, info in MESSAGES.items():
+            with self.subTest(key=key):
+                result, fs, _ = self.issued(key)
+                record = json.loads(fs[f'/document-studio/docs/{info["id"]}/record.json']['text'])
+                for fmt in (None, 'eml', 'html', 'txt'):
+                    ctx = {'doc_id': info['id'], 'destination_path': f'/envois/{key}-{fmt}'}
+                    if fmt:
+                        ctx['format'] = fmt
+                    exported = ok(self, run_node('document-studio-export', 'export', ctx, fs))
+                    chosen = fmt or 'eml'
+                    self.assertEqual((exported['format'], exported['draft'], exported['warning']), (chosen, False, ''))
+                    self.assertEqual(exported['source_path'], record['issued']['files'][chosen]['path'])
+                    self.assertEqual(exported['sha256'], record['issued']['files'][chosen]['sha256'])
+                    copy = run_node('document-studio-export', 'export', ctx, fs)['fs']
+                    self.assertEqual(stored_bytes(copy, ctx['destination_path']), stored_bytes(fs, record['issued']['files'][chosen]['path']))
+                self.assertTrue(run_node('document-studio-export', 'export', {'doc_id': info['id'], 'destination_path': '/envois/x', 'format': 'pdf'}, fs)['error'].startswith('format_not_applicable'))
+                self.assertTrue(run_node('document-studio-export', 'export', {'doc_id': info['id'], 'destination_path': '/envois/x', 'format': 'docx'}, fs)['error'].startswith('format_invalid'))
+                # a corrupted stored file is never exported
+                bad = json.loads(json.dumps(fs))
+                bad[record['issued']['files']['eml']['path']] = {'text': 'altered'}
+                self.assertTrue(run_node('document-studio-export', 'export', {'doc_id': info['id'], 'destination_path': '/envois/y'}, bad)['error'].startswith('export_integrity_failed'))
+
+    def test_export_of_a_draft_message_is_flagged_and_other_templates_keep_the_pdf_only(self):
+        _, fs = self.draft('launch-newsletter')
+        rendered = self.render('launch-newsletter', fs)
+        exported = ok(self, run_node('document-studio-export', 'export', {'doc_id': 'nl-test', 'destination_path': '/envois/nl.eml'}, rendered['fs']))
+        self.assertEqual((exported['format'], exported['draft']), ('eml', True))
+        self.assertTrue(exported['warning'])
+        self.assertTrue(run_node('document-studio-export', 'export', {'doc_id': 'nl-test', 'destination_path': '/envois/nl.pdf', 'format': 'pdf'}, rendered['fs'])['error'].startswith('format_not_applicable'))
+        _, qfs = create_quote(self, seeded())
+        qfs = run_node('document-studio-render', 'render', {'doc_id': 'devis-test'}, qfs)['fs']
+        for fmt in ('html', 'txt', 'eml'):
+            out = run_node('document-studio-export', 'export', {'doc_id': 'devis-test', 'destination_path': '/envois/d', 'format': fmt}, qfs)
+            self.assertTrue(out['error'].startswith('format_not_applicable'), out)
+        self.assertEqual(ok(self, run_node('document-studio-export', 'export', {'doc_id': 'devis-test', 'destination_path': '/envois/d.pdf'}, qfs))['format'], 'pdf')
+
+    def test_review_read_returns_the_text_and_the_paths_never_the_html(self):
+        for key, info in MESSAGES.items():
+            with self.subTest(key=key):
+                _, fs = self.draft(key)
+                out = self.render(key, fs)
+                review = ok(self, run_node('document-studio-review-read', 'read', {'doc_id': info['id']}, out['fs']))
+                record = json.loads(out['fs'][f'/document-studio/docs/{info["id"]}/record.json']['text'])
+                files = record['renders'][0]['files']
+                self.assertEqual((review['pages'], review['previews']), (0, []))
+                self.assertEqual(sorted(review['files']), ['eml', 'html', 'txt'])
+                self.assertEqual({o: f['path'] for o, f in review['files'].items()}, {o: f['path'] for o, f in files.items()})
+                self.assertEqual(review['text'], stored_bytes(out['fs'], files['txt']['path']).decode('utf-8'))
+                self.assertTrue(review['text'].startswith('Texte du message'))
+                self.assertNotIn('<html', review['text'])
+                self.assertNotIn('<html', json.dumps({k: v for k, v in review.items() if k != 'record'}))
+                # the text is checked against the stored fingerprint
+                bad = json.loads(json.dumps(out['fs']))
+                bad[files['txt']['path']] = {'text': 'altered'}
+                self.assertTrue(run_node('document-studio-review-read', 'read', {'doc_id': info['id']}, bad)['error'].startswith('render_integrity_failed'))
+        _, qfs = create_quote(self, seeded())
+        quote = ok(self, run_node('document-studio-review-read', 'read', {'doc_id': 'devis-test'}, qfs))
+        self.assertEqual((quote['files'], quote['text']), ({}, ''))
+
+    def test_what_does_not_apply_to_a_message_is_refused_cleanly(self):
+        for key, info in MESSAGES.items():
+            with self.subTest(key=key):
+                result, fs, _ = self.issued(key)
+                before = json.dumps(without_broker(fs), sort_keys=True)
+                with_docx = json.loads(json.dumps(fs))
+                put(with_docx, '/inbox/v1.docx', docx('v1'))
+                version = run_node('document-studio-new-version', 'new-version', {'doc_id': info['id'], 'source_path': '/inbox/v1.docx', 'author': 'Alice'}, with_docx)
+                self.assertTrue(version['error'].startswith('not_applicable_to_message'), version)
+                self.assertFalse([c for c in version['calls'] if c['name'] in ('write_file', 'office_inspect_v1', 'office_compare_v1')])
+                mark = run_node('document-studio-mark-authoritative', 'mark', {'doc_id': info['id'], 'version': 1, 'confirmation_manuelle': 'oui'}, fs)
+                self.assertTrue(mark['error'].startswith('not_applicable_to_message'), mark)
+                self.assertFalse([c for c in mark['calls'] if c['name'] in ('write_file', 'office_inspect_v1', 'office_compare_v1')])
+                share = run_node('document-share', 'share', {'doc_id': info['id'], 'confirmation_manuelle': 'oui', 'expected_revision': 0}, fs)
+                self.assertTrue(share['error'].startswith('not_applicable_to_message'), share)
+                self.assertFalse([c for c in share['calls'] if c['name'] == 'recipe--application_data_v1'])
+                self.assertEqual(json.dumps(without_broker(fs), sort_keys=True), before)
+
+    def test_cancel_and_list_handle_a_message(self):
+        _, fs = self.draft('support-reply')
+        listing = ok(self, run_node('document-studio-list', 'list', {'template_key': 'support-reply'}, fs))
+        self.assertEqual([d['doc_id'] for d in listing['items']], ['rep-test'])
+        cancelled = ok(self, run_node('document-studio-cancel', 'cancel', {'doc_id': 'rep-test', 'confirmation_manuelle': 'oui', 'reason': 'test'}, fs))
+        self.assertEqual(cancelled['status'], 'cancelled')
+        one = ok(self, run_node('document-studio-template-read', 'read', {'template_key': 'launch-newsletter'}))
+        self.assertEqual((one['template']['prefix'], one['template']['manifest']['message']['category']), ('NL', 'marketing'))
+
+    def test_the_review_miniapp_shows_the_text_and_no_html(self):
+        app = json.dumps(load(MODULE / 'agents/main/miniapps/document-studio-review.json'))
+        self.assertIn('review.text', app)
+        self.assertNotIn('html', app.lower().replace('"component"', ''))
 
 
 if __name__ == '__main__':
