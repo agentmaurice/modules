@@ -1,0 +1,43 @@
+{
+  "schema": "agentmaurice.template/v1",
+  "key": "launch-newsletter",
+  "version": "1.0.0",
+  "title": "Newsletter de lancement",
+  "description": "E-mail marketing de lancement de produit : visuel, annonce, points forts, bouton d'appel à l'action, pied avec désabonnement.",
+  "kind": "message",
+  "profile": "message",
+  "message": {
+    "category": "marketing"
+  },
+  "source": {
+    "engine": "mjml",
+    "entry": "main.mjml"
+  },
+  "outputs": [
+    "html",
+    "txt",
+    "eml"
+  ],
+  "locales": [
+    "fr"
+  ],
+  "default_locale": "fr",
+  "input_schema": "input.schema.json",
+  "examples": [
+    {
+      "name": "default",
+      "data": "examples/default.json"
+    },
+    {
+      "name": "minimal",
+      "data": "examples/minimal.json"
+    }
+  ],
+  "fragments": [
+    "fragments/message/header.mjml",
+    "fragments/message/footer-unsubscribe.mjml"
+  ],
+  "limits": {
+    "max_source_bytes": 20000
+  }
+}

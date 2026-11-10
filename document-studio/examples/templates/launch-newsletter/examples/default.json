@@ -1,0 +1,17 @@
+{
+  "subject": "Atelier Flux est disponible",
+  "preheader": "Atelier Flux est disponible : planifiez vos exports en deux clics.",
+  "headline": "Atelier Flux est disponible",
+  "intro": "Après six mois de bêta avec une centaine d'équipes, Atelier Flux est ouvert à tous. Voici ce qui change dès aujourd'hui pour vos exports et vos rapports.",
+  "hero_image_url": "https://cdn.atelier-exemple.invalid/launch/flux-hero.png",
+  "hero_image_alt": "Aperçu du tableau de bord Atelier Flux",
+  "features_title": "Les trois nouveautés",
+  "features": [
+    { "title": "Exports planifiés", "description": "Programmez un export chaque lundi à 8 h, sans ouvrir l'application." },
+    { "title": "Rapports partagés", "description": "Un lien https sécurisé suffit, et il expire quand vous le décidez." },
+    { "title": "Tarif de lancement", "description": "-20 % sur le plan annuel jusqu'au 30 juin, soit 2 400,00 € HT au lieu de 3 000,00 € HT." }
+  ],
+  "cta_label": "Découvrir Atelier Flux",
+  "cta_url": "https://www.atelier-exemple.invalid/flux?utm_source=newsletter&utm_campaign=launch",
+  "unsubscribe_url": "https://app.atelier-exemple.invalid/preferences?u=c4f9&list=newsletter&lang=fr"
+}

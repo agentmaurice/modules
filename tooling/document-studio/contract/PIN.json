@@ -1,7 +1,7 @@
 {
   "contract": "agentmaurice.template/v1",
   "source_path": "contracts/template/v1",
-  "source_commit": "00d4ef2541d77af8da6cf699e29e9c5e0855d220",
+  "source_commit": "fcd263d6348e373f9292b176051ec4c000ec3bfb",
   "note": "Frozen copies of the reference templates and their shared fragments. \"sha256\" is the hash of the file in this Module, \"source_sha256\" the hash of the file in the contract at source_commit; a file with \"modified\": true was changed here on purpose. Refresh with a new commit only through a reviewed change.",
   "templates": {
     "quote": {
@@ -141,13 +141,101 @@
         "source_sha256": "2c3bfd69870c0dcfe04c851e232e7629bcef82fb919ea10e0490f10a473072c5",
         "modified": false
       }
+    },
+    "support-reply": {
+      "examples/default.json": {
+        "source": "golden/valid/support-reply/examples/default.json",
+        "sha256": "3bc787235fa71b1f6f51b83279d2f9192d4f94979853ccf87e77a456d317a83f",
+        "source_sha256": "3bc787235fa71b1f6f51b83279d2f9192d4f94979853ccf87e77a456d317a83f",
+        "modified": false
+      },
+      "examples/minimal.json": {
+        "source": "golden/valid/support-reply/examples/minimal.json",
+        "sha256": "2f990a01ef0b96917e3bb2b6447d120f2940384c409dc5869f2bff02b23d903f",
+        "source_sha256": "2f990a01ef0b96917e3bb2b6447d120f2940384c409dc5869f2bff02b23d903f",
+        "modified": false
+      },
+      "fragments/message/footer-unsubscribe.mjml": {
+        "source": "fragments/message/footer-unsubscribe.mjml",
+        "sha256": "b100da145d158d422b0d580b61280ab20fbe1594dfa382259734ca4c3f8ac88c",
+        "source_sha256": "b100da145d158d422b0d580b61280ab20fbe1594dfa382259734ca4c3f8ac88c",
+        "modified": false
+      },
+      "fragments/message/header.mjml": {
+        "source": "fragments/message/header.mjml",
+        "sha256": "e355d0f06da266819182d7e3e9d5a1378d1fc16977eb66b4fedb2eecf6e60e4c",
+        "source_sha256": "e355d0f06da266819182d7e3e9d5a1378d1fc16977eb66b4fedb2eecf6e60e4c",
+        "modified": false
+      },
+      "input.schema.json": {
+        "source": "golden/valid/support-reply/input.schema.json",
+        "sha256": "80b96e7461f5c766a59465414f0dc05a1a127f5c8a2023cb06a906aed36a124e",
+        "source_sha256": "80b96e7461f5c766a59465414f0dc05a1a127f5c8a2023cb06a906aed36a124e",
+        "modified": false
+      },
+      "main.mjml": {
+        "source": "golden/valid/support-reply/main.mjml",
+        "sha256": "40b98dc17c677248bfdb79f87748989265aead3d20faafad14f72a7cc2dd8cdd",
+        "source_sha256": "40b98dc17c677248bfdb79f87748989265aead3d20faafad14f72a7cc2dd8cdd",
+        "modified": false
+      },
+      "manifest.json": {
+        "source": "golden/valid/support-reply/manifest.json",
+        "sha256": "e79bf5b59cb359485c616289098f7b2a26efe27880e4b0510ca030547c102604",
+        "source_sha256": "e79bf5b59cb359485c616289098f7b2a26efe27880e4b0510ca030547c102604",
+        "modified": false
+      }
+    },
+    "launch-newsletter": {
+      "examples/default.json": {
+        "source": "golden/valid/launch-newsletter/examples/default.json",
+        "sha256": "c989c7b77e98e8537e3d346a4fddafa75498883d79da9e4c068ea93a8b539c51",
+        "source_sha256": "c989c7b77e98e8537e3d346a4fddafa75498883d79da9e4c068ea93a8b539c51",
+        "modified": false
+      },
+      "examples/minimal.json": {
+        "source": "golden/valid/launch-newsletter/examples/minimal.json",
+        "sha256": "0d5f02211fa9715c83a27fb3d58c8c7b76a67ebe7e47175a2912784c331e88fe",
+        "source_sha256": "0d5f02211fa9715c83a27fb3d58c8c7b76a67ebe7e47175a2912784c331e88fe",
+        "modified": false
+      },
+      "fragments/message/footer-unsubscribe.mjml": {
+        "source": "fragments/message/footer-unsubscribe.mjml",
+        "sha256": "b100da145d158d422b0d580b61280ab20fbe1594dfa382259734ca4c3f8ac88c",
+        "source_sha256": "b100da145d158d422b0d580b61280ab20fbe1594dfa382259734ca4c3f8ac88c",
+        "modified": false
+      },
+      "fragments/message/header.mjml": {
+        "source": "fragments/message/header.mjml",
+        "sha256": "e355d0f06da266819182d7e3e9d5a1378d1fc16977eb66b4fedb2eecf6e60e4c",
+        "source_sha256": "e355d0f06da266819182d7e3e9d5a1378d1fc16977eb66b4fedb2eecf6e60e4c",
+        "modified": false
+      },
+      "input.schema.json": {
+        "source": "golden/valid/launch-newsletter/input.schema.json",
+        "sha256": "a9c95621876a4d0ac5f2f11d3112f07d780b2b529a08b7dd33e4842a662f079b",
+        "source_sha256": "a9c95621876a4d0ac5f2f11d3112f07d780b2b529a08b7dd33e4842a662f079b",
+        "modified": false
+      },
+      "main.mjml": {
+        "source": "golden/valid/launch-newsletter/main.mjml",
+        "sha256": "d41a926797017d2e888a4740546fc33b5bba80770a2a83b6b1d65c04d2f83bb3",
+        "source_sha256": "d41a926797017d2e888a4740546fc33b5bba80770a2a83b6b1d65c04d2f83bb3",
+        "modified": false
+      },
+      "manifest.json": {
+        "source": "golden/valid/launch-newsletter/manifest.json",
+        "sha256": "8c25d0d3146634e2c16d2985f6b063cabde54c4d162b16b1ce497e461ab62495",
+        "source_sha256": "8c25d0d3146634e2c16d2985f6b063cabde54c4d162b16b1ce497e461ab62495",
+        "modified": false
+      }
     }
   },
   "shared": {
     "i18n.fr.json": {
       "source": "golden/context/i18n.fr.json",
-      "sha256": "1fd7fde8819aef77a9c9c8a95ce38465a9cdd5f1926e32435f38ba3c277a5840",
-      "source_sha256": "1fd7fde8819aef77a9c9c8a95ce38465a9cdd5f1926e32435f38ba3c277a5840",
+      "sha256": "155757f8d333dcab6785f7dc98028860d010e1cbbeca747e12c03e93891b97c1",
+      "source_sha256": "155757f8d333dcab6785f7dc98028860d010e1cbbeca747e12c03e93891b97c1",
       "modified": false
     }
   }

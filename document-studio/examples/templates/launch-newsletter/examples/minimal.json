@@ -1,0 +1,13 @@
+{
+  "preheader": "Atelier Flux est disponible.",
+  "headline": "Atelier Flux est disponible",
+  "intro": "Atelier Flux est ouvert à tous dès aujourd'hui.",
+  "hero_image_url": "https://cdn.atelier-exemple.invalid/launch/flux-hero.png",
+  "hero_image_alt": "Aperçu du tableau de bord Atelier Flux",
+  "features": [
+    { "title": "Exports planifiés", "description": "Programmez un export chaque lundi à 8 h." }
+  ],
+  "cta_label": "Découvrir Atelier Flux",
+  "cta_url": "https://www.atelier-exemple.invalid/flux",
+  "unsubscribe_url": "https://app.atelier-exemple.invalid/preferences?u=c4f9&list=newsletter&lang=fr"
+}

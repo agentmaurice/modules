@@ -1,0 +1,52 @@
+<mjml lang="{{ .doc.locale }}">
+  {{ template "head" . }}
+  <mj-body background-color="{{ .brand.colors.background }}" css-class="am-page">
+    <mj-include path="fragments/message/header.mjml" />
+    <mj-section background-color="{{ .brand.colors.background }}" css-class="am-section" padding="0 24px">
+      <mj-column>
+        <mj-image src="{{ .data.hero_image_url }}" alt="{{ .data.hero_image_alt }}" padding="0" />
+      </mj-column>
+    </mj-section>
+    <mj-section background-color="{{ .brand.colors.background }}" css-class="am-section" padding="8px 24px">
+      <mj-column>
+        <mj-text css-class="am-text am-title" font-family="{{ .brand.fonts.heading.family }}, Georgia, serif" font-size="26px" font-weight="bold" color="{{ .brand.colors.primary }}">{{ .data.headline }}</mj-text>
+        <mj-text>{{ .data.intro }}</mj-text>
+        {{ if .data.features -}}
+        <mj-text font-weight="bold">{{ .data.features_title | default "" }}</mj-text>
+        {{ range .data.features -}}
+        <mj-text><b>{{ .title }}</b><br>{{ .description }}</mj-text>
+        {{ end -}}
+        {{ end -}}
+        <mj-button href="{{ .data.cta_url }}" align="left">{{ .data.cta_label }}</mj-button>
+      </mj-column>
+    </mj-section>
+    <mj-include path="fragments/message/footer-unsubscribe.mjml" />
+  </mj-body>
+</mjml>
+{{- /* Tete commune (`$` : racine passee a `template`) : titre, preheader, valeurs par defaut, metas et mode sombre derive de brand (fond = colors.text, texte = colors.background, liens et titres = colors.accent). */ -}}
+{{ define "head" }}
+  <mj-head>
+    <mj-title>{{ $.doc.title }}</mj-title>
+    <mj-preview>{{ $.data.preheader }}</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="{{ $.brand.fonts.body.family }}, Georgia, serif" />
+      <mj-text font-size="16px" line-height="1.5" color="{{ $.brand.colors.text }}" css-class="am-text" />
+      <mj-section css-class="am-section" />
+      <mj-button background-color="{{ $.brand.colors.primary }}" color="{{ $.brand.colors.background }}" font-size="16px" inner-padding="12px 28px" border-radius="4px" css-class="am-btn" />
+    </mj-attributes>
+    <mj-raw>
+      <meta name="color-scheme" content="light dark">
+      <meta name="supported-color-schemes" content="light dark">
+    </mj-raw>
+    <mj-style>
+      :root { color-scheme: light dark; supported-color-schemes: light dark; }
+      a { color: {{ $.brand.colors.primary }}; }
+      @media (prefers-color-scheme: dark) {
+        body, div[role="article"], .am-page, .am-page > table, .am-page td, .am-section, .am-section > table, .am-section td { background-color: {{ $.brand.colors.text }} !important; }
+        .am-text div, .am-text p { color: {{ $.brand.colors.background }} !important; }
+        .am-text a, .am-title div { color: {{ $.brand.colors.accent }} !important; }
+        .am-btn a, .am-btn td { background-color: {{ $.brand.colors.accent }} !important; color: {{ $.brand.colors.text }} !important; }
+      }
+    </mj-style>
+  </mj-head>
+{{ end }}
